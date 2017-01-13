@@ -287,7 +287,7 @@ namespace
       char32_t c3 = (unsigned char) from[2];
       if ((c3 & 0xC0) != 0x80)
 	return invalid_mb_sequence;
-      char32_t c = (c1 << 12) + (c2 << 6) + c3 - 0xE2080;
+      char32_t c = (((char32_t)c1 << 12) + (c2 << 6) + c3 - 0xE2080;
       if (c <= maxcode)
 	from += 3;
       return c;
@@ -309,7 +309,8 @@ namespace
       char32_t c4 = (unsigned char) from[3];
       if ((c4 & 0xC0) != 0x80)
 	return invalid_mb_sequence;
-      char32_t c = (c1 << 18) + (c2 << 12) + (c3 << 6) + c4 - 0x3C82080;
+      char32_t c = ((char32_t)c1 << 18) + ((char32_t)c2 << 12) + (c3 << 6)
+		   + c4 - 0x3C82080;
       if (c <= maxcode)
 	from += 4;
       return c;
