@@ -50,7 +50,11 @@ check(wistream& stream, const wstring& str, unsigned nchunks, wchar_t delim)
 {
   bool test __attribute__((unused)) = true;
 
+#ifdef __ia16__
+  static wchar_t buf[1000];
+#else
   static wchar_t buf[1000000];
+#endif
   wstring::size_type index = 0, index_new = 0;
   unsigned n = 0;
 

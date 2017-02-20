@@ -1,5 +1,8 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 /* { dg-options "-O2 -fdump-ipa-cp"  } */
+
+#include <stdint.h>
+
 int n;
 
 static void
@@ -9,7 +12,7 @@ test(void *a)
   __builtin_memset (a,0,n);
 }
 
-static __attribute__ ((aligned(16))) int aa[10];
+static __attribute__ ((aligned(16))) int_least32_t aa[10];
 
 int
 main()

@@ -1,5 +1,7 @@
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
 /* { dg-options "-O2" } */
+
+#include <stdint.h>
 
 int printf (const char *, ...);
 
@@ -7,8 +9,8 @@ int a, b = 1, d;
 
 union U1
 {
-  unsigned int f0;
-  int f1;
+  uint_least32_t f0;
+  int_least32_t f1;
 };
 
 union U2

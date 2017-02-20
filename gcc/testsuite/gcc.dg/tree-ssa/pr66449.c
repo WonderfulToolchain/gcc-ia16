@@ -1,9 +1,11 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 /* { dg-options "-O3" } */
 
-void *fn1(void *p1, void *p2, long p3)
+#include <stdint.h>
+
+void *fn1(void *p1, void *p2, intptr_t p3)
 {
-  long a = (long)p1, b = (long)p2, c = p3;
+  intptr_t a = (intptr_t)p1, b = (intptr_t)p2, c = p3;
 
   while (c)
     {

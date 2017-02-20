@@ -1,7 +1,11 @@
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
+
 union U
 {
-  const int a;
-  unsigned b : 24;
+  const int_least32_t a;
+  uint_least32_t b : 24;
 };
 
 static union U u = { 0x12345678 };

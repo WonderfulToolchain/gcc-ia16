@@ -48,7 +48,9 @@ andfn (int a, int b)
 
   if (a > 0 && a > 1) {}
   if (a > -2 && a > 1) {}
+#if !defined(__SIZEOF_INT__) || !defined(__SIZEOF_SHORT__) || __SIZEOF_INT__ != __SIZEOF_SHORT__
   if (a && (short) a) {}
+#endif
   if ((char) a && a) {}
   if (++a && a) {}
   if (++a && ++a) {}
@@ -96,7 +98,9 @@ orfn (int a, int b)
 
   if (a > 0 || a > 1) {}
   if (a > -2 || a > 1) {}
+#if !defined(__SIZEOF_INT__) || !defined(__SIZEOF_SHORT__) || __SIZEOF_INT__ != __SIZEOF_SHORT__
   if (a || (short) a) {}
+#endif
   if ((char) a || a) {}
   if (++a || a) {}
   if (++a || ++a) {}

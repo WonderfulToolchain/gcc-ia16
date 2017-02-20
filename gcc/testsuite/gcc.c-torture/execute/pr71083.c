@@ -1,5 +1,9 @@
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
+
 struct lock_chain {
-  unsigned int irq_context: 2,
+  uint_least32_t irq_context: 2,
     depth: 6,
     base: 24;
 };

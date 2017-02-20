@@ -1,5 +1,7 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 /* { dg-options "-Wuninitialized -O2 -Wno-implicit" } */
+
+#include <stdint.h>
 
 extern int optind;
 struct undefinfo
@@ -15,7 +17,7 @@ struct undeffoo
 };
 struct problem
 {
-  unsigned long l1;
+  uintptr_t l1;
   unsigned long l2;
   unsigned long l3;
   unsigned long l4;
@@ -59,7 +61,7 @@ fn6 (struct undefinfo *uip, struct problem *problem)
   unsigned long amt;
   if (external_function3 (((void *) 0), ((void *) 0), &amt, 0, 0))
     return 1;
-  problem->l1 = (unsigned long) undefvp1;
+  problem->l1 = (uintptr_t) undefvp1;
   problem->l4 = uip->l1;
   problem->l3 = uip->l2;
   return 0;

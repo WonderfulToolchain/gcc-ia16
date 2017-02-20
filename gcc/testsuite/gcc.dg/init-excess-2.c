@@ -3,7 +3,9 @@
    c/71115 - Missing warning: excess elements in struct initializer.  */
 /* { dg-do compile } */
 /* { dg-options "" } */
+/* { dg-require-effective-target stdint_types } */
 
+#include <stdint.h>
 #include <stddef.h>
 
 int* a[1] = {
@@ -36,7 +38,7 @@ union U {
   NULL              /* { dg-warning "excess elements|near init" } */
 };
 
-int __attribute__ ((vector_size (16))) ivec = {
+int32_t __attribute__ ((vector_size (16))) ivec = {
   0, 0, 0, 0,
   NULL              /* { dg-warning "excess elements|near init" } */
 };

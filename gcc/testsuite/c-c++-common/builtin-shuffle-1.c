@@ -1,7 +1,7 @@
 /* PR c++/78089 */
 /* { dg-do run } */
 
-typedef int V __attribute__((vector_size (16)));
+typedef int V __attribute__((vector_size (4*sizeof (int))));
 V a, b, c;
 
 int

@@ -1,5 +1,8 @@
 /* This testcase used to fail because a miscompiled execute_fold_all_builtins. */
 /* { dg-options "-fgnu89-inline" } */
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
 
 typedef __SIZE_TYPE__ size_t;
 extern __inline __attribute__ ((__always_inline__)) int __attribute__
@@ -8,7 +11,7 @@ extern __inline __attribute__ ((__always_inline__)) int __attribute__
   return __builtin___snprintf_chk (__s, __n, 2 - 1,       
 __builtin_object_size (__s, 2 > 1), __fmt, __builtin_va_arg_pack ());
 }
-int n1, n2, n3, n4, f5, f6;
+int_least32_t n1, n2, n3, n4, f5, f6;
 char * BackgroundGetUniqueString(void)
 {
   char s[256];

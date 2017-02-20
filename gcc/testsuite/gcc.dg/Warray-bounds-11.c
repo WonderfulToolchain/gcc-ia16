@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O3 -Warray-bounds=2" } */
 
-extern void* malloc(unsigned long x);
+extern void* malloc(__SIZE_TYPE__ x);
 
 int e[3];
 

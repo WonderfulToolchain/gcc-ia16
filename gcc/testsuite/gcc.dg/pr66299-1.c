@@ -1,6 +1,8 @@
 /* PR tree-optimization/66299 */
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
 /* { dg-options "-fdump-tree-original" } */
+
+#include <stdint.h>
 
 void
 test1 (int x)
@@ -71,11 +73,11 @@ test4 (unsigned int x)
 }
 
 void
-test5 (int x)
+test5 (int_least32_t x)
 {
-  if ((0 << x) == 1
-      || (0 << x) != 0
-      || (0x8001U << x) != 0x20000U)
+  if (((int_least32_t)0 << x) == 1
+      || ((int_least32_t)0 << x) != 0
+      || ((int_least32_t)0x8001U << x) != 0x20000U)
     __builtin_abort ();
 }
 

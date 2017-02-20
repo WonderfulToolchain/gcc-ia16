@@ -1,12 +1,15 @@
 /* PR tree-optimization/70602 */
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
 
 struct __attribute__((packed)) S
 {
-  int s : 1;
-  int t : 20;
+  int_least32_t s : 1;
+  int_least32_t t : 20;
 };
 
-int a, b, c;
+int_least32_t a, b, c;
 
 int
 main ()

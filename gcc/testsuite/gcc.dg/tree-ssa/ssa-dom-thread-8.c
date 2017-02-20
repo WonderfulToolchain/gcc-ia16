@@ -1,6 +1,8 @@
 /* PR 64878 */
 /* { dg-options "-O2" } */
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
+
+#include <stdint.h>
 
 struct A { int a1; };
 struct B { char *b1; int b2; int b3; };
@@ -300,7 +302,7 @@ f2 (struct C *x)
 	  else
 	    {
 	      o = f2 (x);
-	      if (((unsigned long) o > (unsigned long) -4000L))
+	      if (((uintptr_t) o > (uintptr_t) -4000L))
 		{
 		  e = 5;
 		  goto out;
@@ -384,7 +386,7 @@ f2 (struct C *x)
 	  break;
 	case 19:
 	  o = f2 (x);
-	  if (((unsigned long) o > (unsigned long) -4000L))
+	  if (((uintptr_t) o > (uintptr_t) -4000L))
 	    {
 	      e = 6;
 	      goto out;

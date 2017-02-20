@@ -10,6 +10,6 @@ oof (int mode)
   return (64 < mode_size[mode] ? 64 : mode_size[mode]);
 }
 
-/* { dg-final { scan-tree-dump-times "factor conversion out" 1 "phiopt1" } } */
+/* { dg-final { scan-tree-dump-times "factor conversion out" 1 "phiopt1" { target { ! ia16-*-* } } } } */
 /* { dg-final { scan-tree-dump-times "MIN_EXPR" 1 "phiopt1" } } */
 
