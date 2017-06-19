@@ -2,6 +2,7 @@
    Copyright (C) 2005-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
+   Very preliminary far pointer support by TK Chia
 
    This file is part of GCC.
 
@@ -51,3 +52,4 @@ extern bool	ia16_non_overlapping_mem_p (rtx m1, rtx m2);
 
 extern void	ia16_expand_prologue (void);
 extern void	ia16_expand_epilogue (bool sibcall);
+extern void	ia16_register_pragmas (void);

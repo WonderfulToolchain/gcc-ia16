@@ -2,6 +2,7 @@
    Copyright (C) 2005-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
+   Very preliminary far pointer support by TK Chia
 
    This file is part of GCC.
 
@@ -532,6 +533,8 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 /* Macros for SDB and DWARF Output  */
 #undef DWARF2_DEBUGGING_INFO
 
+#define REGISTER_TARGET_PRAGMAS() ia16_register_pragmas ()
+
 /* Cross Compilation and Floating Point
  * Skipped for now.
 
@@ -563,6 +566,7 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define Pmode				HImode
 #define FUNCTION_MODE			QImode
 
+#define ADDR_SPACE_FAR			1
 
 /* Which processor to tune code generation for.  These must be in sync
    with processor_target_table in ia16.c.  */
