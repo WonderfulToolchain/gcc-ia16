@@ -2,6 +2,7 @@
    Copyright (C) 2005-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
+   Very preliminary far pointer support by TK Chia
 
    This file is part of GCC.
 
@@ -335,12 +336,80 @@ ia16_function_ok_for_sibcall (tree decl, tree exp)
 
 /* Addressing Modes */
 
-#undef TARGET_LEGITIMATE_ADDRESS_P
-#define TARGET_LEGITIMATE_ADDRESS_P ia16_legitimate_address_p
+#undef  TARGET_ADDR_SPACE_ADDRESS_MODE
+#define TARGET_ADDR_SPACE_ADDRESS_MODE ia16_addr_space_address_mode
+
+static enum machine_mode
+ia16_addr_space_address_mode (addr_space_t addrspace)
+{
+  switch (addrspace)
+    {
+    case ADDR_SPACE_GENERIC:
+      return HImode;
+    case ADDR_SPACE_FAR:
+      return SImode;
+    default:
+      gcc_unreachable ();
+    }
+}
+
+#undef  TARGET_ADDR_SPACE_POINTER_MODE
+#define TARGET_ADDR_SPACE_POINTER_MODE ia16_addr_space_pointer_mode
+
+static machine_mode
+ia16_addr_space_pointer_mode (addr_space_t addrspace)
+{
+  switch (addrspace)
+    {
+    case ADDR_SPACE_GENERIC:
+      return HImode;
+    case ADDR_SPACE_FAR:
+      return SImode;
+    default:
+      gcc_unreachable ();
+    }
+}
+
+#undef  TARGET_VALID_POINTER_MODE
+#define TARGET_VALID_POINTER_MODE ia16_valid_pointer_mode
+
 static bool
-ia16_legitimate_address_p (machine_mode mode, rtx x, bool strict)
+ia16_valid_pointer_mode (machine_mode m)
+{
+  return (m == HImode || m == SImode);
+}
+
+#undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
+#define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
+
+static bool
+ia16_as_legitimate_address_p (machine_mode mode, rtx x, bool strict,
+			      addr_space_t as)
 {
   rtx r1, r2;
+  if (as != ADDR_SPACE_GENERIC)
+     return false;
+  /*
+   * TODO: Allow a C program to do standard C operations on far pointers, e.g.
+   * dereferencing them.  As things stand, I can "dereference" a far pointer
+   * by saying something along the lines of
+   *
+   *	int __far *p = (int __far *)0x0040006cul; ...
+   *	__asm("movw %2:%a1, %0"
+   *	    : "=r" (v)
+   *	    : "p" (FP_OFF(p)), "Q" (FP_SEG(p)));
+   *
+   * (with FP_OFF(.) and FP_SEG(.) as in classical compilers), but this is
+   * clunky.  Saying
+   *
+   *	int __far *p = ...; ...
+   *	v = *p;
+   *
+   * causes an internal compiler error.
+   *
+   * TODO: Make offset overflows do the right thing.  Adding 1 to
+   * 0x0000:0xffff should give, say, 0x0000:0x0000.
+   */
   if (CONSTANT_P (x))
     return true;
   if (!ia16_parse_address (x, &r1, &r2, NULL))
