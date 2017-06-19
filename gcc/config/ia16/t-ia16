@@ -1,5 +1,8 @@
 # 16.1 Target Makefile Fragments
 
+ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+
 MULTILIB_OPTIONS=march=any_186/Os/fno-omit-frame-pointer/fno-split-wide-types
 MULTILIB_DIRNAMES=any_186 size frame-pointer wide-types
 MULTILIB_MATCHES=march?any_186=march?i80186 march?any_186=march?i80188 \

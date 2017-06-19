@@ -405,6 +405,8 @@ x86_64-*-*)
 	;;
 ia16-*-*)
 	cpu_type=ia16
+	c_target_objs="ia16-c.o"
+	cxx_target_objs="ia16-c.o"
 	target_has_targetm_common=no
 	;;
 ia64-*-*)
