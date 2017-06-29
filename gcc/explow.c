@@ -1,5 +1,6 @@
 /* Subroutines for manipulating rtx's in semantically interesting ways.
    Copyright (C) 1987-2016 Free Software Foundation, Inc.
+   Very preliminary far pointer support by TK Chia
 
 This file is part of GCC.
 
@@ -397,7 +398,13 @@ memory_address_addr_space (machine_mode mode, rtx x, addr_space_t as)
   /* By passing constant addresses through registers
      we get a chance to cse them.  */
   if (! cse_not_expected && CONSTANT_P (x) && CONSTANT_ADDRESS_P (x))
-    x = force_reg (address_mode, x);
+    {
+      x = force_reg (address_mode, x);
+
+      /* TODO: Remove need for this ia16-elf far pointer hack.  */
+      if (! memory_address_addr_space_p (mode, x, as))
+	x = targetm.addr_space.legitimize_address (x, oldx, mode, as);
+    }
 
   /* We get better cse by rejecting indirect addressing at this stage.
      Let the combiner create indirect addresses where appropriate.
