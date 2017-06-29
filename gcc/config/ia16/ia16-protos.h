@@ -33,7 +33,7 @@ extern enum machine_mode
 
 #ifdef RTX_CODE
 extern void	ia16_initialize_trampoline (rtx addr, rtx fnaddr, rtx static_chain);
-extern bool	ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c);
+extern bool	ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9);
 extern void	ia16_print_operand (FILE *file, rtx x, int code);
 extern void	ia16_print_operand_address (FILE *file, rtx x);
 #endif
