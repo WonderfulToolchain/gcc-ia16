@@ -334,7 +334,10 @@ ia16_function_ok_for_sibcall (tree decl, tree exp)
   return decl != 0;
 }
 
-/* Addressing Modes */
+/* Addressing Modes
+
+   TODO: Make offset overflows do something that is not silly.  Adding 1 to
+   0x0000:0xffff should give, say, 0x0000:0x0000.  */
 
 #undef  TARGET_ADDR_SPACE_ADDRESS_MODE
 #define TARGET_ADDR_SPACE_ADDRESS_MODE ia16_addr_space_address_mode
@@ -379,6 +382,28 @@ ia16_valid_pointer_mode (machine_mode m)
   return (m == HImode || m == SImode);
 }
 
+static bool
+ia16_have_seg_override_p (rtx x)
+{
+  switch (GET_CODE (x))
+    {
+    case UNSPEC:
+      /* Basis case.  */
+      return (XINT (x, 1) == UNSPEC_SEG_OVERRIDE);
+    case PLUS:
+    case MINUS:
+      return ia16_have_seg_override_p (XEXP (x, 0)) ||
+	     ia16_have_seg_override_p (XEXP (x, 1));
+    default:
+      return false;
+    }
+}
+
+#define REGNO_OK_FOR_SEGMENT_P(num) \
+	((num) < FIRST_PSEUDO_REGISTER && \
+	 TEST_HARD_REG_BIT (reg_class_contents[SEGMENT_REGS], (num)))
+
+
 #undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
 
@@ -386,34 +411,26 @@ static bool
 ia16_as_legitimate_address_p (machine_mode mode, rtx x, bool strict,
 			      addr_space_t as)
 {
-  rtx r1, r2;
-  if (as != ADDR_SPACE_GENERIC)
-     return false;
-  /*
-   * TODO: Allow a C program to do standard C operations on far pointers, e.g.
-   * dereferencing them.  As things stand, I can "dereference" a far pointer
-   * by saying something along the lines of
-   *
-   *	int __far *p = (int __far *)0x0040006cul; ...
-   *	__asm("movw %2:%a1, %0"
-   *	    : "=r" (v)
-   *	    : "p" (FP_OFF(p)), "Q" (FP_SEG(p)));
-   *
-   * (with FP_OFF(.) and FP_SEG(.) as in classical compilers), but this is
-   * clunky.  Saying
-   *
-   *	int __far *p = ...; ...
-   *	v = *p;
-   *
-   * causes an internal compiler error.
-   *
-   * TODO: Make offset overflows do the right thing.  Adding 1 to
-   * 0x0000:0xffff should give, say, 0x0000:0x0000.
-   */
+  rtx r1, r2, r9;
+  if (as != ADDR_SPACE_GENERIC && !ia16_have_seg_override_p (x))
+    return false;
   if (CONSTANT_P (x))
     return true;
-  if (!ia16_parse_address (x, &r1, &r2, NULL))
+  if (!ia16_parse_address (x, &r1, &r2, NULL, &r9))
     return false;
+  if (r9 != NULL_RTX && strict)
+    {
+      int r9no = REGNO (r9);
+      if (r9no > LAST_HARD_REG && reg_renumber != 0)
+	{
+	  r9no = reg_renumber[r9no];
+	  if (r9no < 0 || r9no > LAST_HARD_REG)
+	    return false;
+	}
+      if (!REGNO_OK_FOR_SEGMENT_P (r9no))
+        return false;
+    }
+
   if (r1 == NULL_RTX)
     return true;
   int r1no = REGNO (r1);
@@ -447,6 +464,41 @@ ia16_as_legitimate_address_p (machine_mode mode, rtx x, bool strict,
     return true;
   return (REGNO_OK_FOR_INDEX_P (r2no) || r2ok)
     && (REGNO_MODE_OK_FOR_REG_BASE_P (r1no, mode) || r1ok);
+}
+
+#undef  TARGET_ADDR_SPACE_LEGITIMIZE_ADDRESS
+#define TARGET_ADDR_SPACE_LEGITIMIZE_ADDRESS ia16_as_legitimize_address
+
+static rtx
+ia16_as_legitimize_address (rtx x, rtx oldx, machine_mode mode,
+			    addr_space_t as)
+{
+  rtx r1, r9;
+  if (as != ADDR_SPACE_FAR)
+    return x;
+  /* A far address will likely appear in the form
+
+	(... (reg/f:SI <i>) ...)
+
+     i.e. an expression involving a register _pair_.  Split this up into
+     its segment and offset components, and pretend that it is actually just
+     a HImode operand, like so:
+
+	(set (reg:HI <o>) (subreg:HI (reg/f:SI <i>) 0))
+	(set (reg:HI <s>) (subreg:HI (reg/f:SI <i>) 2))
+	(... (plus:HI (unspec:HI [(reg:HI <s>)] UNSPEC_SEG_OVERRIDE)
+		      (reg:HI <o>)) ...)
+
+     This is (partially) in accord with gcc/rtl.h (see a comment at struct
+     address_info), which says that `(unspec ...)' is typically used to
+     represent segments.  */
+  if (ia16_have_seg_override_p (x))
+    return x;
+  x = force_reg (SImode, x);
+  r1 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 0));
+  r9 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 2));
+  x = gen_rtx_PLUS (HImode, r1, gen_seg_override (r9));
+  return x;
 }
 
 /* Condition Code Status */
@@ -1109,7 +1161,7 @@ int ia16_features = 0;
 static int
 ia16_address_cost_internal (rtx address)
 {
-  rtx r1, r2, c;
+  rtx r1, r2, c, r9;
 
   /* Addresses in stack pushes/pops are cheap.  */
   if (PRE_MODIFY == GET_CODE (address)
@@ -1124,8 +1176,9 @@ ia16_address_cost_internal (rtx address)
     address = XEXP (address, 0);
 
   /* Parse the address.  */
-  ia16_parse_address (address, &r1, &r2, &c);
+  ia16_parse_address (address, &r1, &r2, &c, &r9);
 
+  /* TODO: Include the segment override in the cost computation.  */
   return (ia16_costs->ea_calc (r1, r2, c));
 }
 
@@ -1886,13 +1939,13 @@ ia16_print_operand (FILE *file, rtx e, int code)
  * This is a helper function for ia16_print_operand_address ().
  */
 static bool
-ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c)
+ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 {
 	rtx tmp;
-	rtx rb, ri, c;
+	rtx rb, ri, c, rs;
 	enum machine_mode mode;
 
-	if (!ia16_parse_address (x, &rb, &ri, &c))
+	if (!ia16_parse_address (x, &rb, &ri, &c, &rs))
 		return (0 == 1);
 	mode = GET_MODE (x);
 
@@ -1911,12 +1964,18 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c)
 	if (rb && !ri && !REGNO_MODE_OK_FOR_BASE_P (REGNO (rb), mode))
 		return (0 == 1);
 
+	/* Check register class for segment. */
+	if (rs && !REGNO_OK_FOR_SEGMENT_P (REGNO (rs)))
+		return (0 == 1);
+
 	if (p_rb)
 		*p_rb = rb;
 	if (p_ri)
 		*p_ri = ri;
 	if (p_c)
 		*p_c = c;
+	if (p_rs)
+		*p_rs = rs;
 
 	return (0 == 0);
 }
@@ -1927,17 +1986,23 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c)
  * c(rb):	(plus (reg rb) (const_int c))
  * (rb, ri):	(plus (reg rb) (reg ri))
  * c(rb, ri):	(plus (plus (reg rb) (reg ri)) (const_int c))
+ * rs:0:	(unspec rs ...)
+ * rs:(rb)	(plus (unspec rs ...) (reg rb))
+ *		etc.
  */
 void
 ia16_print_operand_address (FILE *file, rtx e)
 {
-	rtx rb, ri, c;
+	rtx rb, ri, c, rs;
 
-	if (!ia16_parse_address_strict (e, &rb, &ri, &c)) {
+	if (!ia16_parse_address_strict (e, &rb, &ri, &c, &rs)) {
         	debug_rtx (e);
         	output_operand_lossage ("Invalid IA16 address expression.");
         	return;
 	}
+	if (rs)
+		fprintf (file, "%s%s:",
+		         REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
 	if (c)
 		output_addr_const (file, c);
 	if (rb)
@@ -2029,65 +2094,95 @@ ia16_trampoline_init (rtx tr, tree fn, rtx sc)
 
 /* Subroutine of ia16_parse_address.  */
 bool
-ia16_parse_address_internal (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c)
+ia16_parse_address_internal (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 {
-	rtx x, y;
-	rtx r1 = NULL, r2 = NULL, c = NULL;
+  rtx r1 = NULL, r2 = NULL, c = NULL, r9 = NULL;
 
-	if (REG_P (e))
-		r1 = e;
-	else if (GET_CODE(e) == PLUS) {
-		x = XEXP (e, 0);
-		y = XEXP (e, 1);
-		if (GET_CODE (x) == PLUS) {
-			r1 = XEXP (x, 0);
-			r2 = XEXP (x, 1);
-			c  = y;
-		} else if (REG_P (y)) {
-			r1 = x;
-			r2 = y;
-		} else {
-			r1 = x;
-			c  = y;
-		}
-	} else {
-		c = e;
+  if (REG_P (e))
+    r1 = e;
+  else if (GET_CODE (e) == UNSPEC && XINT (e, 1) == UNSPEC_SEG_OVERRIDE)
+    r9 = XVECEXP (e, 0, 0);
+  else if (GET_CODE (e) == PLUS)
+    {
+      rtx x, y, x_r1, x_r2, x_c, x_r9, y_r1, y_r2, y_c, y_r9;
+
+      x = XEXP (e, 0);
+      y = XEXP (e, 1);
+
+      if (!ia16_parse_address_internal (x, &x_r1, &x_r2, &x_c, &x_r9) ||
+	  !ia16_parse_address_internal (y, &y_r1, &y_r2, &y_c, &y_r9))
+	return false;
+
+      if ((x_c && y_c) || (x_r9 && y_r9))
+	return false;
+
+      if (x_r1 && y_r1 && (x_r2 || y_r2))
+	return false;
+
+      if (x_r1)
+	{
+	  r1 = x_r1;
+	  r2 = x_r2 ? x_r2 : y_r1;
+	}
+      else
+	{
+	  r1 = y_r1;
+	  r2 = y_r2;
 	}
 
-	/* Deal with the most obvious brokenness.  */
-	if ((r1 && !REG_P (r1)) || (r2 && !REG_P (r2)) ||
-            (c && !CONSTANT_P (c))) {
-		return (0 == 1);
-	}
+      c = x_c ? x_c : y_c;
+      r9 = x_r9 ? x_r9 : y_r9;
+    }
+  else
+    c = e;
 
-	/* Check that we have at least a base or a displacement.  */
-	if (!c && !r1)
-		return (0 == 1);
+  /* Deal with the most obvious brokenness.  */
+  if ((r1 && !REG_P (r1)) || (r2 && !REG_P (r2)) || (r9 && !REG_P (r9)) ||
+      (c && !CONSTANT_P (c)))
+    return false;
 
-	if (p_r1)
-		*p_r1 = r1;
-	if (p_r2)
-		*p_r2 = r2;
-	if (p_c)
-		*p_c = c;
+  if (p_r1)
+    *p_r1 = r1;
+  if (p_r2)
+    *p_r2 = r2;
+  if (p_c)
+    *p_c = c;
+  if (p_r9)
+    *p_r9 = r9;
 
-	return (0 == 0);
+  return true;
 }
 
 /* Addressing Modes.  */
 /* Check an address E and optionally split it into its components.
 */
 bool
-ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c)
+ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 {
-  if (ia16_parse_address_internal (e, p_r1, p_r2, p_c))
-    return true;
+  rtx r1, r2, c;
+  if (ia16_parse_address_internal (e, &r1, &r2, &c, p_r9))
+    {
+      if (p_r1)
+	*p_r1 = r1;
+      if (p_r2)
+	*p_r2 = r2;
+      if (p_c)
+	{
+	  if (c || r1)
+	    *p_c = c;
+	  else
+	    *p_c = const0_rtx;
+	}
+      return true;
+    }
   if (p_r1)
     *p_r1 = NULL;
   if (p_r2)
     *p_r2 = NULL;
   if (p_c)
     *p_c = NULL;
+  if (p_r9)
+    *p_r9 = NULL;
   return false;
 }
 
@@ -2224,13 +2319,14 @@ ia16_parse_constant (rtx x, rtx *symval, rtx *intval)
 static bool
 ia16_memory_offset_known (rtx m1, rtx m2, int *offset)
 {
-  rtx m1base, m1index, m1disp, m1sym, m1int;
-  rtx m2base, m2index, m2disp, m2sym, m2int;
+  rtx m1base, m1index, m1disp, m1seg, m1sym, m1int;
+  rtx m2base, m2index, m2disp, m2seg, m2sym, m2int;
 
-  ia16_parse_address_strict (XEXP (m1, 0), &m1base, &m1index, &m1disp);
-  ia16_parse_address_strict (XEXP (m2, 0), &m2base, &m2index, &m2disp);
+  ia16_parse_address_strict (XEXP (m1, 0), &m1base, &m1index, &m1disp, &m1seg);
+  ia16_parse_address_strict (XEXP (m2, 0), &m2base, &m2index, &m2disp, &m2seg);
 
-  if (!rtx_equal_p (m1base, m2base) || !rtx_equal_p (m1index, m2index))
+  if (!rtx_equal_p (m1base, m2base) || !rtx_equal_p (m1index, m2index) ||
+      !rtx_equal_p (m1seg, m2seg))
     return (false);
 
   ia16_parse_constant (m1disp, &m1sym, &m1int);

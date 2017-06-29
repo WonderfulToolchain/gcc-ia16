@@ -1,6 +1,7 @@
 /* Code for RTL transformations to satisfy insn constraints.
    Copyright (C) 2010-2016 Free Software Foundation, Inc.
    Contributed by Vladimir Makarov <vmakarov@redhat.com>.
+   Very preliminary far pointer support by TK Chia
 
    This file is part of GCC.
 
@@ -351,6 +352,10 @@ namespace {
 
   private:
     struct address_info *m_ad;
+#ifdef MODE_SEGMENT_REG_CLASS
+    rtx *m_segment_loc;
+    rtx m_segment_reg;
+#endif
     rtx *m_base_loc;
     rtx m_base_reg;
     rtx *m_index_loc;
@@ -358,13 +363,41 @@ namespace {
   };
 }
 
+#ifdef MODE_SEGMENT_REG_CLASS
+static rtx *
+segment_subterm (rtx *segment_term)
+{
+  rtx e;
+  if (! segment_term)
+    return NULL;
+  e = *segment_term;
+  gcc_assert (GET_CODE (e) == UNSPEC);
+  if (MODE_SEGMENT_REG_CLASS (GET_MODE (e), XINT (e, 1)) == NO_REGS)
+    return NULL;
+  if (XVECLEN (e, 0) == 0)
+    return NULL;
+  return &XVECEXP (e, 0, 0);
+}
+#endif
+
 address_eliminator::address_eliminator (struct address_info *ad)
   : m_ad (ad),
+#ifdef MODE_SEGMENT_REG_CLASS
+    m_segment_loc (strip_subreg (segment_subterm (ad->segment_term))),
+    m_segment_reg (NULL_RTX),
+#endif
     m_base_loc (strip_subreg (ad->base_term)),
     m_base_reg (NULL_RTX),
     m_index_loc (strip_subreg (ad->index_term)),
     m_index_reg (NULL_RTX)
 {
+#ifdef MODE_SEGMENT_REG_CLASS
+  if (m_segment_loc != NULL)
+    {
+      m_segment_reg = *m_segment_loc;
+      lra_eliminate_reg_if_possible (m_segment_loc);
+    }
+#endif
   if (m_base_loc != NULL)
     {
       m_base_reg = *m_base_loc;
@@ -381,6 +414,10 @@ address_eliminator::address_eliminator (struct address_info *ad)
 
 address_eliminator::~address_eliminator ()
 {
+#ifdef MODE_SEGMENT_REG_CLASS
+  if (m_segment_loc && *m_segment_loc != m_segment_reg)
+    *m_segment_loc = m_segment_reg;
+#endif
   if (m_base_loc && *m_base_loc != m_base_reg)
     {
       *m_base_loc = m_base_reg;
@@ -1661,6 +1698,10 @@ uses_hard_regs_p (rtx x, HARD_REG_SET set)
       struct address_info ad;
 
       decompose_mem_address (&ad, x);
+#ifdef MODE_SEGMENT_REG_CLASS
+      if (ad.segment_term != NULL && uses_hard_regs_p (*ad.segment_term, set))
+	return true;
+#endif
       if (ad.base_term != NULL && uses_hard_regs_p (*ad.base_term, set))
 	return true;
       if (ad.index_term != NULL && uses_hard_regs_p (*ad.index_term, set))
@@ -2957,6 +2998,47 @@ process_address_1 (int nop, bool check_only_p,
     decompose_mem_address (&ad, SUBREG_REG (op));
   else
     return false;
+
+#ifdef MODE_SEGMENT_REG_CLASS
+  if (ad.segment != NULL)
+    {
+      rtx *term = ad.segment_term;
+# if 0
+      fprintf (stderr, "ad.segment: 1\n");
+      debug_rtx (*term);
+# endif
+      rtx *subterm = segment_subterm (term);
+      if (subterm)
+	{
+# if 0
+	  fprintf (stderr, "ad.segment: 2\n");
+	  debug_rtx (*subterm);
+# endif
+	  rtx_insn *last;
+	  enum reg_class cl = MODE_SEGMENT_REG_CLASS (GET_MODE (*term),
+						      XINT (*term, 1));
+	  push_to_sequence (*before);
+	  last = get_last_insn ();
+	  if (cl != NO_REGS)
+	    {
+	      rtx new_seg_reg = lra_create_new_reg (GET_MODE (*subterm),
+						    NULL_RTX, cl, "seg");
+	      rtx_insn *insn = emit_insn (gen_rtx_SET (new_seg_reg, *subterm));
+	      if (recog_memoized (insn) >= 0)
+		*subterm = new_seg_reg;
+	      else
+		delete_insns_since (last);
+# if 0
+	      fprintf (stderr, "ad.segment: 3\n");
+	      debug_rtx (*subterm);
+# endif
+	      *before = get_insns ();
+	    }
+	  end_sequence ();
+	}
+    }
+#endif
+
   /* If INDEX_REG_CLASS is assigned to base_term already and isn't to
      index_term, swap them so to avoid assigning INDEX_REG_CLASS to both
      when INDEX_REG_CLASS is a single register class.  */

@@ -1,5 +1,6 @@
 /* Register Transfer Language (RTL) definitions for GCC
    Copyright (C) 1987-2016 Free Software Foundation, Inc.
+   Very preliminary far pointer support by TK Chia
 
 This file is part of GCC.
 
@@ -2026,7 +2027,9 @@ struct address_info {
        This value is entirely target-specific and is only called a "segment"
        because that's its most typical use.  It contains exactly one UNSPEC,
        pointed to by SEGMENT_TERM.  The contents of *SEGMENT do not need
-       reloading.
+       reloading (unless the back-end machine description defines the macro
+       MODE_SEGMENT_REG_CLASS(mode, unspec_op), which will control the
+       reloading).
 
      - *BASE is a variable expression representing a base address.
        It contains exactly one REG, SUBREG or MEM, pointed to by BASE_TERM.
