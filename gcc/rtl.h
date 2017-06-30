@@ -1,6 +1,6 @@
 /* Register Transfer Language (RTL) definitions for GCC
    Copyright (C) 1987-2016 Free Software Foundation, Inc.
-   Very preliminary far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support by TK Chia
 
 This file is part of GCC.
 
