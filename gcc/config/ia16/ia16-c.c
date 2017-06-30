@@ -1,6 +1,6 @@
 /* Subroutines used during code generation for Intel 16-bit x86.
    Copyright (C) 2011-2016 Free Software Foundation, Inc.
-   Very preliminary far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support by TK Chia
 
    This file is part of GCC.
 
