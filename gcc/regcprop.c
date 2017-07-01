@@ -636,6 +636,13 @@ replace_oldest_value_addr (rtx *loc, enum reg_class cl,
     case REG:
       return replace_oldest_value_reg (loc, cl, insn, vd);
 
+#ifdef MODE_SEGMENT_REG_CLASS
+    case UNSPEC:
+      if (MODE_SEGMENT_REG_CLASS (GET_MODE (x), XINT (x, 1)) != NO_REGS)
+	return false;
+      break;
+#endif
+
     default:
       break;
     }
