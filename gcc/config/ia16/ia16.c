@@ -2159,13 +2159,11 @@ ia16_parse_address_internal (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 bool
 ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 {
-  rtx r1, r2, c;
-  if (ia16_parse_address_internal (e, &r1, &r2, &c, p_r9))
+  rtx r1, c;
+  if (ia16_parse_address_internal (e, &r1, p_r2, &c, p_r9))
     {
       if (p_r1)
 	*p_r1 = r1;
-      if (p_r2)
-	*p_r2 = r2;
       if (p_c)
 	{
 	  if (c || r1)
