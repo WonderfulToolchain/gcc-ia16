@@ -1,7 +1,6 @@
 /* Code for RTL transformations to satisfy insn constraints.
    Copyright (C) 2010-2016 Free Software Foundation, Inc.
    Contributed by Vladimir Makarov <vmakarov@redhat.com>.
-   Very preliminary IA-16 far pointer support by TK Chia
 
    This file is part of GCC.
 

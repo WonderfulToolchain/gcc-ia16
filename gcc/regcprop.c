@@ -1,6 +1,5 @@
 /* Copy propagation on hard registers for the GNU compiler.
    Copyright (C) 2000-2016 Free Software Foundation, Inc.
-   Very preliminary IA-16 far pointer support by TK Chia
 
    This file is part of GCC.
 
