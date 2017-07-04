@@ -2116,8 +2116,32 @@ ia16_parse_address_internal (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
       if ((x_c && y_c) || (x_r9 && y_r9))
 	return false;
 
-      if (x_r1 && y_r1 && (x_r2 || y_r2))
-	return false;
+      if (x_r1 && y_r1)
+	{
+	  if (x_r2 || y_r2)
+	    return false;
+
+	  /* replace_oldest_value_addr(...) in gcc/regcprop.c may get
+	   * confused if an address expression contains both index and base
+	   * registers, and the registers do not come immediately under the
+	   * same (plus ...), e.g.
+	   *
+	   *	                (plus:HI)
+	   *	                  /  \
+	   *	          (plus:HI)  (reg:HI 10 bp)
+	   *	            /  \
+	   *	(reg:HI 9 di)  (const_int -1)
+	   *
+	   * In such a case, gcc/regcprop.c may decide to replace %di with
+	   * %bx (say), while not replacing %bp, leading to a bogus address
+	   * `-1(%bx,%bp)'.
+	   *
+	   * One way to work around this is to flag address like the above as
+	   * being invalid.
+	   */
+	  if (x_r1 != x || y_r1 != y)
+	    return false;
+	}
 
       if (x_r1)
 	{
