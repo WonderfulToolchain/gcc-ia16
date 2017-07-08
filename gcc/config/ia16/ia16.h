@@ -240,14 +240,15 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define INDEX_REG_CLASS			BASE_W_INDEX_REGS
 
 /* We hack gcc/lra-constraints.c to recognize and use a new macro
- * MODE_SEGMENT_REG_CLASS(mode, unspec_op), which should be a set of
- * registers to use for an RTL expression <expr> occurring in a SEGMENT term,
+ * MODE_SEGMENT_REG_CLASS (outer_mode, inner_mode, unspec_op), which should
+ * be a set of registers to use for an RTL expression <expr> occurring in a
+ * SEGMENT term,
  *	(unspec:<mode> [<expr> ...] <unspec_op>)
  * if this SEGMENT term is part of an address.  For IA-16, the form is
  *	(unspec:HI [<expr>] UNSPEC_SEG_OVERRIDE)
  * and we want to get <expr> loaded into a segment register (well, %es).
  */
-#define MODE_SEGMENT_REG_CLASS(mode, unspec_op) \
+#define MODE_SEGMENT_REG_CLASS(outer_mode, inner_mode, unspec_op) \
 	((unspec_op) == UNSPEC_SEG_OVERRIDE ? SEGMENT_REGS : NO_REGS)
 
 /* FIXME: Documentation:

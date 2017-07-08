@@ -371,7 +371,10 @@ segment_subterm (rtx *segment_term)
     return NULL;
   e = *segment_term;
   gcc_assert (GET_CODE (e) == UNSPEC);
-  if (MODE_SEGMENT_REG_CLASS (GET_MODE (e), XINT (e, 1)) == NO_REGS)
+  if (XVECLEN (e, 0) < 1)
+    return NULL;
+  if (MODE_SEGMENT_REG_CLASS (GET_MODE (e), GET_MODE (XVECEXP (e, 0, 0)),
+			      XINT (e, 1)) == NO_REGS)
     return NULL;
   if (XVECLEN (e, 0) == 0)
     return NULL;
@@ -3015,7 +3018,7 @@ process_address_1 (int nop, bool check_only_p,
 # endif
 	  rtx_insn *last;
 	  enum reg_class cl = MODE_SEGMENT_REG_CLASS (GET_MODE (*term),
-						      XINT (*term, 1));
+				GET_MODE (*subterm), XINT (*term, 1));
 	  push_to_sequence (*before);
 	  last = get_last_insn ();
 	  if (cl != NO_REGS)
