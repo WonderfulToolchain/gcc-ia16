@@ -2027,8 +2027,8 @@ struct address_info {
        because that's its most typical use.  It contains exactly one UNSPEC,
        pointed to by SEGMENT_TERM.  The contents of *SEGMENT do not need
        reloading (unless the back-end machine description defines the macro
-       MODE_SEGMENT_REG_CLASS(mode, unspec_op), which will control the
-       reloading).
+       MODE_SEGMENT_REG_CLASS (outer_mode, inner_mode, unspec_op), which will
+       control the reloading).
 
      - *BASE is a variable expression representing a base address.
        It contains exactly one REG, SUBREG or MEM, pointed to by BASE_TERM.
