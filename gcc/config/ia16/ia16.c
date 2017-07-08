@@ -327,7 +327,7 @@ ia16_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 #undef  TARGET_FUNCTION_OK_FOR_SIBCALL
 #define TARGET_FUNCTION_OK_FOR_SIBCALL ia16_function_ok_for_sibcall
 static bool
-ia16_function_ok_for_sibcall (tree decl, tree exp)
+ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 {
   /* For now, only allow sibcalling known functions.
      TODO: Try relaxing this.  */
@@ -408,8 +408,8 @@ ia16_have_seg_override_p (rtx x)
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
 
 static bool
-ia16_as_legitimate_address_p (machine_mode mode, rtx x, bool strict,
-			      addr_space_t as)
+ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
+			      bool strict, addr_space_t as)
 {
   rtx r1, r2, r9;
   if (as != ADDR_SPACE_GENERIC && !ia16_have_seg_override_p (x))
@@ -466,11 +466,29 @@ ia16_as_legitimate_address_p (machine_mode mode, rtx x, bool strict,
     && (REGNO_MODE_OK_FOR_REG_BASE_P (r1no, mode) || r1ok);
 }
 
+#undef  TARGET_ADDR_SPACE_ZERO_ADDRESS_VALID
+#define TARGET_ADDR_SPACE_ZERO_ADDRESS_VALID ia16_as_zero_address_valid
+
+static bool
+ia16_as_zero_address_valid (addr_space_t addrspace)
+{
+  switch (addrspace)
+    {
+    case ADDR_SPACE_GENERIC:
+      return false;
+    case ADDR_SPACE_FAR:
+      return true;
+    default:
+      gcc_unreachable ();
+    }
+}
+
 #undef  TARGET_ADDR_SPACE_LEGITIMIZE_ADDRESS
 #define TARGET_ADDR_SPACE_LEGITIMIZE_ADDRESS ia16_as_legitimize_address
 
 static rtx
-ia16_as_legitimize_address (rtx x, rtx oldx, machine_mode mode,
+ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
+			    machine_mode mode ATTRIBUTE_UNUSED,
 			    addr_space_t as)
 {
   rtx r1, r9;
@@ -1943,7 +1961,7 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 {
 	rtx tmp;
 	rtx rb, ri, c, rs;
-	enum machine_mode mode;
+	enum machine_mode mode ATTRIBUTE_UNUSED;
 
 	if (!ia16_parse_address (x, &rb, &ri, &c, &rs))
 		return (0 == 1);
