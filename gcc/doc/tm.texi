@@ -2426,6 +2426,25 @@ address where its value is either multiplied by a scale factor or
 added to another register (as well as added to a displacement).
 @end defmac
 
+@defmac MODE_SEGMENT_REG_CLASS (@var{outer_mode}, @var{inner_mode}, @var{index})
+A macro which, if defined, should return a register class to control the
+loading of addresses' ``segment'' components into registers.
+
+This macro is not needed for targets with only flat address spaces---that is
+to say, most targets.  It is used in the IA-16 backend to implement
+@code{__far} pointers.
+
+With this macro, if a memory address contains a segment component in the
+form of an RTL expression
+@smallexample
+(unspec:@var{outer_mode} [@var{expr} @dots{}] @var{index})
+@end smallexample
+then GCC will consult this macro to decide which register class to load the
+inner expression @var{expr} into.  @var{inner_mode} is the mode of this
+inner expression, while @var{outer_mode} and @var{index} are the mode and
+the operation code for the @samp{(unspec @dots{})} as a whole.
+@end defmac
+
 @defmac REGNO_OK_FOR_BASE_P (@var{num})
 A C expression which is nonzero if register number @var{num} is
 suitable for use as a base register in operand addresses.

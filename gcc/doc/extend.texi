@@ -1424,6 +1424,48 @@ Such code requires at least binutils 2.23, see
 
 @end itemize
 
+@subsection IA-16 Named Address Spaces
+@cindex @code{__far} IA-16 Named Address Spaces
+
+On the IA-16 target, a pointer qualified with the word @code{__far} is a
+32-bit ``far pointer'' which can be used to access memory outside of the
+64@tie{}KiB generic address space.
+
+One way to create a far pointer value is to cast a 32-bit integer value to a
+far pointer type.  The value's upper 16 bits will be the segment, and the
+lower 16 bits the offset.
+
+@smallexample
+unsigned long irq0_clock_ticks (void)
+@{
+    /* Read the 32-bit BIOS variable at segment:offset ==
+       0x0040:0x006C.  */
+    volatile unsigned long __far *p =
+        (volatile unsigned long __far *) 0x0040006C;
+    return *p;
+@}
+@end smallexample
+
+@noindent
+@b{Limitations and caveats}
+
+@itemize
+
+@item
+If a pointer arithmetic operation causes the pointer's offset portion to
+wrap around---from @code{0xFFFF} to @code{0x0000}, or vice versa---the
+resulting pointer is undefined.  This may change in the future.
+@c Currently far pointers are treated as plain old 32-bit integers (except
+@c when dereferenced), so 0x1234:0xFFFF wraps around to 0x1235:0x0000, but
+@c this is silly and does not really make sense.
+
+@item
+Many kinds of useful operations involving far addresses---such as casting
+from a generic 16-bit pointer to a far pointer, and placing a static storage
+@emph{variable} in the @code{__far} space---are not yet supported.
+
+@end itemize
+
 @subsection M32C Named Address Spaces
 @cindex @code{__far} M32C Named Address Spaces
 
