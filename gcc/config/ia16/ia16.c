@@ -726,7 +726,7 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 */
 struct processor_costs {
   const int byte_fetch;		/* cost of fetching an instruction byte.  */
-  int (*const ea_calc)(rtx r1, rtx r2, rtx c);
+  int (*const ea_calc)(rtx r1, rtx r2, rtx c, rtx r9);
 				/* cost of calculating an address.  */
   const int move;		/* cost of reg-reg mov instruction.  */
   const int imm_load[2];	/* cost of loading imm (QI, HI) to register.  */
@@ -864,7 +864,7 @@ ia16_constant_cost (rtx x, enum machine_mode mode, int outer_code)
 /* Return the cost of an address when not optimizing for an Intel i808x.
  */
 static int
-ia16_default_address_cost (rtx r1, rtx r2, rtx c)
+ia16_default_address_cost (rtx r1, rtx r2, rtx c, rtx r9 ATTRIBUTE_UNUSED)
 {
   int total = 0;
 
@@ -883,7 +883,7 @@ ia16_default_address_cost (rtx r1, rtx r2, rtx c)
  * The %bp addressing mode is really 0 + %bp but we ignore that.
  */
 static int
-ia16_i808x_address_cost (rtx r1, rtx r2, rtx c)
+ia16_i808x_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 {
   int cost = 0;
 
@@ -906,8 +906,11 @@ ia16_i808x_address_cost (rtx r1, rtx r2, rtx c)
   else
     {
       if (c)
-	cost = C (6) + ia16_constant_cost (c, Pmode, MEM);;
+	cost = C (6) + ia16_constant_cost (c, Pmode, MEM);
     }
+
+  if (r9)
+    cost += C (2);
 
   return (cost);
 }
@@ -1196,8 +1199,7 @@ ia16_address_cost_internal (rtx address)
   /* Parse the address.  */
   ia16_parse_address (address, &r1, &r2, &c, &r9);
 
-  /* TODO: Include the segment override in the cost computation.  */
-  return (ia16_costs->ea_calc (r1, r2, c));
+  return (ia16_costs->ea_calc (r1, r2, c, r9));
 }
 
 static int
@@ -1572,7 +1574,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	      rtx op1 = XEXP (XEXP (x, 0), 1);
 	      rtx cst = XEXP (x, 1);
 
-	      *total = IA16_COST (lea) + ia16_costs->ea_calc (op0, op1, cst)
+	      *total = IA16_COST (lea) + ia16_costs->ea_calc (op0, op1, cst, NULL_RTX)
 		+ rtx_cost (op0, mode, outer_code, 0, speed)
 	        + rtx_cost (op1, mode, outer_code, 1, speed);
 	      return true;
