@@ -1452,6 +1452,11 @@ unsigned long irq0_clock_ticks (void)
 @itemize
 
 @item
+Presently, far pointers must point to @code{volatile} items---writing
+@code{void __far *} rather than @code{volatile void __far *} may crash the
+compiler.  This is a bug which needs fixing.
+
+@item
 If a pointer arithmetic operation causes the pointer's offset portion to
 wrap around---from @code{0xFFFF} to @code{0x0000}, or vice versa---the
 resulting pointer is undefined.  This may change in the future.
@@ -1460,9 +1465,10 @@ resulting pointer is undefined.  This may change in the future.
 @c this is silly and does not really make sense.
 
 @item
-Many kinds of useful operations involving far addresses---such as casting
-from a generic 16-bit pointer to a far pointer, and placing a static storage
-@emph{variable} in the @code{__far} space---are not yet supported.
+Many kinds of useful operations involving far addresses are not yet
+supported.  These include casting from a generic 16-bit pointer to a far
+pointer, and placing a static storage @emph{variable} in the @code{__far}
+space.
 
 @end itemize
 
