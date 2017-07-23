@@ -277,7 +277,14 @@ convert_memory_address_addr_space_1 (machine_mode to_mode ATTRIBUTE_UNUSED,
 				     bool no_emit ATTRIBUTE_UNUSED)
 {
 #ifndef POINTERS_EXTEND_UNSIGNED
-  gcc_assert (GET_MODE (x) == to_mode || GET_MODE (x) == VOIDmode);
+  if (GET_MODE (x) != to_mode && GET_MODE (x) != VOIDmode)
+    {
+      fprintf (stderr,
+	       "trying to convert pointer or address in address space %d\n"
+	       "with unexpected mode:\n", (int) as);
+      debug_rtx (x);
+      gcc_unreachable ();
+    }
   return x;
 #else /* defined(POINTERS_EXTEND_UNSIGNED) */
   machine_mode pointer_mode, address_mode, from_mode;
@@ -378,7 +385,14 @@ convert_memory_address_addr_space_1 (machine_mode to_mode ATTRIBUTE_UNUSED,
 rtx
 convert_memory_address_addr_space (machine_mode to_mode, rtx x, addr_space_t as)
 {
-  return convert_memory_address_addr_space_1 (to_mode, x, as, false, false);
+  x = convert_memory_address_addr_space_1 (to_mode, x, as, false, false);
+
+  /* Special hack for ia16-elf pointer-to-address conversions.  */
+  if (as != ADDR_SPACE_GENERIC
+      && ! memory_address_addr_space_p (to_mode, x, as))
+    x = targetm.addr_space.legitimize_address (x, x, to_mode, as);
+
+  return x;
 }
 
 
@@ -397,13 +411,7 @@ memory_address_addr_space (machine_mode mode, rtx x, addr_space_t as)
   /* By passing constant addresses through registers
      we get a chance to cse them.  */
   if (! cse_not_expected && CONSTANT_P (x) && CONSTANT_ADDRESS_P (x))
-    {
-      x = force_reg (address_mode, x);
-
-      /* TODO: Remove need for this ia16-elf far pointer hack.  */
-      if (! memory_address_addr_space_p (mode, x, as))
-	x = targetm.addr_space.legitimize_address (x, oldx, mode, as);
-    }
+    x = force_reg (address_mode, x);
 
   /* We get better cse by rejecting indirect addressing at this stage.
      Let the combiner create indirect addresses where appropriate.
