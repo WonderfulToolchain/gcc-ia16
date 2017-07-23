@@ -340,10 +340,10 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
    0x0000:0xffff should give, say, 0x0000:0x0000.  */
 
 #undef  TARGET_ADDR_SPACE_ADDRESS_MODE
-#define TARGET_ADDR_SPACE_ADDRESS_MODE ia16_addr_space_address_mode
+#define TARGET_ADDR_SPACE_ADDRESS_MODE ia16_as_address_mode
 
 static enum machine_mode
-ia16_addr_space_address_mode (addr_space_t addrspace)
+ia16_as_address_mode (addr_space_t addrspace)
 {
   switch (addrspace)
     {
@@ -357,10 +357,10 @@ ia16_addr_space_address_mode (addr_space_t addrspace)
 }
 
 #undef  TARGET_ADDR_SPACE_POINTER_MODE
-#define TARGET_ADDR_SPACE_POINTER_MODE ia16_addr_space_pointer_mode
+#define TARGET_ADDR_SPACE_POINTER_MODE ia16_as_pointer_mode
 
 static machine_mode
-ia16_addr_space_pointer_mode (addr_space_t addrspace)
+ia16_as_pointer_mode (addr_space_t addrspace)
 {
   switch (addrspace)
     {
@@ -373,13 +373,21 @@ ia16_addr_space_pointer_mode (addr_space_t addrspace)
     }
 }
 
-#undef  TARGET_VALID_POINTER_MODE
-#define TARGET_VALID_POINTER_MODE ia16_valid_pointer_mode
+#undef  TARGET_ADDR_SPACE_VALID_POINTER_MODE
+#define TARGET_ADDR_SPACE_VALID_POINTER_MODE ia16_as_valid_pointer_mode
 
 static bool
-ia16_valid_pointer_mode (machine_mode m)
+ia16_as_valid_pointer_mode (machine_mode m, addr_space_t addrspace)
 {
-  return (m == HImode || m == SImode);
+  switch (addrspace)
+    {
+    case ADDR_SPACE_GENERIC:
+      return m == HImode;
+    case ADDR_SPACE_FAR:
+      return m == SImode;
+    default:
+      gcc_unreachable ();
+    }
 }
 
 static bool
