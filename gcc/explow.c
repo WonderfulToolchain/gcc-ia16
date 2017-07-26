@@ -277,6 +277,18 @@ convert_memory_address_addr_space_1 (machine_mode to_mode ATTRIBUTE_UNUSED,
 				     bool no_emit ATTRIBUTE_UNUSED)
 {
 #ifndef POINTERS_EXTEND_UNSIGNED
+# ifdef MODE_SEGMENT_REG_CLASS
+  /* Special case for ia16-elf pointer -> address and address -> pointer
+     conversions.  Is there a better way?  */
+  if (GET_MODE (x) != to_mode)
+    {
+      if (to_mode == targetm.addr_space.pointer_mode (as))
+	x = targetm.delegitimize_address (x);
+      else
+	x = targetm.addr_space.legitimize_address (x, x, to_mode, as);
+    }
+# endif
+
   if (GET_MODE (x) != to_mode && GET_MODE (x) != VOIDmode)
     {
       fprintf (stderr,
@@ -385,14 +397,7 @@ convert_memory_address_addr_space_1 (machine_mode to_mode ATTRIBUTE_UNUSED,
 rtx
 convert_memory_address_addr_space (machine_mode to_mode, rtx x, addr_space_t as)
 {
-  x = convert_memory_address_addr_space_1 (to_mode, x, as, false, false);
-
-  /* Special hack for ia16-elf pointer-to-address conversions.  */
-  if (as != ADDR_SPACE_GENERIC
-      && ! memory_address_addr_space_p (to_mode, x, as))
-    x = targetm.addr_space.legitimize_address (x, x, to_mode, as);
-
-  return x;
+  return convert_memory_address_addr_space_1 (to_mode, x, as, false, false);
 }
 
 
