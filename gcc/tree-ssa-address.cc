@@ -247,8 +247,7 @@ addr_for_mem_ref (struct mem_address *addr, addr_space_t as,
 	*templ->off_p = off;
 
       address = templ->ref;
-      if (pointer_mode != address_mode
-	  || ! memory_address_addr_space_p (address_mode, address, as))
+      if (pointer_mode != address_mode)
 	{
 	  address = convert_memory_address_addr_space (address_mode,
 						       address, as);
@@ -283,8 +282,7 @@ addr_for_mem_ref (struct mem_address *addr, addr_space_t as,
       bse = NULL_RTX;
     }
   gen_addr_rtx (pointer_mode, sym, bse, idx, st, off, &address, NULL, NULL);
-  if (pointer_mode != address_mode
-      || ! memory_address_addr_space_p (address_mode, address, as))
+  if (pointer_mode != address_mode)
     address = convert_memory_address_addr_space (address_mode, address, as);
   return address;
 }

@@ -349,8 +349,11 @@ ia16_as_address_mode (addr_space_t addrspace)
     {
     case ADDR_SPACE_GENERIC:
       return HImode;
+    /* A far address is actually a HImode value which is "coloured" with a
+       segment term -- (plus:HI ...  (unspec:HI ...  UNSPEC_SEG_OVERRIDE)).
+       See ia16_as_legitimize_address (...) below.  */
     case ADDR_SPACE_FAR:
-      return SImode;
+      return HImode;
     default:
       gcc_unreachable ();
     }
@@ -518,12 +521,50 @@ ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
      This is (partially) in accord with gcc/rtl.h (see a comment at struct
      address_info), which says that `(unspec ...)' is typically used to
      represent segments.  */
+
   if (ia16_have_seg_override_p (x))
     return x;
-  x = force_reg (SImode, x);
-  r1 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 0));
-  r9 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 2));
+
+  if (GET_MODE (x) == HImode)
+    {
+      /* This sometimes occurs due to GCC's internal probing.  */
+      r1 = force_reg (HImode, x);
+      r9 = force_reg (HImode, const0_rtx);
+    }
+  else
+    {
+      x = force_reg (SImode, x);
+      r1 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 0));
+      r9 = copy_to_reg (gen_rtx_SUBREG (HImode, x, 2));
+    }
+
   x = gen_rtx_PLUS (HImode, r1, gen_seg_override (r9));
+  return x;
+}
+
+#undef  TARGET_DELEGITIMIZE_ADDRESS
+#define TARGET_DELEGITIMIZE_ADDRESS ia16_delegitimize_address
+
+static rtx
+ia16_delegitimize_address (rtx x)
+{
+  rtx r1, r2, c, off, r9;
+
+  if (! ia16_parse_address (x, &r1, &r2, &c, &r9))
+    return x;
+
+  if (! r9)
+    return x;
+
+  off = NULL_RTX;
+  if (r1)
+    off = r2 ? gen_rtx_PLUS (HImode, r1, r2) : r1;
+  if (c)
+    off = off ? gen_rtx_PLUS (HImode, x, c) : c;
+
+  x = gen_reg_rtx (SImode);
+  emit_move_insn (gen_rtx_SUBREG (HImode, x, 0), off);
+  emit_move_insn (gen_rtx_SUBREG (HImode, x, 0), r9);
   return x;
 }
 
