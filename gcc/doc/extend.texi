@@ -1452,11 +1452,6 @@ unsigned long irq0_clock_ticks (void)
 @itemize
 
 @item
-Presently, far pointers must point to @code{volatile} items---writing
-@code{void __far *} rather than @code{volatile void __far *} may crash the
-compiler.  This is a bug which needs fixing.
-
-@item
 If a pointer arithmetic operation causes the pointer's offset portion to
 wrap around---from @code{0xFFFF} to @code{0x0000}, or vice versa---the
 resulting pointer is undefined.  This may change in the future.
