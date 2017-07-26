@@ -564,7 +564,7 @@ ia16_delegitimize_address (rtx x)
 
   x = gen_reg_rtx (SImode);
   emit_move_insn (gen_rtx_SUBREG (HImode, x, 0), off);
-  emit_move_insn (gen_rtx_SUBREG (HImode, x, 0), r9);
+  emit_move_insn (gen_rtx_SUBREG (HImode, x, 2), r9);
   return x;
 }
 
