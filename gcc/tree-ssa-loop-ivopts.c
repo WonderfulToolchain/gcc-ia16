@@ -1173,7 +1173,26 @@ find_bivs (struct ivopts_data *data)
       if (step)
 	{
 	  if (POINTER_TYPE_P (type))
-	    step = convert_to_ptrofftype (step);
+	    {
+#ifdef MODE_SEGMENT_REG_CLASS
+	      /* Special case hack for ia16-elf.  Apparently IA-16 far
+		 pointers (32-bit) do not yet interact well with this
+		 optimization, partly because they are bigger than the
+		 16-bit `sizetype'.
+
+		 Changing `sizetype' to 32-bit caused other problems --- GCC
+		 crashed while trying to compile libgcc.
+
+		 (Plus, _if_ far pointers are implemented properly, they
+		 will also have arithmetic rules that differ from normal
+		 `unsigned long' arithmetic.  And this will likely lead to
+		 even more weirdness down the road, unless we find a way to
+		 teach this compiler pass about those rules...)  */
+	      if (TYPE_ADDR_SPACE (TREE_TYPE (type)) != ADDR_SPACE_GENERIC)
+		continue;
+#endif
+	      step = convert_to_ptrofftype (step);
+	    }
 	  else
 	    step = fold_convert (type, step);
 	}
