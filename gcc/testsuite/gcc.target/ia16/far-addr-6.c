@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-excess-errors "" } */
 /* { dg-xfail-run-if "" *-*-* } */
 /* { dg-options "-O3 -fno-inline --save-temps" } */
 
@@ -6,12 +7,13 @@
    compiler sort of allows it (with a warning), but the resulting pointer is
    bogus.  */
 
-#define VALUE	0x1337b33fu
+#define VALUE1	0x1337b33fu
+#define VALUE2	0xb33ffe3du
 
 int printf (const char *, ...);
 void abort (void);
 
-static volatile unsigned long var = VALUE;
+static volatile unsigned long var = VALUE1;
 
 volatile unsigned long __far *
 p_var (void)
@@ -22,7 +24,13 @@ p_var (void)
 int main (void)
 {
   volatile unsigned long __far *p = p_var ();
-  if (*p != VALUE)
+
+  if (*p != VALUE1)
     abort ();
+
+  var = VALUE2;
+  if (*p != VALUE2)
+    abort ();
+
   return 0;
 }

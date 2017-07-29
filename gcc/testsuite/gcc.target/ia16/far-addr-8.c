@@ -13,10 +13,10 @@ int printf (const char *, ...);
 unsigned long
 hash1 (void)
 {
-  unsigned __far *p = (unsigned __far *) 0xf0000000ul;
+  unsigned __far *p = (unsigned __far *) 0xfff00000ul;
   unsigned i;
   unsigned long h = 0;
-  for (i = 0; i < 0x8000u; ++i)
+  for (i = 0; i < 0x80u; ++i)
     h = 5 * h ^ *p++;
   return h;
 }
@@ -24,10 +24,10 @@ hash1 (void)
 unsigned long
 hash2 (void)
 {
-  volatile unsigned __far *p = (volatile unsigned __far *) 0xf0000000ul;
+  volatile unsigned __far *p = (volatile unsigned __far *) 0xfff00000ul;
   unsigned i;
   unsigned long h = 0;
-  for (i = 0; i < 0x8000u; ++i)
+  for (i = 0; i < 0x80u; ++i)
     h = 5 * h ^ *p++;
   return h;
 }
@@ -35,10 +35,10 @@ hash2 (void)
 unsigned long
 hash3 (void)
 {
-  unsigned __far * volatile p = (unsigned __far *) 0xf0000000ul;
+  unsigned __far * volatile p = (unsigned __far *) 0xfff00000ul;
   unsigned i;
   unsigned long h = 0;
-  for (i = 0; i < 0x8000u; ++i)
+  for (i = 0; i < 0x80u; ++i)
     h = 5 * h ^ *p++;
   return h;
 }
@@ -47,10 +47,10 @@ unsigned long
 hash4 (void)
 {
   volatile unsigned __far * volatile p =
-    (volatile unsigned __far *) 0xf0000000ul;
+    (volatile unsigned __far *) 0xfff00000ul;
   unsigned i;
   unsigned long h = 0;
-  for (i = 0; i < 0x8000u; ++i)
+  for (i = 0; i < 0x80u; ++i)
     h = 5 * h ^ *p++;
   return h;
 }
