@@ -2,7 +2,7 @@
    Copyright (C) 2005-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
-   Very preliminary IA-16 far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support and other changes by TK Chia
 
    This file is part of GCC.
 
@@ -313,10 +313,15 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
    return address and the frame pointer, we can't find the return address for
    count > 0.
    TODO: Make this work by pushing the frame pointer before the saved regs
-   when not using ENTER.  */
+   when not using ENTER.
+
+   For count == 0, set a flag so that ia16_save_reg_p (.) will ultimately
+   arrange to allocate a frame pointer, even if the function does not
+   otherwise need one.  */
 #define RETURN_ADDR_RTX(COUNT, FRAME)				       	      \
 	((COUNT) == 0							      \
-	 ? gen_rtx_MEM (Pmode, arg_pointer_rtx)				      \
+	 ? crtl->accesses_prior_frames = true,				      \
+	   gen_rtx_MEM (Pmode, arg_pointer_rtx)				      \
 	 : NULL_RTX)
 
 /* Exception Handling Support */
