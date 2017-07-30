@@ -2,7 +2,7 @@
    Copyright (C) 2005-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
-   Very preliminary IA-16 far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support and other changes by TK Chia
 
    This file is part of GCC.
 
@@ -176,7 +176,8 @@ ia16_cannot_substitute_mem_equiv_p (rtx subst)
 int ia16_save_reg_p (unsigned int r)
 {
   if (r == BP_REG)
-    return get_frame_size() > 0 || crtl->args.info > 0 || cfun->calls_alloca;
+    return get_frame_size() > 0 || crtl->args.info > 0
+      || crtl->accesses_prior_frames || cfun->calls_alloca;
   if (!TEST_HARD_REG_BIT (reg_class_contents[QI_REGS], r))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (TEST_HARD_REG_BIT (reg_class_contents[UP_QI_REGS], r))
