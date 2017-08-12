@@ -543,6 +543,53 @@ ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
   return x;
 }
 
+#undef	TARGET_ADDR_SPACE_SUBSET_P
+#define	TARGET_ADDR_SPACE_SUBSET_P ia16_as_subset_p
+
+static bool
+ia16_as_subset_p (addr_space_t subset, addr_space_t superset)
+{
+  return subset == ADDR_SPACE_GENERIC && superset == ADDR_SPACE_FAR;
+}
+
+#undef	TARGET_ADDR_SPACE_CONVERT
+#define	TARGET_ADDR_SPACE_CONVERT ia16_as_convert
+
+static rtx
+ia16_as_convert (rtx op, tree from_type, tree to_type)
+{
+  gcc_assert (POINTER_TYPE_P (from_type));
+  gcc_assert (POINTER_TYPE_P (to_type));
+
+  from_type = TREE_TYPE (from_type);
+  to_type = TREE_TYPE (to_type);
+
+  if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_FAR
+      && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_GENERIC)
+    {
+      /* We only handle pointers for now --- not addresses.  */
+      gcc_assert (GET_MODE (op) == SImode || GET_MODE (op) == VOIDmode);
+
+      return gen_rtx_TRUNCATE (HImode, op);
+    }
+  else if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_GENERIC
+	   && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_FAR)
+    {
+      rtx op2 = gen_reg_rtx (SImode);
+      gcc_assert (GET_MODE (op) == HImode || GET_MODE (op) == VOIDmode);
+
+      emit_move_insn (gen_rtx_SUBREG (HImode, op2, 0), op);
+      if (FUNC_OR_METHOD_TYPE_P (from_type))
+	emit_insn (gen_movhi_cs (gen_rtx_SUBREG (HImode, op2, 2)));
+      else
+	emit_insn (gen_movhi_ss (gen_rtx_SUBREG (HImode, op2, 2)));
+
+      return op2;
+    }
+  else
+    gcc_unreachable ();
+}
+
 #undef  TARGET_DELEGITIMIZE_ADDRESS
 #define TARGET_DELEGITIMIZE_ADDRESS ia16_delegitimize_address
 

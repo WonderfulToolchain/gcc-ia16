@@ -1,14 +1,11 @@
 /* { dg-do run } */
-/* { dg-excess-errors "" } */
-/* { dg-xfail-run-if "" *-*-* } */
 /* { dg-options "-O3 -fno-inline --save-temps" } */
 
-/* FAIL: Can we cast a generic pointer to a far pointer?  Currently the
-   compiler sort of allows it (with a warning), but the resulting pointer is
-   bogus.  */
+/* Can we cast a generic pointer to a far pointer --- and back?  */
 
 #define VALUE1	0x1337b33fu
-#define VALUE2	0xb33ffe3du
+#define VALUE2	0xb3effe3du
+#define VALUE3	0xcafe13e7u
 
 int printf (const char *, ...);
 void abort (void);
@@ -24,12 +21,18 @@ p_var (void)
 int main (void)
 {
   volatile unsigned long __far *p = p_var ();
+  volatile unsigned long *q;
 
   if (*p != VALUE1)
     abort ();
 
   var = VALUE2;
   if (*p != VALUE2)
+    abort ();
+
+  q = (volatile unsigned long *)p;
+  *p = VALUE3;
+  if (*q != VALUE3)
     abort ();
 
   return 0;
