@@ -1461,9 +1461,9 @@ resulting pointer is undefined.  This may change in the future.
 
 @item
 Many kinds of useful operations involving far addresses are not yet
-supported.  These include casting from a generic 16-bit pointer to a far
-pointer, and placing a static storage @emph{variable} in the @code{__far}
-space.
+supported.  These include placing a static storage @emph{variable} in the
+@code{__far} space, and creating a far function pointer (e.g., @code{size_t
+(__far *pf) (int);}).
 
 @end itemize
 
