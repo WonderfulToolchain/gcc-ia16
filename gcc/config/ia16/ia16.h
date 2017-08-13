@@ -584,6 +584,10 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define FUNCTION_MODE			QImode
 
 #define ADDR_SPACE_FAR			1
+/* We hack gcc/tree-ssa-loop-ivopts.c to recognize a new macro
+   TARGET_ADDR_SPACE_WEIRD_P (as), which should return true if the given
+   address space breaks certain assumptions made by optimization passes.  */
+#define TARGET_ADDR_SPACE_WEIRD_P(as)	((as) == ADDR_SPACE_FAR)
 
 /* Which processor to tune code generation for.  These must be in sync
    with processor_target_table in ia16.c.  */
