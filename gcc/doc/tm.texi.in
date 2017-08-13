@@ -7485,6 +7485,26 @@ c_register_addr_space ("__ea", ADDR_SPACE_EA);
 
 @hook TARGET_ADDR_SPACE_DEBUG
 
+@defmac TARGET_ADDR_SPACE_WEIRD_P (@var{as})
+This macro is not needed for most targets.  If defined, it should return
+true if pointers and addresses in the address space @var{as} may break
+certain assumptions.  In particular, it should return true if
+
+@enumerate
+@item
+pointer or address arithmetic does not work in the same way as integer
+arithmetic of the same modes, or if
+
+@item
+the difference between two pointers or addresses might not fit into a
+@code{sizetype}.
+
+@end enumerate
+
+This macro is defined in the IA-16 backend to suppress certain optimizations
+over @code{__far} pointers.
+@end defmac
+
 @node Misc
 @section Miscellaneous Parameters
 @cindex parameters, miscellaneous

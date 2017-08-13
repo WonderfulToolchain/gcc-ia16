@@ -1174,7 +1174,7 @@ find_bivs (struct ivopts_data *data)
 	{
 	  if (POINTER_TYPE_P (type))
 	    {
-#ifdef MODE_SEGMENT_REG_CLASS
+#ifdef TARGET_ADDR_SPACE_WEIRD_P
 	      /* Special case hack for ia16-elf.  Apparently IA-16 far
 		 pointers (32-bit) do not yet interact well with this
 		 optimization, partly because they are bigger than the
@@ -1188,7 +1188,8 @@ find_bivs (struct ivopts_data *data)
 		 `unsigned long' arithmetic.  And this will likely lead to
 		 even more weirdness down the road, unless we find a way to
 		 teach this compiler pass about those rules...)  */
-	      if (TYPE_ADDR_SPACE (TREE_TYPE (type)) != ADDR_SPACE_GENERIC)
+	      if (TARGET_ADDR_SPACE_WEIRD_P
+		  (TYPE_ADDR_SPACE (TREE_TYPE (type))))
 		continue;
 #endif
 	      step = convert_to_ptrofftype (step);
