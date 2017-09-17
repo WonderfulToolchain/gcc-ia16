@@ -1446,6 +1446,9 @@ unsigned long irq0_clock_ticks (void)
 @}
 @end smallexample
 
+The preprocessor symbol @code{__FAR} is defined when far pointers are
+supported.
+
 @noindent
 @b{Limitations and caveats}
 
