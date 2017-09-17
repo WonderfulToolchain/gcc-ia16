@@ -33,7 +33,10 @@
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS()	\
-	do { builtin_define_std ("ia16"); } while (0)
+	do {				\
+	  builtin_define_std ("ia16");	\
+	  builtin_define ("__FAR");	\
+	} while (0)
 
 /* Storage Layout
  *
