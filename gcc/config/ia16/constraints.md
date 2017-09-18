@@ -73,7 +73,8 @@
 ; Special groups of registers.
 (define_register_constraint "A"	"DXAX_REGS"  "The @code{dx:ax} register pair.")
 (define_register_constraint "j"	"BXDX_REGS"  "The @code{bx:dx} register pair.")
-(define_register_constraint "Q" "SEGMENT_REGS"	"The @code{es} register.")
+(define_register_constraint "e" "SEGMENT_REGS"	"The @code{es} register.")
+(define_register_constraint "Q" "SEGMENT_REGS"	"A segment register.")
 (define_register_constraint "k"	"QISI_REGS"
 	"SImode registers with two 8-bit low parts.")
 

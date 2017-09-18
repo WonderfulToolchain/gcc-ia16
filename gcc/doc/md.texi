@@ -2438,8 +2438,13 @@ The @code{bx} and @code{bp} registers.
 @item B
 The @code{bx}, @code{si}, @code{di} and @code{bp} registers.
 
+@item e
+The @code{es} register.
+
 @item Q
-Any segment register.
+Any segment register.  (This is currently the same as @code{e},
+but might include @code{ds} in the future if it becomes
+available for allocation.)
 
 @item Z
 The constant 0.
