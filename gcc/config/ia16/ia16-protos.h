@@ -52,4 +52,5 @@ extern bool	ia16_non_overlapping_mem_p (rtx m1, rtx m2);
 
 extern void	ia16_expand_prologue (void);
 extern void	ia16_expand_epilogue (bool sibcall);
+extern void	ia16_cpu_cpp_builtins (void);
 extern void	ia16_register_pragmas (void);

@@ -23,6 +23,62 @@
 #include "coretypes.h"
 #include "tm.h"
 #include "c-family/c-common.h"
+#include "c-family/c-pragma.h"
+
+static void
+def_or_undef_macro (const char *name, bool def_p)
+{
+  if (def_p)
+    cpp_define (parse_in, name);
+  else
+    cpp_undef (parse_in, name);
+}
+
+/* Implements TARGET_CPU_CPP_BUILTINS.  */
+void
+ia16_cpu_cpp_builtins (void)
+{
+  builtin_define_std ("ia16");
+  cpp_define (parse_in, "__FAR");
+
+  /* Define macros corresponding to features supported in the chosen -march=
+     architecture.  Here I follow the ARM convention of defining macros with
+     names __*_FEATURE_*, since it seems clearer than the i386 convention of
+     using just the feature names.
+
+     I omit TARGET_TUNE_8BIT --- it does not denote a CPU capability, and
+     should probably be handled another way.  -- tkchia  */
+  def_or_undef_macro ("__IA16_FEATURE_SHIFT_IMM", TARGET_SHIFT_IMM);
+  def_or_undef_macro ("__IA16_FEATURE_PUSH_IMM", TARGET_PUSH_IMM);
+  def_or_undef_macro ("__IA16_FEATURE_IMUL_IMM", TARGET_IMUL_IMM);
+  def_or_undef_macro ("__IA16_FEATURE_PUSHA", TARGET_PUSHA);
+  def_or_undef_macro ("__IA16_FEATURE_ENTER_LEAVE", TARGET_ENTER_LEAVE);
+  def_or_undef_macro ("__IA16_FEATURE_SHIFT_MASKED", TARGET_SHIFT_MASKED);
+  def_or_undef_macro ("__IA16_FEATURE_AAD_IMM", TARGET_AAD_IMM);
+  def_or_undef_macro ("__IA16_FEATURE_FSTSW_AX", TARGET_FSTSW_AX);
+
+  /* Define a macro for the chosen -march=.  A source file can use this to
+     decide whether to employ a capability not covered by the
+     __IA16_FEATURE_* macros, e.g. the `arpl' or the `bound' instruction.
+
+     Following the practice for both the ARM and i386 ports, only one macro
+     is defined.  This means that for some features, a user may need to test
+     for several macros --- e.g. `bound' is supported if the compiler defines
+     either __IA16_ARCH_ANY_186, __IA16_ARCH_80186, __IA16_ARCH_NEC_V20,
+     __IA16_ARCH_NEC_V30, or __IA16_ARCH_I80286.
+
+     This is obviously clunky from the user's viewpoint, but I am not sure
+     what a _really_ good alternative might be.  -- tkchia  */
+  def_or_undef_macro ("__IA16_ARCH_ANY", target_arch == PROCESSOR_ANY);
+  def_or_undef_macro ("__IA16_ARCH_ANY_186", target_arch == PROCESSOR_ANY_186);
+  def_or_undef_macro ("__IA16_ARCH_I8086", target_arch == PROCESSOR_I8086);
+  def_or_undef_macro ("__IA16_ARCH_I8088", target_arch == PROCESSOR_I8088);
+  def_or_undef_macro ("__IA16_ARCH_NEC_V30", target_arch == PROCESSOR_NEC_V30);
+  def_or_undef_macro ("__IA16_ARCH_NEC_V20", target_arch == PROCESSOR_NEC_V20);
+  def_or_undef_macro ("__IA16_ARCH_I80186", target_arch == PROCESSOR_I80186);
+  def_or_undef_macro ("__IA16_ARCH_I80188", target_arch == PROCESSOR_I80188);
+  def_or_undef_macro ("__IA16_ARCH_I80286", target_arch == PROCESSOR_I80286);
+}
 
 /* Implements REGISTER_TARGET_PRAGMAS.  */
 void
