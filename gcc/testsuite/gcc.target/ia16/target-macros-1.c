@@ -29,6 +29,9 @@
 #ifdef __IA16_FEATURE_FSTSW_AX
 # error
 #endif
+#ifdef __IA16_ARCH_ANY_186
+# error
+#endif
 #ifdef __IA16_ARCH_I8086
 # error
 #endif
