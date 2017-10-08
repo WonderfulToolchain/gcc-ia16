@@ -32,11 +32,7 @@
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
 
 /* Run-time Target Specification */
-#define TARGET_CPU_CPP_BUILTINS()	\
-	do {				\
-	  builtin_define_std ("ia16");	\
-	  builtin_define ("__FAR");	\
-	} while (0)
+#define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
 
 /* Storage Layout
  *
