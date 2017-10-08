@@ -1,6 +1,6 @@
 /* Subroutines used during code generation for Intel 16-bit x86.
    Copyright (C) 2011-2016 Free Software Foundation, Inc.
-   Very preliminary IA-16 far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support and __IA16_* macros by TK Chia
 
    This file is part of GCC.
 
@@ -78,6 +78,15 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ARCH_I80186", target_arch == PROCESSOR_I80186);
   def_or_undef_macro ("__IA16_ARCH_I80188", target_arch == PROCESSOR_I80188);
   def_or_undef_macro ("__IA16_ARCH_I80286", target_arch == PROCESSOR_I80286);
+
+  /* Define a macro for the chosen -mtune=, for good measure.  */
+  def_or_undef_macro ("__IA16_TUNE_I8086", target_tune == PROCESSOR_I8086);
+  def_or_undef_macro ("__IA16_TUNE_I8088", target_tune == PROCESSOR_I8088);
+  def_or_undef_macro ("__IA16_TUNE_NEC_V30", target_tune == PROCESSOR_NEC_V30);
+  def_or_undef_macro ("__IA16_TUNE_NEC_V20", target_tune == PROCESSOR_NEC_V20);
+  def_or_undef_macro ("__IA16_TUNE_I80186", target_tune == PROCESSOR_I80186);
+  def_or_undef_macro ("__IA16_TUNE_I80188", target_tune == PROCESSOR_I80188);
+  def_or_undef_macro ("__IA16_TUNE_I80286", target_tune == PROCESSOR_I80286);
 }
 
 /* Implements REGISTER_TARGET_PRAGMAS.  */
