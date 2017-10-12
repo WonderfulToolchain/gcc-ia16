@@ -756,7 +756,7 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mseparate-code-segment}
+-mseparate-code-segment -mcmodel=tiny -mcmodel=small}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16532,13 +16532,27 @@ for @var{cpu-type} are the same as for @option{-mtune}.  Moreover,
 specifying @option{-march=@var{cpu-type}} implies
 @option{-mtune=@var{cpu-type}}.
 
+@item -mcmodel=tiny
+@opindex mcmodel=tiny
+Generate code for the tiny code model, with a single combined data and text
+segment in a 64@tie{}KiB address space.  This is the default.
+
+@item -mcmodel=small
+@opindex mcmodel=small
+Generate code for the small code model, with one data segment and one text
+segment, in separate 64@tie{}KiB spaces.  At the linking stage, this option
+also causes the output to be an MS-DOS @code{MZ} executable (unless
+@option{-T} is used).  @option{-mcmodel=small} implies
+@option{-mseparate-code-segment}.
+
 @item -mseparate-code-segment
 @itemx -mno-separate-code-segment
 @opindex mseparate-code-segment
 @opindex mno-separate-code-segment
 Assume (or don't assume) that the code segment may not be the same as the
 data and stack segments. The default is to assume that they are the same
-segment. Currently, trampolines are disabled when using this option.
+segment, unless @option{-mcmodel=small} is used. Currently, trampolines are
+disabled when using this option.
 
 @item -mshort-jumps
 @itemx -mno-short-jumps

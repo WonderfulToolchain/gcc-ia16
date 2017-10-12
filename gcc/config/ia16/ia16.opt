@@ -69,3 +69,14 @@ Target Mask(SHORT_JUMPS)
 mseparate-code-segment
 Target Mask(SEPARATE_CSEG)
 -m(no-)separate-code-segment  Do (not - this is the default) use a separate code segment.
+
+mcmodel=tiny
+Target RejectNegative
+-mcmodel=tiny  Generate code for the tiny code model (default), with one combined data and text segment.
+
+; For the compiler back-end, -mcmodel=small in contrast to -mcmodel=tiny is
+; just about having separate code and data address spaces.  Most of the work
+; for implementing the small model happens at the linking stage.
+mcmodel=small
+Target RejectNegative Mask(SEPARATE_CSEG)
+-mcmodel=small  Generate code for the small code model, with one data and one text segment.
