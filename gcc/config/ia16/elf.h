@@ -2,6 +2,7 @@
    Copyright (C) 2007-2017 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
+   Very preliminary small code model support by TK Chia
 
    This file is part of GCC.
 
@@ -28,4 +29,4 @@
   ""
 
 #define LIB_SPEC	\
-  "%{!T*:-Tdos-com.ld}"
+  "%{!T*:%{mcmodel=small:-Tdos-exe-small.ld;:-Tdos-com.ld}}"
