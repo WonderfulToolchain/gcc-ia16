@@ -1,3 +1,9 @@
+2017-10-30  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/Makefile.am (stamp-bits-sup): Do not create broken symlink
+	to stamp-bits.
+	* include/Makefile.in: Regenerate.
+
 2016-12-21  Release Manager
 
 	* GCC 6.3.0 released.
