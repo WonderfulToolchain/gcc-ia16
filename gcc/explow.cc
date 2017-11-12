@@ -213,14 +213,15 @@ plus_constant (machine_mode mode, rtx x, poly_int64 c, bool inplace)
 
 rtx
 pointer_plus_constant (machine_mode mode, rtx x, HOST_WIDE_INT c,
-		       addr_space_t as, unsigned modifier, bool inplace)
+		       addr_space_t as, bool inplace)
 {
 #ifdef TARGET_ADDR_SPACE_WEIRD_P
 # ifdef TARGET_EXPAND_WEIRD_POINTER_PLUS_EXPR
+  machine_mode size_mode = TYPE_MODE (sizetype);
   if (TARGET_ADDR_SPACE_WEIRD_P (as))
-    return TARGET_EXPAND_WEIRD_POINTER_PLUS_EXPR (x, gen_int_mode (c, mode),
-						  inplace ? x : NULL_RTX,
-						  mode);
+    return TARGET_EXPAND_WEIRD_POINTER_PLUS_EXPR (x,
+						  gen_int_mode (c, size_mode),
+						  NULL_RTX, mode);
 # endif
 #endif
   return plus_constant (mode, x, c, inplace);

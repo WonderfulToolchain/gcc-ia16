@@ -8507,7 +8507,7 @@ expand_expr_addr_expr_1 (tree exp, rtx target, scalar_int_mode tmode,
       poly_int64 bytepos = exact_div (bitpos, BITS_PER_UNIT);
       result = convert_memory_address_addr_space (tmode, result, as);
       result = pointer_plus_constant (tmode, result, bytepos,
-				      as, modifier);
+				      as);
       if (modifier < EXPAND_SUM)
 	result = force_operand (result, target);
     }
