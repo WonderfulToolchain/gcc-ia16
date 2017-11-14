@@ -1,4 +1,4 @@
-/* Subroutines used during code generation for Intel 16-bit x86.
+/* Subroutines used for macro/preprocessor support for Intel 16-bit x86.
    Copyright (C) 2011-2016 Free Software Foundation, Inc.
    Very preliminary IA-16 far pointer support and __IA16_* macros by TK Chia
 
@@ -56,6 +56,20 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_FEATURE_SHIFT_MASKED", TARGET_SHIFT_MASKED);
   def_or_undef_macro ("__IA16_FEATURE_AAD_IMM", TARGET_AAD_IMM);
   def_or_undef_macro ("__IA16_FEATURE_FSTSW_AX", TARGET_FSTSW_AX);
+
+  /* Define macros corresponding to the chosen memory model.  I define both
+     an AArch64-style macro __IA16_CMODEL_{TINY | SMALL}__, and a simple
+     __{TINY | SMALL}__ macro as used in the classical Borland C and Open
+     Watcom compilers (and others).
+
+     This code currently assumes that there are only two memory models ---
+     "tiny" and "small".  If more memory models are added, we will probably
+     need to define an `enum' in a whole separate header file, similar to
+     gcc/config/i386/i386-opts.h .  -- tkchia */
+  def_or_undef_macro ("__IA16_CMODEL_TINY__", ! TARGET_CMODEL_IS_SMALL);
+  def_or_undef_macro ("__TINY__", ! TARGET_CMODEL_IS_SMALL);
+  def_or_undef_macro ("__IA16_CMODEL_SMALL__", TARGET_CMODEL_IS_SMALL);
+  def_or_undef_macro ("__SMALL__", TARGET_CMODEL_IS_SMALL);
 
   /* Define a macro for the chosen -march=.  A source file can use this to
      decide whether to employ a capability not covered by the

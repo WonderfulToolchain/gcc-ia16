@@ -78,5 +78,5 @@ Target RejectNegative
 ; just about having separate code and data address spaces.  Most of the work
 ; for implementing the small model happens at the linking stage.
 mcmodel=small
-Target RejectNegative Mask(SEPARATE_CSEG)
+Target RejectNegative Mask(SEPARATE_CSEG) Mask(CMODEL_IS_SMALL)
 -mcmodel=small  Generate code for the small code model, with one data and one text segment.
