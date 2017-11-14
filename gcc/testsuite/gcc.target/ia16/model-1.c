@@ -3,6 +3,19 @@
 
 /* Test that the tiny code model (`-mcmodel=tiny') works.  */
 
+#ifndef __IA16_CMODEL_TINY__
+# error
+#endif
+#ifndef __TINY__
+# error
+#endif
+#ifdef __IA16_CMODEL_SMALL__
+# error
+#endif
+#ifdef __SMALL__
+# error
+#endif
+
 int puts (const char *);
 void abort (void);
 
