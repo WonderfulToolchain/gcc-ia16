@@ -47,6 +47,9 @@ if { [istarget *-*-eabi*]
      || [istarget *-*-rtems*] } {
    lappend additional_flags "-Wl,--allow-multiple-definition"
 }
+if [istarget "ia16-*-elf"] {
+   lappend additional_flags "-mcmodel=small"
+}
 
 foreach src [lsort [find $srcdir/$subdir *.c]] {
     if {![string match *-lib.c $src] && [runtest_file_p $runtests $src]} {
