@@ -2,6 +2,7 @@
 /* Origin: Joseph Myers <joseph@codesourcery.com> */
 /* { dg-do run } */
 /* { dg-options "" } */
+/* { dg-options "-mcmodel=small" { target ia16-*-* } } */
 
 #include <float.h>
 #include "fp-int-convert.h"
