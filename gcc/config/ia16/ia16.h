@@ -180,6 +180,7 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   BP_REGS,	   /* Rbp 002000  .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */
   BASE_W_INDEX_REGS, /* w 002300  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */
   BASE_REGS,	     /* B 003700  .  .  .  . bp di si -- bx  .  .  .  .  .  . */
+  ES_REGS,	     /* e 004000  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
   SEGMENT_REGS,	     /* Q 004000  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
   HI_REGS,	     /*   017400  .  . sp es bp di si  .  .  .  .  .  .  .  . */
   GENERAL_REGS,	     /* r 013777  .  . sp  . bp di si bh bl dh dl ah al ch cl */
@@ -194,8 +195,8 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   "DX_REGS", "DXAX_REGS", "BX_REGS", "BXDX_REGS", "CL_REGS", \
   "CX_REGS", "LO_QI_REGS", "UP_QI_REGS", "QI_REGS", \
   "SI_REGS", "QISI_REGS", "DI_REGS", "INDEX_REGS", \
-  "BP_REGS", "BASE_W_INDEX_REGS", "BASE_REGS", "SEGMENT_REGS", "HI_REGS", \
-  "GENERAL_REGS", "SEG_GENERAL_REGS", "ALL_REGS" }
+  "BP_REGS", "BASE_W_INDEX_REGS", "BASE_REGS", "ES_REGS", "SEGMENT_REGS", \
+  "HI_REGS", "GENERAL_REGS", "SEG_GENERAL_REGS", "ALL_REGS" }
 
 #define REG_CLASS_CONTENTS {	 /* 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */ \
   { 000000 }, /* NO_REGS,	     4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */ \
@@ -220,6 +221,7 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   { 002000 }, /* BP_REGS,	 Rbp .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */ \
   { 002300 }, /* BASE_W_INDEX_REGS w .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */ \
   { 003700 }, /* BASE_REGS,	   B .  .  .  . bp di si -- bx  .  .  .  .  .  . */ \
+  { 004000 }, /* ES_REGS,	   e .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
   { 004000 }, /* SEGMENT_REGS,	   Q .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
   { 017400 }, /* HI_REGS,	     .  . sp es bp di si  .  .  .  .  .  .  .  . */ \
   { 013777 }, /* GENERAL_REGS,	   r .  . sp  . bp di si bh bl dh dl ah al ch cl */ \
