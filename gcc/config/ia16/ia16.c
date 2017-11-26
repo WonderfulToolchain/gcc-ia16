@@ -110,7 +110,7 @@ enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER] = {
 	/*  8 si */ SI_REGS,
 	/*  9 di */ DI_REGS,
 	/* 10 bp */ BP_REGS,
-	/* 11 es */ SEGMENT_REGS,
+	/* 11 es */ ES_REGS,
 	/* 12 sp */ HI_REGS,
 	/* 13 cc */ ALL_REGS,
 	/* 14 ap */ ALL_REGS,
@@ -137,7 +137,8 @@ ia16_secondary_reload (bool in_p, rtx x, reg_class_t reload_class,
 {
   if (in_p
       && (reload_class == SEG_GENERAL_REGS
-	  || reload_class == SEGMENT_REGS)
+	  || reload_class == SEGMENT_REGS
+	  || reload_class == ES_REGS)
       && (CONSTANT_P (x) || PLUS == GET_CODE (x)))
     {
       return (GENERAL_REGS);
