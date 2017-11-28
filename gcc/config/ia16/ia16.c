@@ -74,27 +74,31 @@
  * subreg_get_info() dies on libssp/gets-chk.c if !H_R_M_O (SP_REG, HImode).
  * Disallow register size changes unless HARD_REGNO_NREGS_HAS_PADDING.
  * CCmode is 4 bytes.
+ *
+ * (Also do not allow %es to start a multi-shortword value or be in the
+ * middle of a multi-shortword value.  This causes incorrect output for
+ * gcc.c-torture/execute/bitfld-*.c.  -- tkchia 20171128)
  */
 unsigned char ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER] =
 {
-/* size     cl  ch  al  ah  dl  dh  bl  bh  si  di  bp  es  sp  cc, ap */
-/*  0 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  1 */  {  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0 },
-/*  2 */  {  2,  0,  2,  0,  2,  0,  2,  0,  1,  1,  1,  1,  1,  0,  1 },
-/*  3 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  4 */  {  4,  0,  4,  0,  4,  0,  3,  0,  2,  2,  2,  2,  0,  1,  0 },
-/*  5 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  6 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  7 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  8 */  {  8,  0,  7,  0,  0,  0,  0,  0,  4,  4,  0,  0,  0,  0,  0 },
-/*  9 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 10 */  {  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 11 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 12 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 13 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 14 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 15 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 16 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* size     cl  ch  al  ah  dl  dh  bl  bh  si  di  bp  es  ds  sp  cc, ap */
+/*  0 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  1 */  {  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  2 */  {  2,  0,  2,  0,  2,  0,  2,  0,  1,  1,  1,  1,  1,  1,  0,  1 },
+/*  3 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  4 */  {  4,  0,  4,  0,  4,  0,  3,  0,  2,  2,  2,  0,  0,  0,  1,  0 },
+/*  5 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  6 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  7 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  8 */  {  8,  0,  7,  0,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0 },
+/*  9 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 10 */  {  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 11 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 12 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 13 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 14 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 15 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 16 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
 };
 
 /* Register Classes.  */
@@ -111,9 +115,10 @@ enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER] = {
 	/*  9 di */ DI_REGS,
 	/* 10 bp */ BP_REGS,
 	/* 11 es */ ES_REGS,
-	/* 12 sp */ HI_REGS,
-	/* 13 cc */ ALL_REGS,
-	/* 14 ap */ ALL_REGS,
+	/* 12 ds */ SEGMENT_REGS,
+	/* 13 sp */ HI_REGS,
+	/* 14 cc */ ALL_REGS,
+	/* 15 ap */ ALL_REGS,
 };
 
 /* Processor target table, indexed by processor number */
@@ -171,17 +176,26 @@ ia16_cannot_substitute_mem_equiv_p (rtx subst)
 #undef TARGET_FRAME_POINTER_REQUIRED
 #define TARGET_FRAME_POINTER_REQUIRED hook_bool_void_true
 
+/* Convenience function --- say whether register r belongs to class c.  */
+int
+ia16_regno_in_class_p (unsigned r, unsigned c)
+{
+  return r < FIRST_PSEUDO_REGISTER
+	 && TEST_HARD_REG_BIT (reg_class_contents[c], r);
+}
+
 /* Returns non-zero if register r must be saved by a function, zero if not.  */
 /* Always returns zero for upper halves of 16-bit registers
  * (i.e. ah, dh, bh or ch).  */
-int ia16_save_reg_p (unsigned int r)
+static int
+ia16_save_reg_p (unsigned int r)
 {
   if (r == BP_REG)
     return get_frame_size() > 0 || crtl->args.info > 0
       || crtl->accesses_prior_frames || cfun->calls_alloca;
-  if (!TEST_HARD_REG_BIT (reg_class_contents[QI_REGS], r))
+  if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
-  if (TEST_HARD_REG_BIT (reg_class_contents[UP_QI_REGS], r))
+  if (ia16_regno_in_class_p (r, UP_QI_REGS))
     return (0);
   return ((df_regs_ever_live_p (r + 0) && !call_used_regs[r + 0]) ||
 	  (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
@@ -411,8 +425,7 @@ ia16_have_seg_override_p (rtx x)
 }
 
 #define REGNO_OK_FOR_SEGMENT_P(num) \
-	((num) < FIRST_PSEUDO_REGISTER && \
-	 TEST_HARD_REG_BIT (reg_class_contents[SEGMENT_REGS], (num)))
+	ia16_regno_in_class_p ((num), SEGMENT_REGS)
 
 #undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
@@ -2100,7 +2113,7 @@ static const char *reg_QInames[SI_REG] = {
 };
 
 static const char *reg_HInames[SP_REG+1] = {
-	"cx", 0, "ax", 0, "dx", 0, "bx", 0, "si", "di", "bp", "es", "sp"
+	"cx", 0, "ax", 0, "dx", 0, "bx", 0, "si", "di", "bp", "es", "ds", "sp"
 };
 
 /* E is known not to be null when this is called.  These non-standard codes are
@@ -2185,9 +2198,9 @@ ia16_print_operand (FILE *file, rtx e, int code)
 }
 
 #define INDEX_REG_P(x) \
-	TEST_HARD_REG_BIT (reg_class_contents[INDEX_REGS], REGNO (x))
+	ia16_regno_in_class_p (REGNO (x), INDEX_REGS)
 #define BASE_REG_REG_P(x) \
-	TEST_HARD_REG_BIT (reg_class_contents[BASE_W_INDEX_REGS], REGNO (x))
+	ia16_regno_in_class_p (REGNO (x), BASE_W_INDEX_REGS)
 
 /* Strictly check an address X and optionally split into its components.
  * If there is only one register, it will be the base register.
@@ -2315,7 +2328,7 @@ ia16_trampoline_init (rtx tr, tree fn, rtx sc)
       abort ();
     }
 
-  if (TEST_HARD_REG_BIT (reg_class_contents[QI_REGS], regno))
+  if (ia16_regno_in_class_p (regno, QI_REGS))
     regno /= 2;
   else
     regno -= 4;
