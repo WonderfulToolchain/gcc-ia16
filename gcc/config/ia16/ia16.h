@@ -85,24 +85,23 @@
  * TODO: For optimization purposes, we'd want a 64-bit value to be held in
  * registers such that the upper and lower bytes are in an 8-bit register.
  *
- * Name:  cl ch al ah dl dh bl bh si di bp es sp cc ap
- * Size:   8  8  8  8  8  8  8  8 16 16 16 16 16 cc 16
- * Index:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+ * Name:  cl ch al ah dl dh bl bh si di bp es ds sp cc ap
+ * Size:   8  8  8  8  8  8  8  8 16 16 16 16 16 16 cc 16
+ * Index:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
  *
  * Basic Characteristics of Registers
  */
-#define FIRST_PSEUDO_REGISTER 15
 #define FIXED_REGISTERS \
-         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 }
+         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 }
 #define CALL_USED_REGISTERS \
-         { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1 }
+         { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1 }
 
 /* Order of Allocation of Registers.  */
 /* The goal is to create opportunities for using load/store multiple
  * instructions as well as good register allocation in general.  */
 #define REG_ALLOC_ORDER \
-	{ 2, 3, 4, 5, 0, 1,  6, 7, 10,  9, 8, 11, 12, 13, 14 }
-/*	 al ah dl dh cl ch  bl bh  bp  di si  es  sp  cc  ap */
+	{ 2, 3, 4, 5, 0, 1,  6, 7, 10,  9, 8, 11, 12, 13, 14, 15 }
+/*	 al ah dl dh cl ch  bl bh  bp  di si  es  ds  sp  cc  ap */
 
 /* How Values Fit in Registers.  */
 /* FIXME: Not documented: CCmode is 32 bits.  */
@@ -112,9 +111,11 @@
   (MAX (ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO], 1))
 
 /* There are more cases than those caught here, but HARD_REGNO_MODE_OK()
-   forbids them. Catch multireg values ending in SI_REG. */
+   forbids them. Catch multireg values that straddle the boundary between
+   8-bit and 16-bit registers. */
 #define HARD_REGNO_NREGS_HAS_PADDING(REGNO, MODE) \
-	((REGNO) < SI_REG && (REGNO) + GET_MODE_SIZE(MODE) == SI_REG + 2)
+	((REGNO) < FIRST_NOQI_REG && \
+	 (REGNO) + GET_MODE_SIZE(MODE) > FIRST_NOQI_REG)
 
 #define HARD_REGNO_NREGS_WITH_PADDING(REGNO, MODE) \
 	(GET_MODE_SIZE(MODE))
@@ -129,7 +130,8 @@
   (GET_MODE_CLASS(MODE) == MODE_CC ? (REGNO) == CC_REG :		\
    (REGNO) == CC_REG ? GET_MODE_CLASS(MODE) == MODE_CC :		\
    GET_MODE_SIZE(MODE) > 16 ? 0 :					\
-   COMPLEX_MODE_P(MODE) && (REGNO) + GET_MODE_SIZE(MODE) == SI_REG + 2 ? 0 : \
+   COMPLEX_MODE_P(MODE) &&						\
+     HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO])
 
 /* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
@@ -157,35 +159,35 @@
  * Keep this in sync with REG*_OK_FOR*_P() below.
  * Keep this in sync with ia16_regno_class[] in ia16.c.
  */
-enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
-  NO_REGS,	     /*   000000  4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */
+enum reg_class {	/*	 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
+  NO_REGS,	     /*   000000  1  4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */
   AL_REGS,	   /* Ral 000004  .  .  .  .  .  .  .  .  .  .  .  . al  .  . */
-  AH_REGS,	   /* Rah 000010  .  .  .  .  .  .  .  .  .  .  . ah  .  .  . */
-  AX_REGS,	     /* a 000014  .  .  .  .  .  .  .  .  .  .  . -- ax  .  . */
-  DL_REGS,	   /* Rdl 000020  .  .  .  .  .  .  .  .  .  . dl  .  .  .  . */ 
-  DH_REGS,	   /* Rdh 000040  .  .  .  .  .  .  .  .  . dh  .  .  .  .  . */
-  DX_REGS,	     /* d 000060  .  .  .  .  .  .  .  .  . -- dx  .  .  .  . */
-  DXAX_REGS,	     /* A 000074  .  .  .  .  .  .  .  .  . -- dx -- ax  .  . */
-  BX_REGS,	     /* b 000300  .  .  .  .  .  .  . -- bx  .  .  .  .  .  . */
-  BXDX_REGS,	     /* j 000360  .  .  .  .  .  .  . -- bx -- dx  .  .  .  . */
-  CL_REGS,	   /* Rcl 000001  .  .  .  .  .  .  .  .  .  .  .  .  .  . cl */
-  CX_REGS,	     /* c 000003  .  .  .  .  .  .  .  .  .  .  .  .  . -- cx */
-  LO_QI_REGS,	     /* l 000125  .  .  .  .  .  .  .  . bl  . dl  . al  . cl */
-  UP_QI_REGS,	     /* u 000252  .  .  .  .  .  .  . bh  . dh  . ah  . ch  . */
-  QI_REGS,	     /* q 000377  .  .  .  .  .  .  . bh bl dh dl ah al ch cl */
-  SI_REGS,	     /* S 000400  .  .  .  .  .  . si  .  .  .  .  .  .  .  . */
-  QISI_REGS,	     /* k 000777  .  .  .  .  .  . si -- bx -- dx -- ax -- cx */
-  DI_REGS,	     /* D 001000  .  .  .  .  . di  .  .  .  .  .  .  .  .  . */
-  INDEX_REGS,	     /* x 001400  .  .  .  .  . di si  .  .  .  .  .  .  .  . */
-  BP_REGS,	   /* Rbp 002000  .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */
-  BASE_W_INDEX_REGS, /* w 002300  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */
-  BASE_REGS,	     /* B 003700  .  .  .  . bp di si -- bx  .  .  .  .  .  . */
-  ES_REGS,	     /* e 004000  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
-  SEGMENT_REGS,	     /* Q 004000  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
-  HI_REGS,	     /*   017400  .  . sp es bp di si  .  .  .  .  .  .  .  . */
-  GENERAL_REGS,	     /* r 013777  .  . sp  . bp di si bh bl dh dl ah al ch cl */
-  SEG_GENERAL_REGS,  /* T 017777  .  . sp es bp di si bh bl dh dl ah al ch cl */
-  ALL_REGS,	     /*   077777 ap cc sp es bp di si bh bl dh dl ah al ch cl */
+  AH_REGS,	   /* Rah 000010  .  .  .  .  .  .  .  .  .  .  .  . ah  .  .  . */
+  AX_REGS,	     /* a 000014  .  .  .  .  .  .  .  .  .  .  .  . -- ax  .  . */
+  DL_REGS,	   /* Rdl 000020  .  .  .  .  .  .  .  .  .  .  . dl  .  .  .  . */ 
+  DH_REGS,	   /* Rdh 000040  .  .  .  .  .  .  .  .  .  . dh  .  .  .  .  . */
+  DX_REGS,	     /* d 000060  .  .  .  .  .  .  .  .  .  . -- dx  .  .  .  . */
+  DXAX_REGS,	     /* A 000074  .  .  .  .  .  .  .  .  .  . -- dx -- ax  .  . */
+  BX_REGS,	     /* b 000300  .  .  .  .  .  .  .  . -- bx  .  .  .  .  .  . */
+  BXDX_REGS,	     /* j 000360  .  .  .  .  .  .  .  . -- bx -- dx  .  .  .  . */
+  CL_REGS,	   /* Rcl 000001  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . cl */
+  CX_REGS,	     /* c 000003  .  .  .  .  .  .  .  .  .  .  .  .  .  . -- cx */
+  LO_QI_REGS,	     /* l 000125  .  .  .  .  .  .  .  .  . bl  . dl  . al  . cl */
+  UP_QI_REGS,	     /* u 000252  .  .  .  .  .  .  .  . bh  . dh  . ah  . ch  . */
+  QI_REGS,	     /* q 000377  .  .  .  .  .  .  .  . bh bl dh dl ah al ch cl */
+  SI_REGS,	     /* S 000400  .  .  .  .  .  .  . si  .  .  .  .  .  .  .  . */
+  QISI_REGS,	     /* k 000777  .  .  .  .  .  .  . si -- bx -- dx -- ax -- cx */
+  DI_REGS,	     /* D 001000  .  .  .  .  .  . di  .  .  .  .  .  .  .  .  . */
+  INDEX_REGS,	     /* x 001400  .  .  .  .  .  . di si  .  .  .  .  .  .  .  . */
+  BP_REGS,	   /* Rbp 002000  .  .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */
+  BASE_W_INDEX_REGS, /* w 002300  .  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */
+  BASE_REGS,	     /* B 003700  .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */
+  ES_REGS,	     /* e 004000  .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
+  SEGMENT_REGS,	     /* Q 014000  .  .  . ds es  .  .  .  .  .  .  .  .  .  .  . */
+  HI_REGS,	     /*   027400  .  . sp  . es bp di si  .  .  .  .  .  .  .  . */
+  GENERAL_REGS,	     /* r 023777  .  . sp  .  . bp di si bh bl dh dl ah al ch cl */
+  SEG_GENERAL_REGS,  /* T 037777  .  . sp ds es bp di si bh bl dh dl ah al ch cl */
+  ALL_REGS,	     /*   177777 ap cc sp ds es bp di si bh bl dh dl ah al ch cl */
   LIM_REG_CLASSES
 };
 #define N_REG_CLASSES ((int) LIM_REG_CLASSES)
@@ -198,35 +200,35 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   "BP_REGS", "BASE_W_INDEX_REGS", "BASE_REGS", "ES_REGS", "SEGMENT_REGS", \
   "HI_REGS", "GENERAL_REGS", "SEG_GENERAL_REGS", "ALL_REGS" }
 
-#define REG_CLASS_CONTENTS {	 /* 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */ \
-  { 000000 }, /* NO_REGS,	     4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */ \
-  { 000004 }, /* AL_REGS,	 Ral .  .  .  .  .  .  .  .  .  .  .  . al  .  . */ \
-  { 000010 }, /* AH_REGS,	 Rah .  .  .  .  .  .  .  .  .  .  . ah  .  .  . */ \
-  { 000014 }, /* AX_REGS,	   a .  .  .  .  .  .  .  .  .  .  . -- ax  .  . */ \
-  { 000020 }, /* DL_REGS,	 Rdl .  .  .  .  .  .  .  .  .  . dl  .  .  .  . */ \
-  { 000040 }, /* DH_REGS,	 Rdh .  .  .  .  .  .  .  .  . dh  .  .  .  .  . */ \
-  { 000060 }, /* DX_REGS,	   d .  .  .  .  .  .  .  .  . -- dx  .  .  .  . */ \
-  { 000074 }, /* DXAX_REGS,	   A .  .  .  .  .  .  .  .  . -- dx -- ax  .  . */ \
-  { 000300 }, /* BX_REGS,	   b .  .  .  .  .  .  . -- bx  .  .  .  .  .  . */ \
-  { 000360 }, /* BXDX_REGS,	   j .  .  .  .  .  .  . -- bx -- dx  .  .  .  . */ \
-  { 000001 }, /* CL_REGS,	 Rcl .  .  .  .  .  .  .  .  .  .  .  .  .  . cl */ \
-  { 000003 }, /* CX_REGS,	   c .  .  .  .  .  .  .  .  .  .  .  .  . -- cx */ \
-  { 000125 }, /* LO_QI_REGS,	   l .  .  .  .  .  .  .  . bl  . dl  . al  . cl */ \
-  { 000252 }, /* UP_QI_REGS,	   u .  .  .  .  .  .  . bh  . dh  . ah  . ch  . */ \
-  { 000377 }, /* QI_REGS,	   q .  .  .  .  .  .  . bh bl dh dl ah al ch cl */ \
-  { 000400 }, /* SI_REGS,	   S .  .  .  .  .  . si  .  .  .  .  .  .  .  . */ \
-  { 000777 }, /* QISI_REGS,	   k .  .  .  .  .  . si -- bx -- dx -- ax -- cx */ \
-  { 001000 }, /* DI_REGS,	   D .  .  .  .  . di  .  .  .  .  .  .  .  .  . */ \
-  { 001400 }, /* INDEX_REGS,	   x .  .  .  .  . di si  .  .  .  .  .  .  .  . */ \
-  { 002000 }, /* BP_REGS,	 Rbp .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */ \
-  { 002300 }, /* BASE_W_INDEX_REGS w .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */ \
-  { 003700 }, /* BASE_REGS,	   B .  .  .  . bp di si -- bx  .  .  .  .  .  . */ \
-  { 004000 }, /* ES_REGS,	   e .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
-  { 004000 }, /* SEGMENT_REGS,	   Q .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
-  { 017400 }, /* HI_REGS,	     .  . sp es bp di si  .  .  .  .  .  .  .  . */ \
-  { 013777 }, /* GENERAL_REGS,	   r .  . sp  . bp di si bh bl dh dl ah al ch cl */ \
-  { 017777 }, /* SEG_GENERAL_REGS, T .  . sp es bp di si bh bl dh dl ah al ch cl */ \
-  { 077777 }, /* ALL_REGS,	    ap cc sp es bp di si bh bl dh dl ah al ch cl */ \
+#define REG_CLASS_CONTENTS {	  /* 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */ \
+  { 0000000 }, /* NO_REGS,	      1  4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */ \
+  { 0000004 }, /* AL_REGS,	  Ral .  .  .  .  .  .  .  .  .  .  .  .  . al  .  . */ \
+  { 0000010 }, /* AH_REGS,	  Rah .  .  .  .  .  .  .  .  .  .  .  . ah  .  .  . */ \
+  { 0000014 }, /* AX_REGS,	    a .  .  .  .  .  .  .  .  .  .  .  . -- ax  .  . */ \
+  { 0000020 }, /* DL_REGS,	  Rdl .  .  .  .  .  .  .  .  .  .  . dl  .  .  .  . */ \
+  { 0000040 }, /* DH_REGS,	  Rdh .  .  .  .  .  .  .  .  .  . dh  .  .  .  .  . */ \
+  { 0000060 }, /* DX_REGS,	    d .  .  .  .  .  .  .  .  .  . -- dx  .  .  .  . */ \
+  { 0000074 }, /* DXAX_REGS,	    A .  .  .  .  .  .  .  .  .  . -- dx -- ax  .  . */ \
+  { 0000300 }, /* BX_REGS,	    b .  .  .  .  .  .  .  . -- bx  .  .  .  .  .  . */ \
+  { 0000360 }, /* BXDX_REGS,	    j .  .  .  .  .  .  .  . -- bx -- dx  .  .  .  . */ \
+  { 0000001 }, /* CL_REGS,	  Rcl .  .  .  .  .  .  .  .  .  .  .  .  .  .  . cl */ \
+  { 0000003 }, /* CX_REGS,	    c .  .  .  .  .  .  .  .  .  .  .  .  .  . -- cx */ \
+  { 0000125 }, /* LO_QI_REGS,	    l .  .  .  .  .  .  .  .  . bl  . dl  . al  . cl */ \
+  { 0000252 }, /* UP_QI_REGS,	    u .  .  .  .  .  .  .  . bh  . dh  . ah  . ch  . */ \
+  { 0000377 }, /* QI_REGS,	    q .  .  .  .  .  .  .  . bh bl dh dl ah al ch cl */ \
+  { 0000400 }, /* SI_REGS,	    S .  .  .  .  .  .  . si  .  .  .  .  .  .  .  . */ \
+  { 0000777 }, /* QISI_REGS,	    k .  .  .  .  .  .  . si -- bx -- dx -- ax -- cx */ \
+  { 0001000 }, /* DI_REGS,	    D .  .  .  .  .  . di  .  .  .  .  .  .  .  .  . */ \
+  { 0001400 }, /* INDEX_REGS,	    x .  .  .  .  .  . di si  .  .  .  .  .  .  .  . */ \
+  { 0002000 }, /* BP_REGS,	  Rbp .  .  .  .  . bp  .  .  .  .  .  .  .  .  .  . */ \
+  { 0002300 }, /* BASE_W_INDEX_REGS w .  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */ \
+  { 0003700 }, /* BASE_REGS,	    B .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */ \
+  { 0004000 }, /* ES_REGS,	    e .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
+  { 0014000 }, /* SEGMENT_REGS,	    Q .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
+  { 0027400 }, /* HI_REGS,	      .  . sp ds es bp di si  .  .  .  .  .  .  .  . */ \
+  { 0023777 }, /* GENERAL_REGS,	    r .  . sp  .  . bp di si bh bl dh dl ah al ch cl */ \
+  { 0037777 }, /* SEG_GENERAL_REGS, T .  . sp ds es bp di si bh bl dh dl ah al ch cl */ \
+  { 0177777 }, /* ALL_REGS,	     ap cc sp ds es bp di si bh bl dh dl ah al ch cl */ \
 }
 
 #define REGNO_REG_CLASS(regno) ia16_regno_class[regno]
@@ -254,12 +256,12 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* FIXME: Documentation:
  * It is unclear if these definitions should be guarded by REG_OK_STRICT or not.  */
-#define REGNO_MODE_OK_FOR_BASE_P(num, mode)	((num) < FIRST_PSEUDO_REGISTER && \
-	TEST_HARD_REG_BIT (reg_class_contents[MODE_BASE_REG_CLASS (mode)], (num)))
-#define REGNO_MODE_OK_FOR_REG_BASE_P(num, mode)	((num) < FIRST_PSEUDO_REGISTER && \
-	TEST_HARD_REG_BIT (reg_class_contents[MODE_BASE_REG_REG_CLASS (mode)], (num)))
-#define REGNO_OK_FOR_INDEX_P(num)		((num) < FIRST_PSEUDO_REGISTER && \
-	TEST_HARD_REG_BIT (reg_class_contents[INDEX_REG_CLASS], (num)))
+#define REGNO_MODE_OK_FOR_BASE_P(num, mode) \
+	ia16_regno_in_class_p ((num), MODE_BASE_REG_CLASS (mode))
+#define REGNO_MODE_OK_FOR_REG_BASE_P(num, mode)	\
+	ia16_regno_in_class_p ((num), MODE_BASE_REG_REG_CLASS (mode))
+#define REGNO_OK_FOR_INDEX_P(num) \
+	ia16_regno_in_class_p ((num), INDEX_REG_CLASS)
 
 #define PREFERRED_RELOAD_CLASS(X,CLASS) CLASS
 
@@ -495,7 +497,7 @@ enum reg_class {	/*	 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 /* Output of Assembler Instructions.  */
 
 #define REGISTER_NAMES { "c", "ch", "a", "ah", "d", "dh", "b", "bh", \
-                         "si", "di", "bp", "es", "sp", "cc", "argp" }
+                         "si", "di", "bp", "es", "ds", "sp", "cc", "argp" }
 #define ADDITIONAL_REGISTER_NAMES \
 	{ { "cl", 0 }, {"al", 2 }, { "dl", 4 }, { "bl", 6 }, \
 	  { "cx", 0 }, {"ax", 2 }, { "dx", 4 }, { "bx", 6 } }
