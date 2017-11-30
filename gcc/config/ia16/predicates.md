@@ -57,7 +57,7 @@
 
 (define_predicate "segment_register_operand"
    (and (match_code "reg")
-	(match_test "REGNO (op) == ES_REG"))
+	(match_test "ia16_regno_in_class_p (REGNO (op), SEGMENT_REGS)"))
 )
 
 ; Match the memory operand of an xlat instruction (to be split before reload).
