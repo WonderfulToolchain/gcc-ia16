@@ -244,7 +244,7 @@ ia16_initial_arg_pointer_offset (void)
   unsigned int i;
 
   /* Add two bytes for each register saved.  */
-  for (i = 0; i <= ES_REG; i ++)
+  for (i = 0; i <= LAST_ALLOCABLE_REG; i ++)
     {
       if (ia16_save_reg_p (i))
 	offset += GET_MODE_SIZE (HImode);
@@ -2682,7 +2682,7 @@ ia16_expand_prologue (void)
   HOST_WIDE_INT size = get_frame_size ();
 
   /* Save used registers which are not call clobbered. */
-  for (i = 0; i <= ES_REG; ++i)
+  for (i = 0; i <= LAST_ALLOCABLE_REG; ++i)
     {
       if (i != BP_REG && ia16_save_reg_p (i))
 	{
@@ -2755,7 +2755,7 @@ ia16_expand_epilogue (bool sibcall)
 	}
     }
   /* Restore used registers. */
-  for (i = ES_REG; i < FIRST_PSEUDO_REGISTER; --i)
+  for (i = LAST_ALLOCABLE_REG; i < FIRST_PSEUDO_REGISTER; --i)
     {
       if (i != BP_REG && ia16_save_reg_p (i))
 	emit_insn (ia16_pop_reg (i));
