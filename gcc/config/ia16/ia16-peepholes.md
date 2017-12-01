@@ -664,3 +664,32 @@
   [(set (match_dup 0) (match_dup 2))]
   ""
 )
+
+; Try to rewrite
+;	movw	mem,	%ax
+;	addw	$2,	%ax
+;	movw	%ax,	mem
+; into
+;	addw	$2,	mem
+; if %ax dies here.
+;
+; Make sure that the intermediate register (%ax) cannot overlap with any
+; registers used in the mem --- namely, that it is also dead before the
+; `movw mem, ...'.
+(define_peephole2
+  [(set (match_operand:MO 0 "register_operand")
+	(match_operand:MO 1 "memory_operand"))
+   (parallel
+     [(set (match_dup 0)
+	   (any_arith3:MO (match_dup 0)
+			  (match_operand:MO 2 "const_int_operand")))
+      (clobber (reg:CC CC_REG))])
+   (set (match_dup 1) (match_dup 0))]
+  "peep2_reg_dead_p (0, operands[0])
+   && peep2_reg_dead_p (3, operands[0])"
+  [(parallel
+    [(set (match_dup 1)
+	  (any_arith3:MO (match_dup 1) (match_dup 2)))
+     (clobber (reg:CC CC_REG))])]
+  ""
+)
