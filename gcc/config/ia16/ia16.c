@@ -74,31 +74,27 @@
  * subreg_get_info() dies on libssp/gets-chk.c if !H_R_M_O (SP_REG, HImode).
  * Disallow register size changes unless HARD_REGNO_NREGS_HAS_PADDING.
  * CCmode is 4 bytes.
- *
- * (Also do not allow %es to start a multi-shortword value or be in the
- * middle of a multi-shortword value.  This causes incorrect output for
- * gcc.c-torture/execute/bitfld-*.c.  -- tkchia 20171128)
  */
 unsigned char ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER] =
 {
-/* size     cl  ch  al  ah  dl  dh  bl  bh  si  di  bp  es  ds  sp  cc, ap */
-/*  0 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  1 */  {  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  2 */  {  2,  0,  2,  0,  2,  0,  2,  0,  1,  1,  1,  1,  1,  1,  0,  1 },
-/*  3 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  4 */  {  4,  0,  4,  0,  4,  0,  3,  0,  2,  2,  2,  0,  0,  0,  1,  0 },
-/*  5 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  6 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  7 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/*  8 */  {  8,  0,  7,  0,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0 },
-/*  9 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 10 */  {  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 11 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 12 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 13 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 14 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 15 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* 16 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* size     cl  ch  al  ah  dl  dh  bl  bh  si  di  bp  es  ds  sp  cc  ss  cs  ap */
+/*  0 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  1 */  {  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  2 */  {  2,  0,  2,  0,  2,  0,  2,  0,  1,  1,  1,  1,  1,  1,  0,  1,  1,  1 },
+/*  3 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  4 */  {  4,  0,  4,  0,  4,  0,  3,  0,  2,  2,  2,  2,  0,  0,  1,  0,  0,  0 },
+/*  5 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  6 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  7 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  8 */  {  8,  0,  7,  0,  0,  0,  0,  0,  4,  4,  0,  0,  0,  0,  0,  0,  0,  0 },
+/*  9 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 10 */  {  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 11 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 12 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 13 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 14 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 15 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
+/* 16 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
 };
 
 /* Register Classes.  */
@@ -118,7 +114,9 @@ enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER] = {
 	/* 12 ds */ SEGMENT_REGS,
 	/* 13 sp */ HI_REGS,
 	/* 14 cc */ ALL_REGS,
-	/* 15 ap */ ALL_REGS,
+	/* 15 ss */ SEGMENT_REGS,
+	/* 16 cs */ SEGMENT_REGS,
+	/* 17 ap */ ALL_REGS,
 };
 
 /* Processor target table, indexed by processor number */
@@ -757,9 +755,11 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
 
       emit_move_insn (gen_rtx_SUBREG (HImode, op2, 0), op);
       if (FUNC_OR_METHOD_TYPE_P (from_type))
-	emit_insn (gen_movhi_cs (gen_rtx_SUBREG (HImode, op2, 2)));
+	emit_move_insn (gen_rtx_SUBREG (HImode, op2, 2),
+			gen_rtx_REG (HImode, CS_REG));
       else
-	emit_insn (gen_movhi_ss (gen_rtx_SUBREG (HImode, op2, 2)));
+	emit_move_insn (gen_rtx_SUBREG (HImode, op2, 2),
+			gen_rtx_REG (HImode, SS_REG));
 
       return op2;
     }
@@ -2108,12 +2108,13 @@ ia16_asm_file_start (void)
 #define TARGET_ASM_UNALIGNED_DI_OP	"\t.quad\t"
 #define TARGET_ASM_UNALIGNED_TI_OP	"\t.octa\t"
 
-static const char *reg_QInames[SI_REG] = {
+static const char *reg_QInames[FIRST_NOQI_REG] = {
 	"cl", "ch", "al", "ah", "dl", "dh", "bl", "bh"
 };
 
-static const char *reg_HInames[SP_REG+1] = {
-	"cx", 0, "ax", 0, "dx", 0, "bx", 0, "si", "di", "bp", "es", "ds", "sp"
+static const char *reg_HInames[LAST_HARD_REG + 1] = {
+	"cx", 0, "ax", 0, "dx", 0, "bx", 0, "si", "di", "bp", "es", "ds", "sp",
+	0, "ss", "cs"
 };
 
 /* E is known not to be null when this is called.  These non-standard codes are
