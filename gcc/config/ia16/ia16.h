@@ -184,7 +184,7 @@ enum reg_class {	/*	 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   BASE_REGS,	     /* B 003700  .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */
   ES_REGS,	     /* e 004000  .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
   SEGMENT_REGS,	     /* Q 014000  .  .  . ds es  .  .  .  .  .  .  .  .  .  .  . */
-  HI_REGS,	     /*   027400  .  . sp  . es bp di si  .  .  .  .  .  .  .  . */
+  HI_REGS,	     /*   037400  .  . sp ds es bp di si  .  .  .  .  .  .  .  . */
   GENERAL_REGS,	     /* r 023777  .  . sp  .  . bp di si bh bl dh dl ah al ch cl */
   SEG_GENERAL_REGS,  /* T 037777  .  . sp ds es bp di si bh bl dh dl ah al ch cl */
   ALL_REGS,	     /*   177777 ap cc sp ds es bp di si bh bl dh dl ah al ch cl */
@@ -224,8 +224,8 @@ enum reg_class {	/*	 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   { 0002300 }, /* BASE_W_INDEX_REGS w .  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */ \
   { 0003700 }, /* BASE_REGS,	    B .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */ \
   { 0004000 }, /* ES_REGS,	    e .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
-  { 0014000 }, /* SEGMENT_REGS,	    Q .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
-  { 0027400 }, /* HI_REGS,	      .  . sp ds es bp di si  .  .  .  .  .  .  .  . */ \
+  { 0014000 }, /* SEGMENT_REGS,	    Q .  .  . ds es  .  .  .  .  .  .  .  .  .  .  . */ \
+  { 0037400 }, /* HI_REGS,	      .  . sp ds es bp di si  .  .  .  .  .  .  .  . */ \
   { 0023777 }, /* GENERAL_REGS,	    r .  . sp  .  . bp di si bh bl dh dl ah al ch cl */ \
   { 0037777 }, /* SEG_GENERAL_REGS, T .  . sp ds es bp di si bh bl dh dl ah al ch cl */ \
   { 0177777 }, /* ALL_REGS,	     ap cc sp ds es bp di si bh bl dh dl ah al ch cl */ \
