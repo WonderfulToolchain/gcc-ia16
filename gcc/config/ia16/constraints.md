@@ -32,11 +32,11 @@
 
 ; Machine specific constraints:
 ; Used register constraints:
-; aAbBc dD     h   j k l         qQ R S Tu   w x
+; aAbBc dDe    h   j k l         qQ R S Tu   w x
 ; Used constant constraints (IJKLMNOP integers only):
 ;                 I     L M     P         U         Z
 ; Available:
-;      C  e f                          t   v  W  yYz
+;      C    f                          t   v  W  yYz
 
 ; Individual 16-bit registers.
 (define_register_constraint "a"	  "AX_REGS"	"The @code{ax} register.")
