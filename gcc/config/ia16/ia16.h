@@ -410,7 +410,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* Addressing Modes */
 #define CONSTANT_ADDRESS_P(x)	CONSTANT_P (x)
-#define MAX_REGS_PER_ADDRESS	2
+#define MAX_REGS_PER_ADDRESS	3
 
 /* Condition Code Status */
 
