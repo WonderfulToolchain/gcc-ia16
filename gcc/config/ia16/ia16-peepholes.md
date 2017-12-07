@@ -41,9 +41,7 @@
 ; Move multiple peepholes.
 ; Misc peepholes.
 ; And with constants.
-; Ior with constants.
-; Xor with constants.
-; Shift/rotate with constants.
+; Far pointers, far addresses, and general 32-bit weirdness.
 
 ;; Move multiple peepholes.
 
@@ -632,6 +630,8 @@
   operands[5] = simplify_gen_subreg (QImode, operands[1], HImode, 0);
 })
 
+;; Far pointers, far addresses, and general 32-bit weirdness.
+
 ; Try to rewrite
 ;	movw	%es,	%bx
 ;	movw	%bx,	%es
@@ -692,5 +692,26 @@
     [(set (match_dup 1)
 	  (any_arith3:MO (match_dup 1) (match_dup 2)))
      (clobber (reg:CC CC_REG))])]
+  ""
+)
+
+;	movw	6(%bp),	%bx
+;	movw	8(%bp),	%ax	->	lesw	6(%bp), %bx
+;	movw	%ax,	%es
+(define_peephole2
+  [(set (match_operand:HI 0 "register_operand")
+	(match_operand:HI 1 "memory_operand"))
+   (set (match_operand:HI 2 "nonsegment_register_operand")
+	(match_operand:HI 3 "memory_operand"))
+   (set (match_operand:HI 4 "segment_register_operand") (match_dup 2))]
+  "reload_completed
+   && peep2_reg_dead_p (0, operands[0])
+   && peep2_reg_dead_p (0, operands[2])
+   && peep2_reg_dead_p (3, operands[2])
+   && ia16_move_multiple_mem_p (HImode, operands[1], operands[3])"
+  [(parallel
+    [(set (match_dup 0) (match_dup 1))
+     (set (match_dup 4) (match_dup 3))]
+  )]
   ""
 )
