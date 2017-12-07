@@ -60,6 +60,11 @@
 	(match_test "ia16_regno_in_class_p (REGNO (op), SEGMENT_REGS)"))
 )
 
+(define_predicate "nonsegment_register_operand"
+   (and (match_code "reg")
+	(match_test "! ia16_regno_in_class_p (REGNO (op), SEGMENT_REGS)"))
+)
+
 ; Match the memory operand of an xlat instruction (to be split before reload).
 ; Combine creates this in a number of ways.
 ; TODO: Make ia16_xlat_cost() use this predicate to reduce code duplication.
