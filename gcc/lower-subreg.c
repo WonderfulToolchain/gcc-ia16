@@ -1688,12 +1688,7 @@ public:
   {}
 
   /* opt_pass methods: */
-#ifndef MODE_SEGMENT_REG_CLASS
   virtual bool gate (function *) { return flag_split_wide_types != 0; }
-#else
-  /* Special case for ia16-elf.  */
-  virtual bool gate (function *) { return false; }
-#endif
   virtual unsigned int execute (function *)
     {
       decompose_multiword_subregs (false);
