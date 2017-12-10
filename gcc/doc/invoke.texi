@@ -756,7 +756,7 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mseparate-code-segment -mcmodel=tiny -mcmodel=small}
+-mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16562,6 +16562,24 @@ Allow (or disallow) the use of jump instructions which can only jump
 @minus{}128/+127 bytes.  The default is not to use them.  This option only
 affects instructions for which the assembler doesn't provide a work-around
 and the compiler doesn't know the jump displacement.
+
+@item -mrtd
+@opindex mrtd
+Use a different function-calling convention, in which functions that
+take a fixed number of arguments return with the @code{ret @var{num}}
+instruction, which pops their arguments while returning.  This saves one
+instruction in the caller since there is no need to pop the arguments
+there.
+
+@strong{Warning:}
+you must provide function prototypes for all functions that
+take variable numbers of arguments (including @code{printf});
+otherwise incorrect code is generated for calls to those
+functions.
+
+In addition, seriously incorrect code results if you call a
+function with too many arguments.  (Normally, extra arguments are
+harmlessly ignored.)
 @end table
 
 @node IA-64 Options
