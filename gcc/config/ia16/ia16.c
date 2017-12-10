@@ -348,6 +348,20 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
   return decl != 0;
 }
 
+/* Passing Function Arguments on the Stack */
+#undef	TARGET_RETURN_POPS_ARGS
+#define	TARGET_RETURN_POPS_ARGS ia16_return_pops_args
+static int
+ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED,
+		       tree funtype ATTRIBUTE_UNUSED, int size)
+{
+  /* Note that the `-mrtd' calling convention will also be applied to libgcc
+     library functions (e.g. __udivdi3).  This usually means that, if we
+     compile code using `-mrtd', we will need a libgcc multilib compiled with
+     `-mrtd' to link against our code.  */
+  return TARGET_RTD ? size : 0;
+}
+
 /* Addressing Modes */
 
 #undef  TARGET_ADDR_SPACE_ADDRESS_MODE

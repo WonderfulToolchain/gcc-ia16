@@ -80,3 +80,7 @@ Generate code for the tiny code model (default), with one combined data and text
 mcmodel=small
 Target RejectNegative Mask(SEPARATE_CSEG) Mask(CMODEL_IS_SMALL)
 Generate code for the small code model, with one data and one text segment.
+
+mrtd
+Target Report Mask(RTD)
+Alternate calling convention (callee pops arguments).
