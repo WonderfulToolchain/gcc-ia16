@@ -24,6 +24,7 @@
 #include "tm.h"
 #include "c-family/c-common.h"
 #include "c-family/c-pragma.h"
+#include "hard-reg-set.h"
 
 static void
 def_or_undef_macro (const char *name, bool def_p)
@@ -56,6 +57,9 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_FEATURE_SHIFT_MASKED", TARGET_SHIFT_MASKED);
   def_or_undef_macro ("__IA16_FEATURE_AAD_IMM", TARGET_AAD_IMM);
   def_or_undef_macro ("__IA16_FEATURE_FSTSW_AX", TARGET_FSTSW_AX);
+
+  /* If %ds is an allocatable register, define a macro to advertise this.  */
+  def_or_undef_macro ("__IA16_FEATURE_ALLOCABLE_DS_REG", ! fixed_regs[DS_REG]);
 
   /* Define macros corresponding to the chosen memory model.  I define both
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL}__, and a simple
