@@ -359,7 +359,7 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED,
      library functions (e.g. __udivdi3).  This usually means that, if we
      compile code using `-mrtd', we will need a libgcc multilib compiled with
      `-mrtd' to link against our code.  */
-  return TARGET_RTD ? size : 0;
+  return TARGET_RTD && ! stdarg_p (funtype) ? size : 0;
 }
 
 /* Addressing Modes */
