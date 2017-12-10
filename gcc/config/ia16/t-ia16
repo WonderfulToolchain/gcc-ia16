@@ -1,10 +1,31 @@
 # 16.1 Target Makefile Fragments
 
+# Build ia16-c.o.  Also take the opportunity to check for any previously
+# installed `i80286' multilib (which I included from 8 Oct to 9 Dec 2017),
+# which should really be cleaned away.  -- tkchia
+#
 ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
+	@if test -e "$(prefix)"/ia16-elf/lib/i80286; then \
+	  exec >&2; \
+	  echo; \
+	  echo '*** multilib settings have changed, please rebuild! ***'; \
+	  echo 'Please clean up the installation directory, and rebuild'; \
+	  echo 'gcc-ia16 (and libstdc++, and newlib) from start.'; \
+	  echo 'To do this using build-ia16:'; \
+	  echo '  $$ cd ....../build-ia16'; \
+	  echo '  $$ git pull'; \
+	  echo '  $$ ./build.sh gcc1 newlib gcc2'; \
+	  echo 'Alternatively, manually remove the following directories:'; \
+	  find "$(prefix)" -name i80286 -ls; \
+	  echo 'and arrange to rebuild GCC.'; \
+	  echo; \
+	  exit 1; \
+	fi
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-MULTILIB_OPTIONS=march=any_186/march=i80286 \
-	Os/fno-omit-frame-pointer/fno-split-wide-types
-MULTILIB_DIRNAMES=any_186 i80286 size frame-pointer wide-types
+MULTILIB_OPTIONS=march=any_186 Os/fno-omit-frame-pointer/fno-split-wide-types
+MULTILIB_DIRNAMES=any_186 size frame-pointer wide-types
 MULTILIB_MATCHES=march?any_186=march?i80186 march?any_186=march?i80188 \
-	march?any_186=march?v20 march?any_186=march?v30
+	march?any_186=march?v20 march?any_186=march?v30 \
+	march?any_186=march?i80286
+
