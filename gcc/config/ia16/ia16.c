@@ -1177,12 +1177,38 @@ ia16_i808x_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
   return (cost);
 }
 
+/* Return the cost of an address when optimizing for size rather than speed. */
+static int
+ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
+{
+  /* Treat the r/m portion of a mod-r/m encoding as taking up half a byte.  */
+  int cost = (C (0) + C (1)) / 2;
+
+  if (r1)
+    {
+      if (r2)
+        {
+          /* If r1 == r2, a "movw" instruction is needed.  */
+          if (rtx_equal_p (r1, r2))
+            cost += IA16_COST (move);
+        }
+    }
+
+  if (c)
+    cost += ia16_constant_cost (c, Pmode, MEM);
+
+  if (r9)
+    cost += C (1);
+
+  return (cost);
+}
+
 /* Size costs for IA-16 instructions.  Used when optimizing for size.
  * EA sizes are not included except for xlat.
  */
  struct processor_costs ia16_size_costs = {
   /* byte_fetch */	1,
-  /* ea_calc */		ia16_default_address_cost,
+  /* ea_calc */		ia16_size_address_cost,
   /* move */		C (2),
   /* imm_load */	{ C (1), C (1) },
   /* imm_store */	{ C (2), C (2) },
@@ -2040,6 +2066,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
     case ASM_INPUT:
     case ASM_OPERANDS:
     case CONCAT:
+    case STRICT_LOW_PART:
       return false;
 
     /* See comment above get_last_value (const_rtx) in combine.c.  */
@@ -2065,10 +2092,12 @@ ia16_option_override (void)
   ia16_features = processor_target_table[target_arch].features;
   if (target_tune != PROCESSOR_ANY)
     {
-      ia16_costs = processor_target_table[target_arch].cost;
+      ia16_costs = processor_target_table[target_tune].cost;
       ia16_features = (ia16_features & 15)
 	| (processor_target_table[target_tune].features & 16);
     }
+  if (optimize_size)
+    ia16_costs = &ia16_size_costs;
 }
 
 /* The Overall Framework of an Assembler File */
