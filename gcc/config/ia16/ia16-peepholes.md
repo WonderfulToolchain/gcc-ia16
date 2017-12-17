@@ -561,31 +561,31 @@
 
 ;	movw	%ax,	%bx	->	xchgw	%ax,	%bx
 ; if %ax dies here and size matters.
-(define_peephole2
-  [(set (match_operand:EQ16 0 "xchgw_ax_register_operand")
-	(match_operand:EQ16 1 "accumulator_register_operand"))]
-  "optimize_size && reload_completed
-   && peep2_reg_dead_p (1, operands[1])"
-  [(parallel
-    [(set (match_dup 0) (match_dup 1))
-     (set (match_dup 1) (match_dup 0))]
-  )]
-  ""
-)
+;(define_peephole2
+;  [(set (match_operand:EQ16 0 "xchgw_ax_register_operand")
+;	(match_operand:EQ16 1 "accumulator_register_operand"))]
+;  "optimize_size && reload_completed
+;   && peep2_reg_dead_p (1, operands[1])"
+;  [(parallel
+;    [(set (match_dup 0) (match_dup 1))
+;     (set (match_dup 1) (match_dup 0))]
+;  )]
+;  ""
+;)
 
 ;	movw	%bx,	%ax	->	xchgw	%ax,	%bx
 ; if %bx dies here and size matters.
-(define_peephole2
-  [(set (match_operand:EQ16 0 "accumulator_register_operand")
-	(match_operand:EQ16 1 "xchgw_ax_register_operand"))]
-  "optimize_size && reload_completed
-   && peep2_reg_dead_p (1, operands[1])"
-  [(parallel
-    [(set (match_dup 1) (match_dup 0))
-     (set (match_dup 0) (match_dup 1))]
-  )]
-  ""
-)
+;(define_peephole2
+;  [(set (match_operand:EQ16 0 "accumulator_register_operand")
+;	(match_operand:EQ16 1 "xchgw_ax_register_operand"))]
+;  "optimize_size && reload_completed
+;   && peep2_reg_dead_p (1, operands[1])"
+;  [(parallel
+;    [(set (match_dup 1) (match_dup 0))
+;     (set (match_dup 0) (match_dup 1))]
+;  )]
+;  ""
+;)
 
 ; Try to rewrite
 ;	movw	mem,	%ax
@@ -613,6 +613,23 @@
     [(set (match_dup 1)
 	  (any_arith3:MO (match_dup 1) (match_dup 2)))
      (clobber (reg:CC CC_REG))])]
+  ""
+)
+
+; Try to rewrite
+;	movw	%es,	%bx
+;	movw	%bx,	%es
+; into
+;	movw	%es,	%bx
+; This sequence is generated during reload, when far pointers are used in a
+; loop; this might be due to address -> pointer and pointer -> address
+; conversions.
+(define_peephole2
+  [(set (match_operand:MO 0 "nonsegment_register_operand")
+	(match_operand:MO 1 "register_operand"))
+   (set (match_dup 1) (match_dup 0))]
+  ""
+  [(set (match_dup 0) (match_dup 1))]
   ""
 )
 
@@ -689,23 +706,6 @@
 })
 
 ;; Far pointers, far addresses, and general 32-bit weirdness.
-
-; Try to rewrite
-;	movw	%es,	%bx
-;	movw	%bx,	%es
-; into
-;	movw	%es,	%bx
-; This sequence is generated during reload, when far pointers are used in a
-; loop; this might be due to address -> pointer and pointer -> address
-; conversions.
-(define_peephole2
-  [(set (match_operand:HI 0 "register_operand")
-	(match_operand:HI 1 "segment_register_operand"))
-   (set (match_dup 1) (match_dup 0))]
-  ""
-  [(set (match_dup 0) (match_dup 1))]
-  ""
-)
 
 ; Try to rewrite
 ;	movw	%es,	%bx
