@@ -65,6 +65,23 @@
 	(match_test "! ia16_regno_in_class_p (REGNO (op), SEGMENT_REGS)"))
 )
 
+(define_predicate "accumulator_register_operand"
+   (and (match_code "reg")
+	(match_test "REGNO (op) == A_REG"))
+)
+
+; Register usable in a 1-byte `xchgw (reg), %ax' instruction.
+(define_predicate "xchgw_ax_register_operand"
+   (and (match_operand 0 "nonsegment_register_operand")
+	(match_test "REGNO (op) != A_REG"))
+)
+
+; For rewriting `incb %al' as `incw %ax', etc.
+(define_predicate "lo_qi_register_operand"
+   (and (match_code "reg")
+	(match_test "ia16_regno_in_class_p (REGNO (op), LO_QI_REGS)"))
+)
+
 ; Match the memory operand of an xlat instruction (to be split before reload).
 ; Combine creates this in a number of ways.
 ; TODO: Make ia16_xlat_cost() use this predicate to reduce code duplication.
