@@ -587,64 +587,6 @@
   ""
 )
 
-(define_insn "*addqi_const1_clobber"
-  [(set (match_operand:QI 0 "lo_qi_register_operand")
-	(plus:QI (match_dup 0) (const_int 1)))
-   (clobber (match_operand:QI 1 "register_operand" "=u"))
-   (clobber (reg:CC CC_REG))]
-  "reload_completed &&
-   ia16_move_multiple_reg_p (QImode, operands[0], operands[1])"
-  "incw\t%X0"
-)
-
-;	incb	%al		->	incw	%ax
-; if %ah is not live.  `incw' is smaller _and_ faster on an 8086.
-(define_peephole2
-  [(parallel
-    [(set (match_operand:QI 0 "lo_qi_register_operand")
-	  (plus:QI (match_dup 0) (const_int 1)))
-     (clobber (reg:CC CC_REG))]
-  )]
-  "reload_completed
-   && peep2_regno_dead_p (1, REGNO (operands[0]) + 1)"
-  [(parallel
-    [(set (match_dup 0) (plus:QI (match_dup 0) (const_int 1)))
-     (clobber (match_dup 1))
-     (clobber (reg:CC CC_REG))]
-  )]
-{
-  operands[1] = gen_rtx_REG (QImode, REGNO (operands[0]) + 1);
-})
-
-(define_insn "*addqi_constm1_clobber"
-  [(set (match_operand:QI 0 "lo_qi_register_operand")
-	(plus:QI (match_dup 0) (const_int -1)))
-   (clobber (match_operand:QI 1 "register_operand" "=u"))
-   (clobber (reg:CC CC_REG))]
-  "reload_completed &&
-   ia16_move_multiple_reg_p (QImode, operands[0], operands[1])"
-  "decw\t%X0"
-)
-
-;	decb	%al		->	decw	%ax
-; if %ah is not live.
-(define_peephole2
-  [(parallel
-    [(set (match_operand:QI 0 "lo_qi_register_operand")
-	  (plus:QI (match_dup 0) (const_int -1)))
-     (clobber (reg:CC CC_REG))]
-  )]
-  "reload_completed
-   && peep2_regno_dead_p (1, REGNO (operands[0]) + 1)"
-  [(parallel
-    [(set (match_dup 0) (plus:QI (match_dup 0) (const_int -1)))
-     (clobber (match_dup 1))
-     (clobber (reg:CC CC_REG))]
-  )]
-{
-  operands[1] = gen_rtx_REG (QImode, REGNO (operands[0]) + 1);
-})
-
 ; Try to rewrite
 ;	movw	mem,	%ax
 ;	addw	$2,	%ax
