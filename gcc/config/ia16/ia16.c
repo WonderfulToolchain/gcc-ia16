@@ -2807,3 +2807,16 @@ ia16_expand_epilogue (bool sibcall)
   if (!sibcall)
     emit_jump_insn (gen_simple_return ());
 }
+
+void
+ia16_asm_output_addr_diff_elt (FILE *stream, rtx body ATTRIBUTE_UNUSED,
+			   int value, int rel)
+{
+  asm_fprintf (stream, "\t.hword\t%U%LL%d-%U%LL%d\n", value, rel);
+}
+
+void
+ia16_asm_output_addr_vec_elt (FILE *stream, int value)
+{
+  asm_fprintf (stream, "\t.hword\t%U%LL%d\n", value);
+}
