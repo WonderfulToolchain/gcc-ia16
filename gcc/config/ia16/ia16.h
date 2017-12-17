@@ -540,7 +540,9 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* Output of Dispatch Tables.  */
 #define ASM_OUTPUT_ADDR_DIFF_ELT(stream, body, value, rel) \
-	fprintf (stream, "\t.word\t.%u-.%u\n", value, rel)
+	ia16_asm_output_addr_diff_elt ((stream), (body), (value), (rel))
+#define ASM_OUTPUT_ADDR_VEC_ELT(stream, value) \
+	ia16_asm_output_addr_vec_elt ((stream), (value))
 
 /* Assembler Commands for Alignment.  */
 #undef ASM_OUTPUT_SKIP
@@ -580,7 +582,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define HAS_LONG_COND_BRANCH		true
 #define HAS_LONG_UNCOND_BRANCH		true
 #define CASE_VECTOR_MODE		Pmode
-#define CASE_VECTOR_PC_RELATIVE		1
+#define CASE_VECTOR_PC_RELATIVE		0
 /* FIXME Not documented: caller-save.c fails if MOVE_MAX < UNITS_PER_WORD.  */
 /* #define MOVE_MAX 		(UNITS_PER_WORD / (TARGET_TUNE_8BIT ? 2 : 1)) */
 #define	MOVE_MAX			UNITS_PER_WORD
