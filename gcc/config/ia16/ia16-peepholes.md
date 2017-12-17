@@ -558,6 +558,122 @@
   operands[6] = plus_constant (HImode, operands[4], INTVAL (operands[1]));
 })
 
+
+;	movw	%ax,	%bx	->	xchgw	%ax,	%bx
+; if %ax dies here and size matters.
+(define_peephole2
+  [(set (match_operand:EQ16 0 "xchgw_ax_register_operand")
+	(match_operand:EQ16 1 "accumulator_register_operand"))]
+  "optimize_size && reload_completed
+   && peep2_reg_dead_p (1, operands[1])"
+  [(parallel
+    [(set (match_dup 0) (match_dup 1))
+     (set (match_dup 1) (match_dup 0))]
+  )]
+  ""
+)
+
+;	movw	%bx,	%ax	->	xchgw	%ax,	%bx
+; if %bx dies here and size matters.
+(define_peephole2
+  [(set (match_operand:EQ16 0 "accumulator_register_operand")
+	(match_operand:EQ16 1 "xchgw_ax_register_operand"))]
+  "optimize_size && reload_completed
+   && peep2_reg_dead_p (1, operands[1])"
+  [(parallel
+    [(set (match_dup 1) (match_dup 0))
+     (set (match_dup 0) (match_dup 1))]
+  )]
+  ""
+)
+
+(define_insn "*addqi_const1_clobber"
+  [(set (match_operand:QI 0 "lo_qi_register_operand")
+	(plus:QI (match_dup 0) (const_int 1)))
+   (clobber (match_operand:QI 1 "register_operand" "=u"))
+   (clobber (reg:CC CC_REG))]
+  "reload_completed &&
+   ia16_move_multiple_reg_p (QImode, operands[0], operands[1])"
+  "incw\t%X0"
+)
+
+;	incb	%al		->	incw	%ax
+; if %ah is not live.  `incw' is smaller _and_ faster on an 8086.
+(define_peephole2
+  [(parallel
+    [(set (match_operand:QI 0 "lo_qi_register_operand")
+	  (plus:QI (match_dup 0) (const_int 1)))
+     (clobber (reg:CC CC_REG))]
+  )]
+  "reload_completed
+   && peep2_regno_dead_p (1, REGNO (operands[0]) + 1)"
+  [(parallel
+    [(set (match_dup 0) (plus:QI (match_dup 0) (const_int 1)))
+     (clobber (match_dup 1))
+     (clobber (reg:CC CC_REG))]
+  )]
+{
+  operands[1] = gen_rtx_REG (QImode, REGNO (operands[0]) + 1);
+})
+
+(define_insn "*addqi_constm1_clobber"
+  [(set (match_operand:QI 0 "lo_qi_register_operand")
+	(plus:QI (match_dup 0) (const_int -1)))
+   (clobber (match_operand:QI 1 "register_operand" "=u"))
+   (clobber (reg:CC CC_REG))]
+  "reload_completed &&
+   ia16_move_multiple_reg_p (QImode, operands[0], operands[1])"
+  "decw\t%X0"
+)
+
+;	decb	%al		->	decw	%ax
+; if %ah is not live.
+(define_peephole2
+  [(parallel
+    [(set (match_operand:QI 0 "lo_qi_register_operand")
+	  (plus:QI (match_dup 0) (const_int -1)))
+     (clobber (reg:CC CC_REG))]
+  )]
+  "reload_completed
+   && peep2_regno_dead_p (1, REGNO (operands[0]) + 1)"
+  [(parallel
+    [(set (match_dup 0) (plus:QI (match_dup 0) (const_int -1)))
+     (clobber (match_dup 1))
+     (clobber (reg:CC CC_REG))]
+  )]
+{
+  operands[1] = gen_rtx_REG (QImode, REGNO (operands[0]) + 1);
+})
+
+; Try to rewrite
+;	movw	mem,	%ax
+;	addw	$2,	%ax
+;	movw	%ax,	mem
+; into
+;	addw	$2,	mem
+; if %ax dies here.
+;
+; Make sure that the intermediate register (%ax) cannot overlap with any
+; registers used in the mem --- namely, that it is also dead before the
+; `movw mem, ...'.
+(define_peephole2
+  [(set (match_operand:MO 0 "register_operand")
+	(match_operand:MO 1 "memory_operand"))
+   (parallel
+     [(set (match_dup 0)
+	   (any_arith3:MO (match_dup 0)
+			  (match_operand:MO 2 "const_int_operand")))
+      (clobber (reg:CC CC_REG))])
+   (set (match_dup 1) (match_dup 0))]
+  "peep2_reg_dead_p (0, operands[0])
+   && peep2_reg_dead_p (3, operands[0])"
+  [(parallel
+    [(set (match_dup 1)
+	  (any_arith3:MO (match_dup 1) (match_dup 2)))
+     (clobber (reg:CC CC_REG))])]
+  ""
+)
+
 ;; And with constants.
 
 ; Recursive peepholes would help - xor reg,reg vs. mov $0,mem.
@@ -666,38 +782,10 @@
   ""
 )
 
-; Try to rewrite
-;	movw	mem,	%ax
-;	addw	$2,	%ax
-;	movw	%ax,	mem
-; into
-;	addw	$2,	mem
-; if %ax dies here.
-;
-; Make sure that the intermediate register (%ax) cannot overlap with any
-; registers used in the mem --- namely, that it is also dead before the
-; `movw mem, ...'.
-(define_peephole2
-  [(set (match_operand:MO 0 "register_operand")
-	(match_operand:MO 1 "memory_operand"))
-   (parallel
-     [(set (match_dup 0)
-	   (any_arith3:MO (match_dup 0)
-			  (match_operand:MO 2 "const_int_operand")))
-      (clobber (reg:CC CC_REG))])
-   (set (match_dup 1) (match_dup 0))]
-  "peep2_reg_dead_p (0, operands[0])
-   && peep2_reg_dead_p (3, operands[0])"
-  [(parallel
-    [(set (match_dup 1)
-	  (any_arith3:MO (match_dup 1) (match_dup 2)))
-     (clobber (reg:CC CC_REG))])]
-  ""
-)
-
 ;	movw	6(%bp),	%bx
 ;	movw	8(%bp),	%ax	->	lesw	6(%bp), %bx
 ;	movw	%ax,	%es
+; if %ax and %bx are already dead, and %ax dies again.
 (define_peephole2
   [(set (match_operand:HI 0 "register_operand")
 	(match_operand:HI 1 "memory_operand"))
@@ -713,5 +801,27 @@
     [(set (match_dup 0) (match_dup 1))
      (set (match_dup 4) (match_dup 3))]
   )]
+  ""
+)
+
+;	movw	6(%bp),	%bx
+;	movw	8(%bp),	%si	->	lesw	6(%bp), %bx
+;	movw	%si,	%es		movw	%es,	%si
+; if %bx and %si are already dead, but %si goes live again later.
+(define_peephole2
+  [(set (match_operand:HI 0 "register_operand")
+	(match_operand:HI 1 "memory_operand"))
+   (set (match_operand:HI 2 "nonsegment_register_operand")
+	(match_operand:HI 3 "memory_operand"))
+   (set (match_operand:HI 4 "segment_register_operand") (match_dup 2))]
+  "reload_completed
+   && peep2_reg_dead_p (0, operands[0])
+   && peep2_reg_dead_p (0, operands[2])
+   && ! peep2_reg_dead_p (3, operands[2])
+   && ia16_move_multiple_mem_p (HImode, operands[1], operands[3])"
+  [(parallel
+    [(set (match_dup 0) (match_dup 1))
+     (set (match_dup 4) (match_dup 3))])
+   (set (match_dup 2) (match_dup 4))]
   ""
 )
