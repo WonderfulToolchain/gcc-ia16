@@ -1464,6 +1464,64 @@ int ia16_features = 0;
 #define M_MOD(x)	(QImode == (x) ? M_QI : M_HI)
 #define M_RTX(x)	(QImode == GET_MODE (x) ? M_QI : M_HI)
 
+static unsigned
+ia16_mode_hwords (machine_mode mode)
+{
+  return (GET_MODE_SIZE (mode) + 1) / 2;
+}
+
+#undef	TARGET_REGISTER_MOVE_COST
+#define	TARGET_REGISTER_MOVE_COST ia16_register_move_cost
+
+static int
+ia16_register_move_cost (machine_mode mode, reg_class_t from ATTRIBUTE_UNUSED,
+			 reg_class_t to ATTRIBUTE_UNUSED)
+{
+  return IA16_COST (move) * ia16_mode_hwords (mode);
+}
+
+#undef	TARGET_MEMORY_MOVE_COST
+#define	TARGET_MEMORY_MOVE_COST ia16_memory_move_cost
+
+/* It is, on average, slightly cheaper to copy to/from memory with al/ax
+ * than with other registers, because a faster, immediate address
+ * instruction exists.  Segments registers, if supported, would also be
+ * cheaper to copy to/from memory.
+ */
+static int
+ia16_memory_move_cost (machine_mode mode, reg_class_t rclass ATTRIBUTE_UNUSED,
+		       bool in)
+{
+  int cost;
+
+  if (in)
+    {
+      if (GET_MODE_SIZE (mode) == 1)
+	cost = IA16_COST (int_load[M_QI]);
+      else
+	cost = IA16_COST (int_load[M_HI]) * ia16_mode_hwords (mode);
+    }
+  else
+    {
+      if (GET_MODE_SIZE (mode) == 1)
+	cost = IA16_COST (int_store[M_QI]);
+      else
+	cost = IA16_COST (int_store[M_HI]) * ia16_mode_hwords (mode);
+    }
+
+  if (rclass == AX_REGS
+      || rclass == SEGMENT_REGS
+      || rclass == ES_REGS)
+    {
+      if (cost > COSTS_N_INSNS (1))
+	cost -= COSTS_N_INSNS (1);
+      else
+	cost = 1;
+    }
+
+  return cost;
+}
+
 #undef  TARGET_ADDRESS_COST
 #define TARGET_ADDRESS_COST ia16_address_cost
 
@@ -1487,7 +1545,7 @@ ia16_address_cost_internal (rtx address)
   /* Parse the address.  */
   ia16_parse_address (address, &r1, &r2, &c, &r9);
 
-  return (ia16_costs->ea_calc (r1, r2, c, r9));
+  return IA16_COST (ea_calc (r1, r2, c, r9));
 }
 
 static int
@@ -1862,7 +1920,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	      rtx op1 = XEXP (XEXP (x, 0), 1);
 	      rtx cst = XEXP (x, 1);
 
-	      *total = IA16_COST (lea) + ia16_costs->ea_calc (op0, op1, cst, NULL_RTX)
+	      *total = IA16_COST (lea)
+		+ IA16_COST (ea_calc (op0, op1, cst, NULL_RTX))
 		+ rtx_cost (op0, mode, outer_code, 0, speed)
 	        + rtx_cost (op1, mode, outer_code, 1, speed);
 	      return true;
