@@ -419,24 +419,6 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define SELECT_CC_MODE(op, x, y)        ia16_select_cc_mode (op, x, y, false)
 #define REVERSIBLE_CC_MODE(mode)	1
 
-/* Describing Relative Costs of Operations.
- * It is, on average, slightly cheaper to copy to/from memory with al/ax
- * than with other registers, because a faster, immediate address
- * instruction exists.  Segments registers, if supported, would also be
- * cheaper to copy to/from memory.  Costs are based on timings for the 80186
- * and much too high for the 80286.  Discourage regclass.c from using
- * ALL_REGS as alternate class.
- * TODO: Now that we have ia16_costs, use it.  But that needs
- * stuff in ia16-protos.h.
- */
-#define REGISTER_MOVE_COST(mode, from, to) \
-  (COSTS_N_INSNS (from == ALL_REGS || to == ALL_REGS ? 16000 : 2))
-
-#define MEMORY_MOVE_COST(mode, class, in) \
-  ((TARGET_TUNE_8BIT ? (GET_MODE_SIZE (mode) - 1) * COSTS_N_INSNS (4) : 0) + \
-  ((class) == AX_REGS ? (in ? COSTS_N_INSNS (8) : COSTS_N_INSNS (11)) : \
-  (in ? COSTS_N_INSNS (9) : COSTS_N_INSNS (12))))
-
 /* A taken branch costs 13 cycles and a not taken branch costs 4 cycles.
  * Add to that 4 (or 8) cycles to fetch the branch instruction (two bytes)
  * itself.
