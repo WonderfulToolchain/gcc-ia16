@@ -43,7 +43,8 @@ main (void)
       printf ("cannot get size of hash1 ()\n");
       abort ();
     }
-    /*
+  /*
+	hash1:
 		pushw	%si
 		pushw	%di
 		pushw	%es
@@ -79,7 +80,7 @@ main (void)
 		popw	%di
 		popw	%si
 		ret
-     */
+   */
   if (hash1_size > 0x45)
     {
       printf ("hash1 () is too large: %#x bytes\n", hash1_size);
