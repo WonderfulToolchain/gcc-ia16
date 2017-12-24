@@ -600,7 +600,7 @@
 ; `movw mem, ...'.
 (define_peephole2
   [(set (match_operand:MO 0 "register_operand")
-	(match_operand:MO 1 "memory_operand"))
+	(match_operand:MO 1 "nonimmediate_operand"))
    (parallel
      [(set (match_dup 0)
 	   (any_arith3:MO (match_dup 0)
@@ -613,6 +613,30 @@
     [(set (match_dup 1)
 	  (any_arith3:MO (match_dup 1) (match_dup 2)))
      (clobber (reg:CC CC_REG))])]
+  ""
+)
+
+; As above, but rather than (clobber ...) CC_REG, we (set ...) it for its ZF.
+(define_peephole2
+  [(set (match_operand:MO 0 "register_operand")
+	(match_operand:MO 1 "nonimmediate_operand"))
+   (parallel
+     [(set (reg:CCZ CC_REG)
+	   (compare:CCZ
+	     (any_arith3:MO (match_dup 0)
+			    (match_operand:MO 2 "const_int_operand"))
+	     (const_int 0)))
+      (set (match_dup 0)
+	   (any_arith3:MO (match_dup 0) (match_dup 2)))])
+   (set (match_dup 1) (match_dup 0))]
+  "peep2_reg_dead_p (0, operands[0])
+   && peep2_reg_dead_p (3, operands[0])"
+  [(parallel
+    [(set (reg:CCZ CC_REG)
+	  (compare:CCZ (any_arith3:MO (match_dup 1) (match_dup 2))
+		       (const_int 0)))
+     (set (match_dup 1)
+	  (any_arith3:MO (match_dup 1) (match_dup 2)))])]
   ""
 )
 
@@ -630,6 +654,21 @@
    (set (match_dup 1) (match_dup 0))]
   ""
   [(set (match_dup 0) (match_dup 1))]
+  ""
+)
+
+; Try to rewrite
+;	movw	$128,	%ax
+;	movw	%ax,	%di
+; into
+;	movw	$128,	%di
+; if %ax dies here.
+(define_peephole2
+  [(set (match_operand:MO 0 "register_operand")
+	(match_operand:MO 1 "nonmemory_operand"))
+   (set (match_operand:MO 2 "nonsegment_register_operand") (match_dup 0))]
+  "peep2_reg_dead_p (2, operands[0])"
+  [(set (match_dup 2) (match_dup 1))]
   ""
 )
 
