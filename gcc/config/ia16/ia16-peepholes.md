@@ -600,7 +600,7 @@
 ; `movw mem, ...'.
 (define_peephole2
   [(set (match_operand:MO 0 "register_operand")
-	(match_operand:MO 1 "nonimmediate_operand"))
+	(match_operand:MO 1 "nonimmediate_nonsegment_operand"))
    (parallel
      [(set (match_dup 0)
 	   (any_arith3:MO (match_dup 0)
@@ -619,7 +619,7 @@
 ; As above, but rather than (clobber ...) CC_REG, we (set ...) it for its ZF.
 (define_peephole2
   [(set (match_operand:MO 0 "register_operand")
-	(match_operand:MO 1 "nonimmediate_operand"))
+	(match_operand:MO 1 "nonimmediate_nonsegment_operand"))
    (parallel
      [(set (reg:CCZ CC_REG)
 	   (compare:CCZ
