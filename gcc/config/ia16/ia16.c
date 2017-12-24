@@ -1243,7 +1243,13 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 static struct processor_costs ia16_i8086_costs = {
   /* byte_fetch	*/	2,
   /* ea_calc */		ia16_i808x_address_cost,
-  /* move */		C (2),
+			/* Nasty hack to prevent spurious reloads and spills
+			   when compiling with -O3 --- see the description at
+			   https://github.com/tkchia/gcc-ia16/issues/15 .
+			   The value here is currently the maximum of
+			   .int_load[1] and .int_store[1].  A more proper
+			   patch is needed.  -- tkchia 20171224  */
+  /* move */		C (9) /* C (2) */,
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (10), C (10) },
   /* int_load */	{ C (8), C (8) },
@@ -1275,7 +1281,7 @@ static struct processor_costs ia16_i8086_costs = {
 static struct processor_costs ia16_i8088_costs = {
   /* byte_fetch */	4,
   /* ea_calc */		ia16_i808x_address_cost,
-  /* move */		C (2),
+  /* move */		C (13) /* C (2) */,
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (10), C (14) },
   /* int_load */	{ C (8), C (12) },
@@ -1308,7 +1314,7 @@ static struct processor_costs ia16_i8088_costs = {
 static struct processor_costs ia16_i80186_costs = {
   /* byte_fetch	*/	2,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (2),
+  /* move */		C (12) /* C (2) */,
   /* imm_load */	{ C (3), C (4) },
   /* imm_store */	{ C (12), C (13) },
   /* int_load */	{ C (9), C (9) },
@@ -1374,7 +1380,7 @@ static struct processor_costs ia16_i80286_costs = {
 static struct processor_costs ia16_nec_v30_costs = {
   /* byte_fetch */	2,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (2),
+  /* move */		C (11) /* C (2) */,
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (11), C (11) },
   /* int_load */	{ C (11), C (11) },
@@ -1406,7 +1412,7 @@ static struct processor_costs ia16_nec_v30_costs = {
 static struct processor_costs ia16_nec_v20_costs = {
   /* byte_fetch */	4,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (2),
+  /* move */		C (15) /* C (2) */,
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (11), C (15) },
   /* int_load */	{ C (11), C (15) },

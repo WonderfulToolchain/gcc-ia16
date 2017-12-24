@@ -71,15 +71,21 @@
 )
 
 ; Register usable in a 1-byte `xchgw (reg), %ax' instruction.
-(define_predicate "xchgw_ax_register_operand"
-   (and (match_operand 0 "nonsegment_register_operand")
-	(match_test "REGNO (op) != A_REG"))
-)
+;(define_predicate "xchgw_ax_register_operand"
+;   (and (match_operand 0 "nonsegment_register_operand")
+;	(match_test "REGNO (op) != A_REG"))
+;)
 
 ; For rewriting `incb %al' as `incw %ax', etc.
-(define_predicate "lo_qi_register_operand"
-   (and (match_code "reg")
-	(match_test "ia16_regno_in_class_p (REGNO (op), LO_QI_REGS)"))
+;(define_predicate "lo_qi_register_operand"
+;   (and (match_code "reg")
+;	(match_test "ia16_regno_in_class_p (REGNO (op), LO_QI_REGS)"))
+;)
+
+(define_predicate "nonimmediate_nonsegment_operand"
+    (and (match_operand 0 "nonimmediate_operand")
+	 (ior (match_operand 0 "nonregister_operand")
+	      (match_operand 0 "nonsegment_register_operand")))
 )
 
 ; Match the memory operand of an xlat instruction (to be split before reload).
