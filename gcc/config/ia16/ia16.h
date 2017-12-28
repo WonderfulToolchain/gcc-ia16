@@ -30,6 +30,7 @@
 #define TARGET_AAD_IMM		(ia16_features & 4)
 #define TARGET_FSTSW_AX		(ia16_features & 8)
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
+#define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
