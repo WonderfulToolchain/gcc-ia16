@@ -4942,6 +4942,7 @@ vect_create_data_ref_ptr (vec_info *vinfo, stmt_vec_info stmt_info,
   tree indx_before_incr, indx_after_incr;
   gimple *incr;
   bb_vec_info bb_vinfo = dyn_cast <bb_vec_info> (vinfo);
+  machine_mode ptr_mode_as;
 
   gcc_assert (iv_step != NULL_TREE
 	      || TREE_CODE (aggr_type) == ARRAY_TYPE
@@ -5009,7 +5010,8 @@ vect_create_data_ref_ptr (vec_info *vinfo, stmt_vec_info stmt_info,
 	}
       while (sinfo);
     }
-  aggr_ptr_type = build_pointer_type_for_mode (aggr_type, ptr_mode,
+  ptr_mode_as = targetm.addr_space.pointer_mode (TYPE_ADDR_SPACE (aggr_type));
+  aggr_ptr_type = build_pointer_type_for_mode (aggr_type, ptr_mode_as,
 					       need_ref_all);
   aggr_ptr = vect_get_new_vect_var (aggr_ptr_type, vect_pointer_var, base_name);
 
