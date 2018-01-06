@@ -601,7 +601,15 @@ ia16_expand_weird_pointer_plus_expr (rtx op0, rtx op1, rtx target,
 {
   rtx seg, op0_off, off, sum;
 
-  gcc_assert (mode == SImode || mode == VOIDmode);
+  if (mode != SImode && mode != VOIDmode)
+    {
+      fprintf (stderr, "Trying to do far pointer addition with unexpected "
+		       "target mode %u:\n", (unsigned) mode);
+      debug_rtx (op0);
+      debug_rtx (op1);
+      gcc_unreachable ();
+    }
+
   gcc_assert (GET_MODE (op0) == SImode || GET_MODE (op0) == VOIDmode);
   gcc_assert (GET_MODE (op1) == HImode || GET_MODE (op1) == VOIDmode);
 
