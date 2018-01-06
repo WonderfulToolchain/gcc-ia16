@@ -1,0 +1,64 @@
+#   Copyright (C) 2008-2016 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+
+# GCC testsuite that uses the `gcc-dg.exp' driver, looping over
+# optimization options.
+
+# Exit immediately if this isn't an IA-16 target.
+if { ![istarget ia16-*-*] } then {
+  return
+}
+
+# Load support procs.
+load_lib gcc-dg.exp
+
+# If a testcase doesn't have special options, use these.
+global DEFAULT_CFLAGS
+if ![info exists DEFAULT_CFLAGS] then {
+    set DEFAULT_CFLAGS " -std=gnu11 --save-temps"
+}
+
+# Initialize `dg'.
+dg-init
+
+    set IA16_TORTURE_OPTIONS [list \
+	{ -O0 } \
+	{ -O0 -mrtd } \
+	{ -O1 } \
+	{ -O1 -mrtd } \
+	{ -O2 } \
+	{ -O2 -mrtd } \
+	{ -Os } \
+	{ -Os -mrtd } \
+	{ -Os -flto } \
+	{ -Os -finline-functions } \
+	{ -O3 } \
+	{ -O3 -mrtd } ]
+
+#Initialize use of torture lists. 
+torture-init
+
+set-torture-options $IA16_TORTURE_OPTIONS
+
+
+# Main loop.
+gcc-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.{\[cS\],cpp}]] "" $DEFAULT_CFLAGS
+
+# Finalize use of torture lists.
+torture-finish
+
+# All done.
+dg-finish
