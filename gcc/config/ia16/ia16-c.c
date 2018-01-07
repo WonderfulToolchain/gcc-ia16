@@ -59,8 +59,7 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_FEATURE_FSTSW_AX", TARGET_FSTSW_AX);
 
   /* If %ds is an allocatable register, define a macro to advertise this.  */
-  def_or_undef_macro ("__IA16_FEATURE_ALLOCABLE_DS_REG",
-		      TARGET_ALLOCABLE_DS_REG);
+  def_or_undef_macro ("__IA16_FEATURE_ALLOCABLE_DS_REG", ! fixed_regs[DS_REG]);
 
   /* Also define a macro to give the function calling convention in use.  */
   def_or_undef_macro ("__IA16_CALLCVT_CDECL", ! TARGET_RTD);
