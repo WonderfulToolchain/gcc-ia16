@@ -84,3 +84,9 @@ Generate code for the small code model, with one data and one text segment.
 mrtd
 Target Report Mask(RTD)
 Alternate calling convention (callee pops arguments).
+
+mno-callee-assume-ds-ss
+Target RejectNegative Report Mask(NO_ASSUME_DS_SS) Undocumented
+
+mcallee-assume-ds-ss
+Target RejectNegative InverseMask(NO_ASSUME_DS_SS, ASSUME_DS_SS) Undocumented

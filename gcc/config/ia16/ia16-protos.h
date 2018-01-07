@@ -57,6 +57,7 @@ extern bool	ia16_non_overlapping_mem_p (rtx m1, rtx m2);
 #endif
 
 extern void	ia16_expand_prologue (void);
+extern void	ia16_expand_reset_ds_for_call (void);
 extern void	ia16_expand_epilogue (bool sibcall);
 extern void	ia16_asm_output_addr_diff_elt (FILE *, rtx, int, int);
 extern void	ia16_asm_output_addr_vec_elt (FILE *, int);

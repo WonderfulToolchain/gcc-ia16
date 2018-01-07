@@ -30,6 +30,7 @@
 #define TARGET_AAD_IMM		(ia16_features & 4)
 #define TARGET_FSTSW_AX		(ia16_features & 8)
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
+#define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
@@ -105,6 +106,10 @@
 #define REG_ALLOC_ORDER \
 	{ 2, 3, 4, 5, 0, 1,  6, 7, 10,  9, 8, 11, 12, 13, 14, 15, 16, 17 }
 /*	 al ah dl dh cl ch  bl bh  bp  di si  es  ds  sp  cc  ss  cs  ap */
+
+/* Try to avoid roping in %ds if possible...  */
+#define IRA_HARD_REGNO_ADD_COST_MULTIPLIER(REGNO) \
+       ((REGNO) == DS_REG ? 100.0 : 0.0)
 
 /* How Values Fit in Registers.  */
 /* FIXME: Not documented: CCmode is 32 bits.  */

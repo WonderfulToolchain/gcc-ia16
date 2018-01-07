@@ -2365,6 +2365,22 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 	return (0 == 0);
 }
 
+static bool
+ia16_to_print_seg_override_p (unsigned seg_regno, rtx rb)
+{
+  if (rb && REG_P (rb) && REGNO (rb) == BP_REG)
+    {
+      if (seg_regno == SS_REG)
+	return false;
+    }
+  else
+    {
+      if (seg_regno == DS_REG)
+	return false;
+    }
+  return true;
+}
+
 /* Possible asm operands and their address expressions:
  * c:		(const_int c)
  * (rb):	(reg rb)
@@ -2378,26 +2394,50 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 void
 ia16_print_operand_address (FILE *file, rtx e)
 {
-	rtx rb, ri, c, rs;
+  rtx rb, ri, c, rs;
 
-	if (!ia16_parse_address_strict (e, &rb, &ri, &c, &rs)) {
-        	debug_rtx (e);
-        	output_operand_lossage ("Invalid IA16 address expression.");
-        	return;
-	}
-	if (rs)
-		fprintf (file, "%s%s:",
-		         REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
-	if (c)
-		output_addr_const (file, c);
-	if (rb)
-		fprintf (file, "(%s%s",
-		         REGISTER_PREFIX, reg_HInames[REGNO (rb)]);
-	if (ri)
-		fprintf (file, ",%s%s",
-			 REGISTER_PREFIX, reg_HInames[REGNO (ri)]);
-	if (rb)
-		putc (')', file);
+  if (!ia16_parse_address_strict (e, &rb, &ri, &c, &rs))
+    {
+      debug_rtx (e);
+      output_operand_lossage ("Invalid IA16 address expression.");
+      return;
+    }
+
+  /* Map our RTL semantics to the x86 instruction set's segment override
+     weirdness.
+
+     On the RTL side:
+       * A null segment override (RS) means we are accessing an operand in
+	 the generic address space.  We can assume that %ss points to this
+	 space.  %ds _might_ point to this space --- if the function we are
+	 compiling does not use %ds for anything (liveness information for
+	 %ds is available to us at this stage).
+       * If RS is not null, then we are accessing an operand at an offset
+	 from the specified segment.
+
+     On the machine code side, no segment override is needed if
+       * our operand is an offset from %ss, and the offset involves the
+	 register %bp; or
+       * our operand is an offset from %ds, and %bp is not involved.  */
+  if (rs)
+    {
+      if (ia16_to_print_seg_override_p (REGNO (rs), rb))
+	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
+    }
+  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG))
+    {
+      if (ia16_to_print_seg_override_p (SS_REG, rb))
+	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
+    }
+
+  if (c)
+    output_addr_const (file, c);
+  if (rb)
+    fprintf (file, "(%s%s", REGISTER_PREFIX, reg_HInames[REGNO (rb)]);
+  if (ri)
+    fprintf (file, ",%s%s", REGISTER_PREFIX, reg_HInames[REGNO (ri)]);
+  if (rb)
+    putc (')', file);
 }
 
 /* Helper function for gen_prologue().  Generates RTL to push REGNO, which
@@ -2791,6 +2831,91 @@ ia16_non_overlapping_mem_p (rtx m1, rtx m2)
     return (false);
 }
 
+/* Emit instructions to reset %ds to %ss.  REGNO is either a scratch
+   register number, or a large number.  */
+static void
+ia16_expand_reset_ds_internal (unsigned regno)
+{
+  if (reload_completed && ! df_regs_ever_live_p (DS_REG))
+    return;
+
+  if (optimize_size || regno > LAST_ALLOCABLE_REG)
+    {
+      emit_insn (ia16_push_reg (SS_REG));
+      emit_insn (ia16_pop_reg (DS_REG));
+    }
+  else
+    {
+      rtx scratch = gen_rtx_REG (Pmode, regno);
+      emit_move_insn (scratch, gen_rtx_REG (Pmode, SS_REG));
+      emit_move_insn (gen_rtx_REG (Pmode, DS_REG), scratch);
+    }
+
+  emit_use (gen_rtx_REG (Pmode, DS_REG));
+}
+
+void
+ia16_expand_reset_ds_for_call (void)
+{
+  unsigned regno;
+
+  if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
+      || ! TARGET_ASSUME_DS_SS)
+    return;
+
+  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
+    {
+      if (! FUNCTION_ARG_REGNO_P (regno) && call_used_regs[regno]
+	  && ! fixed_regs[regno] && ia16_regno_in_class_p (regno, HI_REGS))
+	break;
+    }
+
+  ia16_expand_reset_ds_internal (regno);
+}
+
+static void
+ia16_expand_reset_ds_for_prologue (void)
+{
+  unsigned regno;
+
+  if (! TARGET_ALLOCABLE_DS_REG)
+    return;
+
+  if (call_used_regs[DS_REG] && TARGET_ASSUME_DS_SS)
+    return;
+
+  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
+    {
+      if (! FUNCTION_ARG_REGNO_P (regno) && call_used_regs[regno]
+	  && ! fixed_regs[regno] && ia16_regno_in_class_p (regno, HI_REGS))
+	break;
+    }
+
+  ia16_expand_reset_ds_internal (regno);
+}
+
+static void
+ia16_expand_reset_ds_for_epilogue (void)
+{
+  unsigned regno;
+
+  if (! TARGET_ALLOCABLE_DS_REG)
+    return;
+
+  /* Under `-fcall-saved-ds`, there is no need to reset %ds here, as
+     ia16_expand_epilogue (.) will itself pop %ds from the stack.  */
+  if (! call_used_regs[DS_REG])
+    return;
+
+  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
+    {
+      if (regno != BP_REG && ia16_save_reg_p (regno))
+	break;
+    }
+
+  ia16_expand_reset_ds_internal (regno);
+}
+
 void
 ia16_expand_prologue (void)
 {
@@ -2831,6 +2956,7 @@ ia16_expand_prologue (void)
 	    }
 	}
     }
+  ia16_expand_reset_ds_for_prologue ();
   if (flag_stack_usage_info)
     {
       current_function_static_stack_size = size +
@@ -2844,6 +2970,7 @@ ia16_expand_epilogue (bool sibcall)
   unsigned int i;
   HOST_WIDE_INT size = get_frame_size ();
 
+  ia16_expand_reset_ds_for_epilogue ();
   if (ia16_save_reg_p (BP_REG))
     {
       /* We need to restore the stack pointer. We have two options:
