@@ -9,5 +9,5 @@ void incfar (int __far *a)
   *a += 2;
 }
 
-/* { dg-final { scan-assembler-times "lesw" 1 } } */
-/* { dg-final { scan-assembler-not "mov\[ \\t\].*,\[ \\t\]%es" } } */
+/* { dg-final { scan-assembler-times "l\[de\]sw" 1 } } */
+/* { dg-final { scan-assembler-not "mov\[ \\t\].*,\[ \\t\]%\[de\]s" } } */

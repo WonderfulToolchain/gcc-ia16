@@ -1,7 +1,7 @@
 /* { dg-do assemble } */
 
-/* FAIL: Compiling a memcpy (...) routine that works over far pointers may
-   cause a compiler crash at some optimization levels.  Reported by Bart
+/* Compiling a memcpy (...)-type routine that works over far pointers used
+   to cause a compiler crash at some optimization levels.  Reported by Bart
    Oldeman --- https://github.com/tkchia/gcc-ia16/issues/16 .  */
 
 void

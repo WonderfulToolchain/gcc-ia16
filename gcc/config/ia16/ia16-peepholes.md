@@ -42,6 +42,7 @@
 ; Misc peepholes.
 ; And with constants.
 ; Far pointers, far addresses, and general 32-bit weirdness.
+; Handling the %ds ?= %ss problem.
 
 ;; Move multiple peepholes.
 
@@ -205,7 +206,7 @@
 
 ; Optimize "movw mem, reg16; movw mem+2, %es" into "lesw mem, reg16".
 (define_peephole2
-  [(set (match_operand:HI 0 "register_operand")
+  [(set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "segment_register_operand")
 	(match_operand:HI 3 "memory_operand"))]
@@ -221,7 +222,7 @@
 (define_peephole2
   [(set (match_operand:HI 2 "segment_register_operand")
 	(match_operand:HI 3 "memory_operand"))
-   (set (match_operand:HI 0 "register_operand")
+   (set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))]
   "TEST_HARD_REG_BIT (reg_class_contents[GENERAL_REGS], REGNO (operands[0]))
    && ia16_move_multiple_mem_p (HImode, operands[1], operands[3])"
@@ -236,7 +237,7 @@
 ;	movw	%ax,	12(%bp)	-> movw	%ax,	12(%bp)
 ;	movw	44(%bp),%es
 (define_peephole2
-  [(set (match_operand:HI 0 "register_operand")
+  [(set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:MO 2 "memory_operand")
 	(match_operand:MO 3 "nonmemory_operand"))
@@ -258,13 +259,12 @@
 ; movw	%tmp1,	mem2	->	movw	%tmp1,	mem2
 ; movw	mem1+2,	%tmp2
 ; movw	%tmp2,	mem3		movw	%es,	mem3
-;REGNO (operands[0]) != ES_REG
-;   && (df_regs_ever_live_p (ES_REG) || call_used_regs[ES_REG])
-;   && peep2_regno_dead_p (0, ES_REG)
-;   && 
+;
+; (Limit the scratch register to %es, to avoid creating new assignments to
+; %ds, which will mess up the ia16_ds_equiv_ss_p () check below.  -- tkchia)
 (define_peephole2
-  [(match_scratch:HI 6 "Q")
-   (set (match_operand:HI 0 "register_operand")
+  [(match_scratch:HI 6 "e")
+   (set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "memory_operand")
 	(match_dup 0))
@@ -768,7 +768,7 @@
 ;	movw	%ax,	%es
 ; if %ax and %bx are already dead, and %ax dies again.
 (define_peephole2
-  [(set (match_operand:HI 0 "register_operand")
+  [(set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "nonsegment_register_operand")
 	(match_operand:HI 3 "memory_operand"))
@@ -790,7 +790,7 @@
 ;	movw	%si,	%es		movw	%es,	%si
 ; if %bx and %si are already dead, but %si goes live again later.
 (define_peephole2
-  [(set (match_operand:HI 0 "register_operand")
+  [(set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "nonsegment_register_operand")
 	(match_operand:HI 3 "memory_operand"))
@@ -805,4 +805,30 @@
      (set (match_dup 4) (match_dup 3))])
    (set (match_dup 2) (match_dup 4))]
   ""
+)
+
+;; Handling the %ds ?= %ss problem.
+
+; Insn to reset %ds = %ss before a function call or in an epilogue, when
+; (the default) -mcallee-assume-ds-ss is in effect.
+;
+; Instead of writing out the unwieldy `pushw %ss' and `popw %ds' RTXs, I
+; define a new insn which does the same thing at the x86 code level, but has
+; a simpler RTL representation.
+;
+; TODO: allow rewriting this insn as `movw %ss, %tmp; movw %tmp, %ds'.
+(define_insn "_reset_ds_slow"
+  [(set (reg:HI DS_REG) (reg:HI SS_REG))]
+  ""
+  "pushw\t%%ss\;popw\t%%ds"
+)
+
+; Elide the
+;	pushw	%ss
+;	popw	%ds
+; if %ds is known to equal %ss throughout the current function.
+(define_peephole2
+  [(set (reg:HI DS_REG) (reg:HI SS_REG))]
+  "reload_completed && ia16_ds_equiv_ss_p ()"
+  [(use (reg:HI SS_REG))]
 )

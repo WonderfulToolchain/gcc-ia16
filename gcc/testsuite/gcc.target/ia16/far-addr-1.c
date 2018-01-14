@@ -15,4 +15,4 @@ irq0_clock_ticks (void)
 # error
 #endif
 }
-/* { dg-final { scan-assembler "movw\[ \\t\]%\[de\]s:" } } */
+/* { dg-final { scan-assembler "movw\[ \\t\](%es:|.*,\[ \\t\]%ds)" } } */
