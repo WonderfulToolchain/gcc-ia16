@@ -789,6 +789,78 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
     gcc_unreachable ();
 }
 
+/* Return true if %ds is known to always equal %ss throughout the function
+   being compiled.
+
+   TODO: try to answer if %ds == %ss at a more fine-grained level.  */
+static bool ia16_ds_ss_cached_p = false, ia16_flag_ds_ss_p = false;
+
+bool
+ia16_ds_equiv_ss_p (void)
+{
+  df_ref def;
+
+  if (! TARGET_ASSUME_DS_SS || ! call_used_regs[DS_REG])
+    return false;
+
+  if (ia16_ds_ss_cached_p)
+    return ia16_flag_ds_ss_p;
+
+  ia16_flag_ds_ss_p = true;
+
+  for (def = DF_REG_DEF_CHAIN (DS_REG); def; def = DF_REF_NEXT_REG (def))
+    {
+      rtx_insn *def_insn;
+      rtx pat, op;
+
+      if (DF_REF_IS_ARTIFICIAL (def))
+	{
+	  ia16_flag_ds_ss_p = false;
+	  break;
+	}
+
+      def_insn = DF_REF_INSN (def);
+
+      /* GCC's machine-independent code thinks function calls clobber %ds,
+	 but we know that they do not.  */
+      if (CALL_P (def_insn))
+	continue;
+
+      pat = PATTERN (def_insn);
+      if (GET_CODE (pat) != SET)
+	{
+	  ia16_flag_ds_ss_p = false;
+	  break;
+	}
+
+      op = SET_DEST (pat);
+      if (! REG_P (op) || REGNO (op) != DS_REG)
+	{
+	  ia16_flag_ds_ss_p = false;
+	  break;
+	}
+
+      op = SET_SRC (pat);
+      if (! REG_P (op) || REGNO (op) != SS_REG)
+	{
+	  ia16_flag_ds_ss_p = false;
+	  break;
+	}
+    }
+
+  ia16_ds_ss_cached_p = true;
+  return ia16_flag_ds_ss_p;
+}
+
+#undef	TARGET_SET_CURRENT_FUNCTION
+#define	TARGET_SET_CURRENT_FUNCTION	ia16_set_current_function
+
+static void
+ia16_set_current_function (tree fndecl ATTRIBUTE_UNUSED)
+{
+  ia16_ds_ss_cached_p = false;
+}
+
 /* Condition Code Status */
 /* Return the "smallest" usable comparison mode for the given comparison
  * operator OP and operands X and Y.  BRANCH is true if we are optimizing for
@@ -2424,7 +2496,8 @@ ia16_print_operand_address (FILE *file, rtx e)
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
     }
-  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG))
+  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG)
+	   && ! ia16_ds_equiv_ss_p ())
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
@@ -2834,86 +2907,30 @@ ia16_non_overlapping_mem_p (rtx m1, rtx m2)
 /* Emit instructions to reset %ds to %ss.  REGNO is either a scratch
    register number, or a large number.  */
 static void
-ia16_expand_reset_ds_internal (unsigned regno)
+ia16_expand_reset_ds_internal (void)
 {
-  if (reload_completed && ! df_regs_ever_live_p (DS_REG))
-    return;
-
-  if (optimize_size || regno > LAST_ALLOCABLE_REG)
-    {
-      emit_insn (ia16_push_reg (SS_REG));
-      emit_insn (ia16_pop_reg (DS_REG));
-    }
-  else
-    {
-      rtx scratch = gen_rtx_REG (Pmode, regno);
-      emit_move_insn (scratch, gen_rtx_REG (Pmode, SS_REG));
-      emit_move_insn (gen_rtx_REG (Pmode, DS_REG), scratch);
-    }
-
-  emit_use (gen_rtx_REG (Pmode, DS_REG));
+  emit_insn (gen__reset_ds_slow ());
+  emit_use (gen_rtx_REG (HImode, DS_REG));
 }
 
 void
 ia16_expand_reset_ds_for_call (void)
 {
-  unsigned regno;
-
   if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
       || ! TARGET_ASSUME_DS_SS)
     return;
 
-  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
-    {
-      if (! FUNCTION_ARG_REGNO_P (regno) && call_used_regs[regno]
-	  && ! fixed_regs[regno] && ia16_regno_in_class_p (regno, HI_REGS))
-	break;
-    }
-
-  ia16_expand_reset_ds_internal (regno);
-}
-
-static void
-ia16_expand_reset_ds_for_prologue (void)
-{
-  unsigned regno;
-
-  if (! TARGET_ALLOCABLE_DS_REG)
-    return;
-
-  if (call_used_regs[DS_REG] && TARGET_ASSUME_DS_SS)
-    return;
-
-  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
-    {
-      if (! FUNCTION_ARG_REGNO_P (regno) && call_used_regs[regno]
-	  && ! fixed_regs[regno] && ia16_regno_in_class_p (regno, HI_REGS))
-	break;
-    }
-
-  ia16_expand_reset_ds_internal (regno);
+  ia16_expand_reset_ds_internal ();
 }
 
 static void
 ia16_expand_reset_ds_for_epilogue (void)
 {
-  unsigned regno;
-
-  if (! TARGET_ALLOCABLE_DS_REG)
+  if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
+      || ! TARGET_ASSUME_DS_SS || ! df_regs_ever_live_p (DS_REG))
     return;
 
-  /* Under `-fcall-saved-ds`, there is no need to reset %ds here, as
-     ia16_expand_epilogue (.) will itself pop %ds from the stack.  */
-  if (! call_used_regs[DS_REG])
-    return;
-
-  for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
-    {
-      if (regno != BP_REG && ia16_save_reg_p (regno))
-	break;
-    }
-
-  ia16_expand_reset_ds_internal (regno);
+  ia16_expand_reset_ds_internal ();
 }
 
 void
@@ -2956,7 +2973,6 @@ ia16_expand_prologue (void)
 	    }
 	}
     }
-  ia16_expand_reset_ds_for_prologue ();
   if (flag_stack_usage_info)
     {
       current_function_static_stack_size = size +

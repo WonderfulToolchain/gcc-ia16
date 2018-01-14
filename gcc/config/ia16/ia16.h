@@ -96,7 +96,7 @@
  * Basic Characteristics of Registers
  */
 #define FIXED_REGISTERS \
-         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }
+         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1 }
 #define CALL_USED_REGISTERS \
          { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }
 
@@ -141,6 +141,14 @@
    COMPLEX_MODE_P(MODE) &&						\
      HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO])
+
+/* The peephole2 pass will scan each function for uses of %ds and decide
+   whether it is necessary to reset %ds <- %ss before function calls and in
+   the epilogue.  If the register renumbering (rnreg) pass later decides to
+   rename some register to %ds, this will make peephole2's results incorrect.
+   So, we have to prevent this.  */
+#define HARD_REGNO_RENAME_OK(FROM, TO) \
+	((FROM) == DS_REG || (TO) != DS_REG)
 
 /* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
  * estimate, and this particular case cannot be overridden by
