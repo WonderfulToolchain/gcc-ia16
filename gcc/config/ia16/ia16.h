@@ -142,14 +142,6 @@
      HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO])
 
-/* The peephole2 pass will scan each function for uses of %ds and decide
-   whether it is necessary to reset %ds <- %ss before function calls and in
-   the epilogue.  If the register renumbering (rnreg) pass later decides to
-   rename some register to %ds, this will make peephole2's results incorrect.
-   So, we have to prevent this.  */
-#define HARD_REGNO_RENAME_OK(FROM, TO) \
-	((FROM) == DS_REG || (TO) != DS_REG)
-
 /* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
  * estimate, and this particular case cannot be overridden by
  * ia16_rtx_costs().  And if you get it wrong, the register allocator will
