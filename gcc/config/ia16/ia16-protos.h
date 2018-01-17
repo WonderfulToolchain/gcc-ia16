@@ -54,7 +54,6 @@ extern rtx	ia16_prepare_operands (enum rtx_code, rtx *operands);
 extern bool	ia16_move_multiple_mem_p (enum machine_mode mode, rtx m1, rtx m2);
 extern bool	ia16_move_multiple_reg_p (enum machine_mode mode, rtx r1, rtx r2);
 extern bool	ia16_non_overlapping_mem_p (rtx m1, rtx m2);
-extern bool	ia16_ds_equiv_ss_p (void);
 #endif
 
 extern void	ia16_expand_prologue (void);
