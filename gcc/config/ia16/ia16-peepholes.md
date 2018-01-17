@@ -259,11 +259,8 @@
 ; movw	%tmp1,	mem2	->	movw	%tmp1,	mem2
 ; movw	mem1+2,	%tmp2
 ; movw	%tmp2,	mem3		movw	%es,	mem3
-;
-; (Limit the scratch register to %es, to avoid creating new assignments to
-; %ds, which will mess up the ia16_ds_equiv_ss_p () check below.  -- tkchia)
 (define_peephole2
-  [(match_scratch:HI 6 "e")
+  [(match_scratch:HI 6 "Q")
    (set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "memory_operand")
