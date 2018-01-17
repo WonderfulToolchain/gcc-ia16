@@ -3039,7 +3039,7 @@ static void
 ia16_expand_reset_ds_for_epilogue (void)
 {
   if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
-      || ! TARGET_ASSUME_DS_SS || ! df_regs_ever_live_p (DS_REG))
+      || ! TARGET_ASSUME_DS_SS)
     return;
 
   ia16_expand_reset_ds_internal ();
