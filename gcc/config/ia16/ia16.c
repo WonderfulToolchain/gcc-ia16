@@ -50,6 +50,7 @@
 #include "gimple-iterator.h"
 #include "tree-vectorizer.h"
 #include "builtins.h"
+#include "cfgrtl.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -724,7 +725,7 @@ ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
   ia16_split_seg_override_and_offset (x, &ovr, &off);
 
   /* This (lack of a segment override) sometimes occurs due to GCC's
-     internal probing.  Specifically, tree-ssa-loop-ivopts.c creates
+      probing.  Specifically, tree-ssa-loop-ivopts.c creates
      nonsense addresses in order to gauge the costs of using different
      addressing modes.  We just fabricate something semi-sane here.  */
   if (! ovr)
@@ -787,78 +788,6 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
     }
   else
     gcc_unreachable ();
-}
-
-/* Return true if %ds is known to always equal %ss throughout the function
-   being compiled.
-
-   TODO: try to answer if %ds == %ss at a more fine-grained level.  */
-static bool ia16_ds_ss_cached_p = false, ia16_flag_ds_ss_p = false;
-
-bool
-ia16_ds_equiv_ss_p (void)
-{
-  df_ref def;
-
-  if (! TARGET_ASSUME_DS_SS || ! call_used_regs[DS_REG])
-    return false;
-
-  if (ia16_ds_ss_cached_p)
-    return ia16_flag_ds_ss_p;
-
-  ia16_flag_ds_ss_p = true;
-
-  for (def = DF_REG_DEF_CHAIN (DS_REG); def; def = DF_REF_NEXT_REG (def))
-    {
-      rtx_insn *def_insn;
-      rtx pat, op;
-
-      if (DF_REF_IS_ARTIFICIAL (def))
-	{
-	  ia16_flag_ds_ss_p = false;
-	  break;
-	}
-
-      def_insn = DF_REF_INSN (def);
-
-      /* GCC's machine-independent code thinks function calls clobber %ds,
-	 but we know that they do not.  */
-      if (CALL_P (def_insn))
-	continue;
-
-      pat = PATTERN (def_insn);
-      if (GET_CODE (pat) != SET)
-	{
-	  ia16_flag_ds_ss_p = false;
-	  break;
-	}
-
-      op = SET_DEST (pat);
-      if (! REG_P (op) || REGNO (op) != DS_REG)
-	{
-	  ia16_flag_ds_ss_p = false;
-	  break;
-	}
-
-      op = SET_SRC (pat);
-      if (! REG_P (op) || REGNO (op) != SS_REG)
-	{
-	  ia16_flag_ds_ss_p = false;
-	  break;
-	}
-    }
-
-  ia16_ds_ss_cached_p = true;
-  return ia16_flag_ds_ss_p;
-}
-
-#undef	TARGET_SET_CURRENT_FUNCTION
-#define	TARGET_SET_CURRENT_FUNCTION	ia16_set_current_function
-
-static void
-ia16_set_current_function (tree fndecl ATTRIBUTE_UNUSED)
-{
-  ia16_ds_ss_cached_p = false;
 }
 
 /* Condition Code Status */
@@ -2496,8 +2425,7 @@ ia16_print_operand_address (FILE *file, rtx e)
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
     }
-  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG)
-	   && ! ia16_ds_equiv_ss_p ())
+  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG))
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
@@ -2717,6 +2645,190 @@ static unsigned HOST_WIDE_INT
 ia16_shift_truncation_mask (enum machine_mode mode)
 {
   return (TARGET_SHIFT_MASKED && (mode == HImode || mode == QImode) ? 31 : 0);
+}
+
+/* Return true iff INSN is a (set (reg:HI DS_REG) (reg:HI SS_REG)).  */
+static bool
+ia16_insn_is_set_ds_ss_p (rtx_insn *insn)
+{
+  rtx pat, op;
+
+  if (! NONJUMP_INSN_P (insn))
+    return false;
+
+  pat = PATTERN (insn);
+  if (GET_CODE (pat) != SET)
+    return false;
+
+  op = SET_DEST (pat);
+  if (! REG_P (op) || REGNO (op) != DS_REG || GET_MODE (op) != HImode)
+    return false;
+
+  op = SET_SRC (pat);
+  if (! REG_P (op) || REGNO (op) != SS_REG || GET_MODE (op) != HImode)
+    return false;
+
+  return true;
+}
+
+/* Return true iff INSN is a (use (reg:HI DS_REG)).  */
+static bool
+ia16_insn_is_use_ds_p (rtx_insn *insn)
+{
+  rtx pat, op;
+
+  if (! NONJUMP_INSN_P (insn))
+    return false;
+
+  pat = PATTERN (insn);
+  if (GET_CODE (pat) != USE)
+    return false;
+
+  op = XEXP (pat, 0);
+  if (! REG_P (op) || REGNO (op) != DS_REG || GET_MODE (op) != HImode)
+    return false;
+
+  return true;
+}
+
+/* Elide unneeded instances of (set (reg:HI DS_REG) (reg:HI SS_REG)) in
+   the current function.  */
+static void
+ia16_elide_unneeded_set_ds_ss ()
+{
+  int max_insn_uid = get_max_uid ();
+  bool *insn_pushed_p = XCNEWVEC (bool, max_insn_uid);
+  bool *keep_insn_p = XCNEWVEC (bool, max_insn_uid);
+  rtx_insn *insn, **stack = XCNEWVEC (rtx_insn *, max_insn_uid);
+  int sp = 0;
+  rtx ds = gen_rtx_REG (HImode, DS_REG);
+  bool keep_any = false;
+
+  /* Starting from insns which set (or clobber) %ds to not-%ss, "flood"
+     insns along the control flow until we hit
+	(set (reg:HI DS_REG) (reg:HI SS_REG)).
+
+     Note down these (set) insns as the ones we want to keep.  */
+  for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
+    {
+      /* GCC's machine-independent code thinks function calls clobber %ds,
+	 but we know that this is not really true.  */
+      if (CALL_P (insn))
+	continue;
+
+      if (NOTE_P (insn)
+	  || ! reg_set_p (ds, insn)
+	  || ia16_insn_is_set_ds_ss_p (insn))
+	continue;
+
+      stack[sp++] = insn;
+      insn_pushed_p[INSN_UID (insn)] = true;
+    }
+
+  while (sp != 0)
+    {
+      rtx_insn *insn;
+      basic_block bb;
+
+      gcc_assert (sp > 0 && sp <= max_insn_uid);
+      insn = stack[--sp];
+
+      if (ia16_insn_is_set_ds_ss_p (insn))
+	{
+	  keep_insn_p[INSN_UID (insn)] = true;
+	  keep_any = true;
+	  continue;
+	}
+
+      bb = BLOCK_FOR_INSN (insn);
+      if (insn != BB_END (bb))
+	{
+	  insn = NEXT_INSN (insn);
+	  if (! insn_pushed_p[INSN_UID (insn)])
+	    {
+	      stack[sp++] = insn;
+	      insn_pushed_p[INSN_UID (insn)] = true;
+	    }
+	}
+      else
+	{
+	  edge e;
+	  edge_iterator ei;
+	  FOR_EACH_EDGE (e, ei, bb->succs)
+	    {
+	      if (e->dest == EXIT_BLOCK_PTR_FOR_FN (cfun))
+		continue;
+
+	      insn = BB_HEAD (e->dest);
+	      if (! insn_pushed_p[INSN_UID (insn)])
+		{
+		  stack[sp++] = insn;
+		  insn_pushed_p[INSN_UID (insn)] = true;
+		}
+	    }
+	}
+
+    }
+
+  /* Gather a list of (set) insns that do not need to be kept --- we will
+     delete all these insns.  Actually, instead of deleting the insns,
+     arrange to rewrite them as
+	(use (reg:HI SS_REG)).  */
+  for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
+    {
+      if (ia16_insn_is_set_ds_ss_p (insn)
+	  && ! keep_insn_p[INSN_UID (insn)])
+	stack[sp++] = insn;
+    }
+
+  /* Do the rewriting.  */
+  while (sp != 0)
+    {
+      rtx_insn *insn = stack[--sp];
+      /* Reuse the existing RTX for (reg:HI SS_REG).  I hope this replacement
+	 is safe to do...  */
+      rtx ss = XEXP (PATTERN (insn), 1);
+      PATTERN (insn) = gen_rtx_USE (VOIDmode, ss);
+      INSN_CODE (insn) = -1;
+
+      /* If this insn is followed by
+		(use (reg:HI DS_REG))
+	 then rewrite that too.  */
+      if (insn != BB_END (BLOCK_FOR_INSN (insn)))
+	{
+	  insn = NEXT_INSN (insn);
+	  if (ia16_insn_is_use_ds_p (insn))
+	    XEXP (PATTERN (insn), 0) = ss;
+	}
+    }
+
+  /* If at no point in the function do we need to reset %ds to %ss, then
+     deduce that %ds is no longer live within the function.  */
+  if (! keep_any)
+    df_set_regs_ever_live (DS_REG, false);
+
+  free (insn_pushed_p);
+  free (keep_insn_p);
+  free (stack);
+}
+
+#undef	TARGET_MACHINE_DEPENDENT_REORG
+#define	TARGET_MACHINE_DEPENDENT_REORG	ia16_machine_dependent_reorg
+
+static void
+ia16_machine_dependent_reorg (void)
+{
+  if (! optimize)
+    return;
+
+  if (TARGET_ASSUME_DS_SS
+      && TARGET_ALLOCABLE_DS_REG
+      && call_used_regs[DS_REG])
+    {
+      compute_bb_for_insn ();
+      ia16_elide_unneeded_set_ds_ss ();
+      free_bb_for_insn ();
+    }
 }
 
 /* The Global targetm Variable */

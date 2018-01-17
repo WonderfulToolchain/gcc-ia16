@@ -822,13 +822,3 @@
   ""
   "pushw\t%%ss\;popw\t%%ds"
 )
-
-; Elide the
-;	pushw	%ss
-;	popw	%ds
-; if %ds is known to equal %ss throughout the current function.
-(define_peephole2
-  [(set (reg:HI DS_REG) (reg:HI SS_REG))]
-  "reload_completed && ia16_ds_equiv_ss_p ()"
-  [(use (reg:HI SS_REG))]
-)
