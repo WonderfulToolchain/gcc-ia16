@@ -2425,7 +2425,12 @@ ia16_print_operand_address (FILE *file, rtx e)
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
     }
-  else if (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG))
+  else if (! TARGET_ALLOCABLE_DS_REG && ! TARGET_ASSUME_DS_SS)
+    {
+      if (ia16_to_print_seg_override_p (SS_REG, rb))
+	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
+    }
+  else if (TARGET_DEFAULT_DS_ABI && df_regs_ever_live_p (DS_REG))
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
@@ -2821,9 +2826,7 @@ ia16_machine_dependent_reorg (void)
   if (! optimize)
     return;
 
-  if (TARGET_ASSUME_DS_SS
-      && TARGET_ALLOCABLE_DS_REG
-      && call_used_regs[DS_REG])
+  if (TARGET_DEFAULT_DS_ABI)
     {
       compute_bb_for_insn ();
       ia16_elide_unneeded_set_ds_ss ();
@@ -3028,8 +3031,7 @@ ia16_expand_reset_ds_internal (void)
 void
 ia16_expand_reset_ds_for_call (void)
 {
-  if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
-      || ! TARGET_ASSUME_DS_SS)
+  if (! TARGET_DEFAULT_DS_ABI)
     return;
 
   ia16_expand_reset_ds_internal ();
@@ -3038,8 +3040,7 @@ ia16_expand_reset_ds_for_call (void)
 static void
 ia16_expand_reset_ds_for_epilogue (void)
 {
-  if (! TARGET_ALLOCABLE_DS_REG || ! call_used_regs[DS_REG]
-      || ! TARGET_ASSUME_DS_SS)
+  if (! TARGET_DEFAULT_DS_ABI)
     return;
 
   ia16_expand_reset_ds_internal ();
