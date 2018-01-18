@@ -30,7 +30,11 @@
 #define TARGET_AAD_IMM		(ia16_features & 4)
 #define TARGET_FSTSW_AX		(ia16_features & 8)
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
+
 #define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
+#define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
+				 && call_used_regs[DS_REG] \
+				 && TARGET_ASSUME_DS_SS)
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
@@ -141,6 +145,11 @@
    COMPLEX_MODE_P(MODE) &&						\
      HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO])
+
+/* For some reason, allowing registers other than %ds to be renamed to %ds
+   during the rnreg pass leads to trouble, so disable that.  */
+#define HARD_REGNO_RENAME_OK(FROM, TO) \
+	((TO) != DS_REG || (FROM) == DS_REG)
 
 /* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
  * estimate, and this particular case cannot be overridden by
@@ -375,7 +384,11 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define CUMULATIVE_ARGS				int
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
   ((CUM) = 0)
-#define FUNCTION_ARG_REGNO_P(regno)		0
+/* If we are using the default ABI, pretend that %ds "might" be used to pass
+   arguments to functions, so that when GCC sees a %ds <- %ss just before a
+   subroutine call, it does not try to separate the two.  */
+#define FUNCTION_ARG_REGNO_P(regno) \
+	(TARGET_DEFAULT_DS_ABI ? (regno) == DS_REG : false)
 
 /* How Scalar Function Values Are Returned */
 #define LIBCALL_VALUE(mode)	\
