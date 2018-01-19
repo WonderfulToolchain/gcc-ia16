@@ -1,3 +1,4 @@
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
 /* Compiling a memcpy (...)-type routine that works over far pointers used
