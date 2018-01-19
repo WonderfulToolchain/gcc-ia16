@@ -1,3 +1,4 @@
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
 /* FAIL: Can we copy a moderately big, constant-size structure from one far
