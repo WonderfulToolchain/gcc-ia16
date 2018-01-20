@@ -112,7 +112,7 @@ enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER] = {
 	/*  9 di */ DI_REGS,
 	/* 10 bp */ BP_REGS,
 	/* 11 es */ ES_REGS,
-	/* 12 ds */ SEGMENT_REGS,
+	/* 12 ds */ DS_REGS,
 	/* 13 sp */ HI_REGS,
 	/* 14 cc */ ALL_REGS,
 	/* 15 ss */ SEGMENT_REGS,
@@ -126,6 +126,26 @@ struct ptt
   const struct processor_costs *cost;           /* Processor costs */
   int features;
 };
+
+#undef	TARGET_PREFERRED_RELOAD_CLASS
+#define	TARGET_PREFERRED_RELOAD_CLASS ia16_preferred_reload_class
+
+static reg_class_t
+ia16_preferred_reload_class (rtx x ATTRIBUTE_UNUSED, reg_class_t rclass)
+{
+  /* Try to avoid roping in %ds.  */
+  switch (rclass)
+  {
+  case SEGMENT_REGS:
+    return ES_REGS;
+
+  case SEG_GENERAL_REGS:
+    return ES_GENERAL_REGS;
+
+  default:
+    return rclass;
+  }
+}
 
 #undef  TARGET_SECONDARY_RELOAD
 #define TARGET_SECONDARY_RELOAD ia16_secondary_reload
@@ -142,7 +162,8 @@ ia16_secondary_reload (bool in_p, rtx x, reg_class_t reload_class,
   if (in_p
       && (reload_class == SEG_GENERAL_REGS
 	  || reload_class == SEGMENT_REGS
-	  || reload_class == ES_REGS)
+	  || reload_class == ES_REGS
+	  || reload_class == DS_REGS)
       && (CONSTANT_P (x) || PLUS == GET_CODE (x)))
     {
       return (GENERAL_REGS);
@@ -1526,7 +1547,8 @@ ia16_memory_move_cost (machine_mode mode, reg_class_t rclass ATTRIBUTE_UNUSED,
 
   if (rclass == AX_REGS
       || rclass == SEGMENT_REGS
-      || rclass == ES_REGS)
+      || rclass == ES_REGS
+      || rclass == DS_REGS)
     {
       if (cost > COSTS_N_INSNS (1))
 	cost -= COSTS_N_INSNS (1);
@@ -2697,23 +2719,27 @@ ia16_insn_is_use_ds_p (rtx_insn *insn)
 }
 
 /* Elide unneeded instances of (set (reg:HI DS_REG) (reg:HI SS_REG)) in
-   the current function.  */
+   the current function.  Also elide any unneeded `%ss:' segment overrides
+   from simple moves to/from memory (`ldsw', `cmpw', etc. are not yet
+   handled).  */
 static void
-ia16_elide_unneeded_set_ds_ss ()
+ia16_elide_unneeded_ss_stuff (void)
 {
   int max_insn_uid = get_max_uid ();
   bool *insn_pushed_p = XCNEWVEC (bool, max_insn_uid);
   bool *keep_insn_p = XCNEWVEC (bool, max_insn_uid);
   rtx_insn *insn, **stack = XCNEWVEC (rtx_insn *, max_insn_uid);
   int sp = 0;
-  rtx ds = gen_rtx_REG (HImode, DS_REG);
-  bool keep_any = false;
+  rtx ds = gen_rtx_REG (HImode, DS_REG), override = gen_seg_override (ds);
+  bool keep_any_resets_p = false;
 
   /* Starting from insns which set (or clobber) %ds to not-%ss, "flood"
      insns along the control flow until we hit
 	(set (reg:HI DS_REG) (reg:HI SS_REG)).
 
-     Note down these (set) insns as the ones we want to keep.  */
+     Mark all the insns along the path --- excluding the first set to
+     non-%ss, but including the final %ds <- %ss --- as insns we want to
+     "keep" as is.  */
   for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
     {
       /* GCC's machine-independent code thinks function calls clobber %ds,
@@ -2740,8 +2766,7 @@ ia16_elide_unneeded_set_ds_ss ()
 
       if (ia16_insn_is_set_ds_ss_p (insn))
 	{
-	  keep_insn_p[INSN_UID (insn)] = true;
-	  keep_any = true;
+	  keep_any_resets_p = true;
 	  continue;
 	}
 
@@ -2749,6 +2774,7 @@ ia16_elide_unneeded_set_ds_ss ()
       if (insn != BB_END (bb))
 	{
 	  insn = NEXT_INSN (insn);
+	  keep_insn_p[INSN_UID (insn)] = true;
 	  if (! insn_pushed_p[INSN_UID (insn)])
 	    {
 	      stack[sp++] = insn;
@@ -2759,12 +2785,14 @@ ia16_elide_unneeded_set_ds_ss ()
 	{
 	  edge e;
 	  edge_iterator ei;
+
 	  FOR_EACH_EDGE (e, ei, bb->succs)
 	    {
 	      if (e->dest == EXIT_BLOCK_PTR_FOR_FN (cfun))
 		continue;
 
 	      insn = BB_HEAD (e->dest);
+	      keep_insn_p[INSN_UID (insn)] = true;
 	      if (! insn_pushed_p[INSN_UID (insn)])
 		{
 		  stack[sp++] = insn;
@@ -2772,44 +2800,91 @@ ia16_elide_unneeded_set_ds_ss ()
 		}
 	    }
 	}
-
     }
 
-  /* Gather a list of (set) insns that do not need to be kept --- we will
-     delete all these insns.  Actually, instead of deleting the insns,
-     arrange to rewrite them as
-	(use (reg:HI SS_REG)).  */
+  /* Rescan the whole insn list for
+	(set (reg:HI DS_REG) (reg:HI SS_REG))
+     and simple moves to/from the generic address space, and rewrite those
+     which we have not marked as "keep".  */
   for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
     {
-      if (ia16_insn_is_set_ds_ss_p (insn)
-	  && ! keep_insn_p[INSN_UID (insn)])
-	stack[sp++] = insn;
-    }
+      rtx pat, dest, src;
 
-  /* Do the rewriting.  */
-  while (sp != 0)
-    {
-      rtx_insn *insn = stack[--sp];
-      /* Reuse the existing RTX for (reg:HI SS_REG).  I hope this replacement
-	 is safe to do...  */
-      rtx ss = XEXP (PATTERN (insn), 1);
-      PATTERN (insn) = gen_rtx_USE (VOIDmode, ss);
-      INSN_CODE (insn) = -1;
+      if (keep_insn_p[INSN_UID (insn)])
+	continue;
 
-      /* If this insn is followed by
-		(use (reg:HI DS_REG))
-	 then rewrite that too.  */
-      if (insn != BB_END (BLOCK_FOR_INSN (insn)))
+      if (ia16_insn_is_set_ds_ss_p (insn))
 	{
-	  insn = NEXT_INSN (insn);
-	  if (ia16_insn_is_use_ds_p (insn))
-	    XEXP (PATTERN (insn), 0) = ss;
+	  /* Rewrite
+		(set (reg:HI DS_REG) (reg:HI SS_REG))
+	     as
+		(use (reg:HI SS_REG)).
+
+	     If this insn is followed by
+		(use (reg:HI DS_REG))
+	     then rewrite that too.  */
+	  rtx ss = XEXP (PATTERN (insn), 1);
+	  PATTERN (insn) = gen_rtx_USE (VOIDmode, ss);
+	  INSN_CODE (insn) = -1;
+
+	  if (insn != BB_END (BLOCK_FOR_INSN (insn)))
+	    {
+	      rtx_insn *next_insn = NEXT_INSN (insn);
+	      if (ia16_insn_is_use_ds_p (next_insn))
+		XEXP (PATTERN (next_insn), 0) = ss;
+	    }
+
+	  continue;
+	}
+
+      if (! NONJUMP_INSN_P (insn) || GET_CODE (PATTERN (insn)) != SET)
+	continue;
+
+      pat = PATTERN (insn);
+      dest = SET_DEST (pat);
+      src = SET_SRC (pat);
+
+      if (MEM_P (dest)
+	  && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest))
+	  && (REG_P (src) || CONSTANT_P (src)))
+	{
+	  /* If the insn is a simple move to generic memory, and the address
+	     does not involve %bp, then _add_ a `%ds:' segment override to
+	     the destination address term.
+
+	     (These added overrides are not counted towards determining
+	      whether %ds is ever live (below).  As Obi-Wan never said:
+	      "These are not the %ds references you are looking for.")  */
+	  rtx addr = XEXP (dest, 0), rb, rs;
+
+	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
+	      && ! rs && (! rb || REGNO (rb) != BP_REG))
+	    {
+	      addr = gen_rtx_PLUS (HImode, override, addr);
+	      pat = gen_rtx_SET (gen_rtx_MEM (GET_MODE (dest), addr), src);
+	      PATTERN (insn) = pat;
+	    }
+	}
+      else if (MEM_P (src)
+	       && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (src))
+	       && REG_P (dest))
+	{
+	  /* Ditto if the insn is a simple move from generic memory.  */
+	  rtx addr = XEXP (src, 0), rb, rs;
+
+	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
+	      && ! rs && (! rb || REGNO (rb) != BP_REG))
+	    {
+	      addr = gen_rtx_PLUS (HImode, override, addr);
+	      pat = gen_rtx_SET (dest, gen_rtx_MEM (GET_MODE (src), addr));
+	      PATTERN (insn) = pat;
+	    }
 	}
     }
 
   /* If at no point in the function do we need to reset %ds to %ss, then
      deduce that %ds is no longer live within the function.  */
-  if (! keep_any)
+  if (! keep_any_resets_p)
     df_set_regs_ever_live (DS_REG, false);
 
   free (insn_pushed_p);
@@ -2829,7 +2904,7 @@ ia16_machine_dependent_reorg (void)
   if (TARGET_DEFAULT_DS_ABI)
     {
       compute_bb_for_insn ();
-      ia16_elide_unneeded_set_ds_ss ();
+      ia16_elide_unneeded_ss_stuff ();
       free_bb_for_insn ();
     }
 }
