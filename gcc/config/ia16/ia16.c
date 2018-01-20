@@ -2860,9 +2860,9 @@ ia16_elide_unneeded_ss_stuff (void)
 	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
 	      && ! rs && (! rb || REGNO (rb) != BP_REG))
 	    {
-	      addr = gen_rtx_PLUS (HImode, override, addr);
-	      pat = gen_rtx_SET (gen_rtx_MEM (GET_MODE (dest), addr), src);
-	      PATTERN (insn) = pat;
+	      rtx new_dest = shallow_copy_rtx (dest);
+	      XEXP (new_dest, 0) = gen_rtx_PLUS (HImode, override, addr);
+	      PATTERN (insn) = gen_rtx_SET (new_dest, src);
 	    }
 	}
       else if (MEM_P (src)
@@ -2875,9 +2875,9 @@ ia16_elide_unneeded_ss_stuff (void)
 	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
 	      && ! rs && (! rb || REGNO (rb) != BP_REG))
 	    {
-	      addr = gen_rtx_PLUS (HImode, override, addr);
-	      pat = gen_rtx_SET (dest, gen_rtx_MEM (GET_MODE (src), addr));
-	      PATTERN (insn) = pat;
+	      rtx new_src = shallow_copy_rtx (src);
+	      XEXP (new_src, 0) = gen_rtx_PLUS (HImode, override, addr);
+	      PATTERN (insn) = gen_rtx_SET (dest, new_src);
 	    }
 	}
     }
