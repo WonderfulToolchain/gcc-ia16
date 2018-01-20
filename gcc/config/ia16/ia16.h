@@ -111,10 +111,6 @@
 	{ 2, 3, 4, 5, 0, 1,  6, 7, 10,  9, 8, 11, 12, 13, 14, 15, 16, 17 }
 /*	 al ah dl dh cl ch  bl bh  bp  di si  es  ds  sp  cc  ss  cs  ap */
 
-/* Try to avoid roping in %ds if possible...  */
-#define IRA_HARD_REGNO_ADD_COST_MULTIPLIER(REGNO) \
-       ((REGNO) == DS_REG ? 100.0 : 0.0)
-
 /* How Values Fit in Registers.  */
 /* FIXME: Not documented: CCmode is 32 bits.  */
 /* Must not return 0 or subreg_get_info() may divide by zero.  */
@@ -147,9 +143,14 @@
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO])
 
 /* For some reason, allowing registers other than %ds to be renamed to %ds
-   during the rnreg pass leads to trouble, so disable that.  */
+   during the rnreg pass (with e.g. -funroll-loops) leads to incorrect code
+   around %ds <- %ss operations, so disable that.
+
+   And, rnreg has this weird idea to rename the segment register in a
+   segment override to a non-segment register (argh!).  Disable that too.  */
 #define HARD_REGNO_RENAME_OK(FROM, TO) \
-	((TO) != DS_REG || (FROM) == DS_REG)
+	(((FROM) != DS_REG && (FROM) != ES_REG && (TO) != DS_REG) \
+	 || ((FROM) == DS_REG && (TO) == ES_REG))
 
 /* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
  * estimate, and this particular case cannot be overridden by
@@ -200,9 +201,11 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   BASE_W_INDEX_REGS, /* w 002300  .  .  .  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */
   BASE_REGS,	     /* B 003700  .  .  .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */
   ES_REGS,	     /* e 004000  .  .  .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */
+  DS_REGS,	   /* Rds 010000  .  .  .  .  . ds  .  .  .  .  .  .  .  .  .  .  .  . */
   SEGMENT_REGS,	     /* Q 314000  . cs ss  .  . ds es  .  .  .  .  .  .  .  .  .  .  . */
   HI_REGS,	     /*   337400  . cs ss  . sp ds es bp di si  .  .  .  .  .  .  .  . */
   GENERAL_REGS,	     /* r 023777  .  .  .  . sp  .  . bp di si bh bl dh dl ah al ch cl */
+  ES_GENERAL_REGS,   /*   027777  .  .  .  . sp  . es bp di si bh bl dh dl ah al ch cl */
   SEG_GENERAL_REGS,  /* T 337777  . cs ss  . sp ds es bp di si bh bl dh dl ah al ch cl */
   ALL_REGS,	     /*   777777 ap cs ss cc sp ds es bp di si bh bl dh dl ah al ch cl */
   LIM_REG_CLASSES
@@ -214,8 +217,9 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   "DX_REGS", "DXAX_REGS", "BX_REGS", "BXDX_REGS", "CL_REGS", \
   "CX_REGS", "LO_QI_REGS", "UP_QI_REGS", "QI_REGS", \
   "SI_REGS", "QISI_REGS", "DI_REGS", "INDEX_REGS", \
-  "BP_REGS", "BASE_W_INDEX_REGS", "BASE_REGS", "ES_REGS", "SEGMENT_REGS", \
-  "HI_REGS", "GENERAL_REGS", "SEG_GENERAL_REGS", "ALL_REGS" }
+  "BP_REGS", "BASE_W_INDEX_REGS", "BASE_REGS", "ES_REGS", "DS_REGS", \
+  "SEGMENT_REGS", "HI_REGS", "GENERAL_REGS", "ES_GENERAL_REGS", \
+  "SEG_GENERAL_REGS", "ALL_REGS" }
 
 #define REG_CLASS_CONTENTS {	  /* 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */ \
   { 0000000 }, /* NO_REGS,	      4  2  1  4  2  1  4  2  1  4  2  1  4  2  1  4  2  1 */ \
@@ -241,9 +245,11 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
   { 0002300 }, /* BASE_W_INDEX_REGS w .  .  .  .  .  .  . bp  .  . -- bx  .  .  .  .  .  . */ \
   { 0003700 }, /* BASE_REGS,	    B .  .  .  .  .  .  . bp di si -- bx  .  .  .  .  .  . */ \
   { 0004000 }, /* ES_REGS,	    e .  .  .  .  .  . es  .  .  .  .  .  .  .  .  .  .  . */ \
+  { 0010000 }, /* DS_REGS,	  Rds .  .  .  .  . ds  .  .  .  .  .  .  .  .  .  .  .  . */ \
   { 0314000 }, /* SEGMENT_REGS,	    Q . cs ss  .  . ds es  .  .  .  .  .  .  .  .  .  .  . */ \
   { 0337400 }, /* HI_REGS,	      . cs ss  . sp ds es bp di si  .  .  .  .  .  .  .  . */ \
   { 0023777 }, /* GENERAL_REGS,	    r .  .  .  . sp  .  . bp di si bh bl dh dl ah al ch cl */ \
+  { 0027777 }, /* ES_GENERAL_REGS,    .  .  .  . sp  . es bp di si bh bl dh dl ah al ch cl */ \
   { 0337777 }, /* SEG_GENERAL_REGS, T . cs ss  . sp ds es bp di si bh bl dh dl ah al ch cl */ \
   { 0777777 }, /* ALL_REGS,	     ap cs ss cc sp ds es bp di si bh bl dh dl ah al ch cl */ \
 }
@@ -279,8 +285,6 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 	ia16_regno_in_class_p ((num), MODE_BASE_REG_REG_CLASS (mode))
 #define REGNO_OK_FOR_INDEX_P(num) \
 	ia16_regno_in_class_p ((num), INDEX_REG_CLASS)
-
-#define PREFERRED_RELOAD_CLASS(X,CLASS) CLASS
 
 /* The value returned by CLASS_MAX_NREGS() ends up being used by reload1.c
  * as one of the things considered when sorting reloads.  Reload is very

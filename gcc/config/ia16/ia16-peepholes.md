@@ -260,7 +260,7 @@
 ; movw	mem1+2,	%tmp2
 ; movw	%tmp2,	mem3		movw	%es,	mem3
 (define_peephole2
-  [(match_scratch:HI 6 "Q")
+  [(match_scratch:HI 6 "e,!Rds")
    (set (match_operand:HI 0 "nonsegment_register_operand")
 	(match_operand:HI 1 "memory_operand"))
    (set (match_operand:HI 2 "memory_operand")

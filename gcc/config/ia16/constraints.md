@@ -46,6 +46,8 @@
 (define_register_constraint "S"	  "SI_REGS"	"The @code{si} register.")
 (define_register_constraint "D"	  "DI_REGS"	"The @code{di} register.")
 (define_register_constraint "Rbp" "BP_REGS"	"The @code{bp} register.")
+(define_register_constraint "e"   "ES_REGS"	"The @code{es} register.")
+(define_register_constraint "Rds" "DS_REGS"	"The @code{ds} register.")
 
 ; Individual 8-bit registers.
 (define_register_constraint "Ral" "AL_REGS"	"The @code{al} register.")
@@ -73,7 +75,6 @@
 ; Special groups of registers.
 (define_register_constraint "A"	"DXAX_REGS"  "The @code{dx:ax} register pair.")
 (define_register_constraint "j"	"BXDX_REGS"  "The @code{bx:dx} register pair.")
-(define_register_constraint "e" "ES_REGS"	"The @code{es} register.")
 (define_register_constraint "Q" "SEGMENT_REGS"	"A segment register.")
 (define_register_constraint "k"	"QISI_REGS"
 	"SImode registers with two 8-bit low parts.")
