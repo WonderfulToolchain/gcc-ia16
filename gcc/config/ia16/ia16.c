@@ -440,7 +440,7 @@ ia16_as_valid_pointer_mode (machine_mode m, addr_space_t addrspace)
     }
 }
 
-static bool
+bool
 ia16_have_seg_override_p (rtx x)
 {
   switch (GET_CODE (x))
@@ -652,8 +652,8 @@ ia16_expand_weird_pointer_plus_expr (rtx op0, rtx op1, rtx target,
   return sum;
 }
 
-/* Subroutine of ia16_as_legitimize_address.  */
-static void
+/* Used by ia16_as_legitimize_address, and by ia16.md.  */
+void
 ia16_split_seg_override_and_offset (rtx x, rtx *ovr, rtx *off)
 {
   machine_mode m = GET_MODE (x);

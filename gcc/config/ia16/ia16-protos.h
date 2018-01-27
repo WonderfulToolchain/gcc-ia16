@@ -24,6 +24,7 @@ extern struct gcc_target targetm;
 extern unsigned char	ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER];
 extern enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER];
 extern int		ia16_regno_in_class_p (unsigned, unsigned);
+extern bool		ia16_have_seg_override_p (rtx x);
 extern HOST_WIDE_INT	ia16_first_parm_offset (void);
 extern HOST_WIDE_INT	ia16_initial_frame_pointer_offset (void);
 extern HOST_WIDE_INT
@@ -36,6 +37,7 @@ extern rtx	ia16_expand_weird_pointer_plus_expr (rtx op0, rtx op1, rtx target,
 extern rtx	ia16_as_convert_weird_memory_address (machine_mode to_mode,
 						      rtx x, addr_space_t as,
 						      bool in_const, bool no_emit);
+extern void	ia16_split_seg_override_and_offset (rtx x, rtx *ovr, rtx *off);
 
 #ifdef RTX_CODE
 extern void	ia16_initialize_trampoline (rtx addr, rtx fnaddr, rtx static_chain);
