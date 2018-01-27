@@ -2261,6 +2261,8 @@ static const char *reg_HInames[LAST_HARD_REG + 1] = {
    'L': Print the name of the lower 8-bits of E.
    'H': Print the name of the upper 8-bits of E.
    'X': Print the name of E as a 16-bit operand.
+   'W': Print the value of the constant E unsigned-divided by 2 (for loading
+	%cx before a `rep; movsw').
    'R': Don't print any register prefix before E.
 */
 void
@@ -2270,7 +2272,7 @@ ia16_print_operand (FILE *file, rtx e, int code)
   unsigned int regno;
   rtx x;
 
-  /* simplify_gen_subreg() is used to allow the 'X', 'H' and 'L' output
+  /* simplify_gen_subreg() is used to allow the 'X', 'H', 'L', and 'W' output
    * modifiers to be used for REG, MEM and constant expressions.  The cases
    * which simplify_subreg() refuses to handle are handled by alter_subreg().
    */
@@ -2283,6 +2285,11 @@ ia16_print_operand (FILE *file, rtx e, int code)
       x = simplify_gen_subreg (QImode, e, GET_MODE (e), 0);
   else if (code == 'H')
     x = simplify_gen_subreg (QImode, e, HImode, 1);
+  else if (code == 'W')
+    {
+      gcc_assert (CONST_INT_P (e));
+      x = GEN_INT ((INTVAL (e) / 2) & 0x7fff);
+    }
   else
     x = e;
   if (GET_CODE (x) == SUBREG)
