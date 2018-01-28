@@ -39,17 +39,25 @@ dg-init
 	{ -O0 -mrtd } \
 	{ -O1 } \
 	{ -O1 -funroll-loops } \
+	{ -O1 -frename-registers } \
+	{ -O1 -funroll-loops -fno-rename-registers } \
 	{ -O1 -mrtd } \
 	{ -O2 } \
 	{ -O2 -funroll-loops } \
+	{ -O2 -frename-registers } \
+	{ -O2 -funroll-loops -fno-rename-registers } \
 	{ -O2 -mrtd } \
 	{ -Os } \
 	{ -Os -funroll-loops } \
+	{ -Os -frename-registers } \
+	{ -Os -funroll-loops -fno-rename-registers } \
 	{ -Os -mrtd } \
 	{ -Os -flto } \
 	{ -Os -finline-functions } \
 	{ -O3 } \
 	{ -O3 -funroll-loops } \
+	{ -O3 -frename-registers } \
+	{ -O3 -funroll-loops -fno-rename-registers } \
 	{ -O3 -mrtd } ]
 
 #Initialize use of torture lists. 
