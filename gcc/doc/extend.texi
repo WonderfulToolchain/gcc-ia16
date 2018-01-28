@@ -1505,6 +1505,16 @@ If @option{-Waddress} (or @option{-Wall}) is enabled, GCC will warn about
 cases like the above, where a declaration can be interpreted differently
 under GCC's grammar and Watcom-style grammar.
 
+@item
+@opindex ffixed
+@opindex frename-registers
+@opindex funroll-loops
+@opindex fpeel-loops
+The options @option{-ffixed-ds} and @option{-frename-registers} (and by
+extension @option{-funroll-loops} and @option{-fpeel-loops}) do not
+currently interact well with far pointer operations.  This, too, may change
+in the future.
+
 @end itemize
 
 @subsection M32C Named Address Spaces

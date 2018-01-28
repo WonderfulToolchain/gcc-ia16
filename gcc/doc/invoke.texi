@@ -756,7 +756,8 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd}
+-mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd @gol
+-mno-callee-assume-ds-ss}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16571,8 +16572,10 @@ instruction, which pops their arguments while returning.  This saves one
 instruction in the caller since there is no need to pop the arguments
 there.
 
-@strong{Warning:}
-you must provide function prototypes for all functions that
+At the linking stage, this option will also link your code against the
+appropriate @option{-mrtd} multilib.
+
+@strong{Warning:} you must provide function prototypes for all functions that
 take variable numbers of arguments (including @code{printf});
 otherwise incorrect code is generated for calls to those
 functions.
@@ -16580,6 +16583,17 @@ functions.
 In addition, seriously incorrect code results if you call a
 function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
+
+@item -mno-callee-assume-ds-ss
+@opindex mno-callee-assume-ds-ss
+Use a different function-calling convention, in which functions do not
+assume that the values of the @code{ds} and @code{ss} registers are equal
+at function entry, and do not restore @code{ds = ss} before invoking other
+functions.  @code{ss} is assumed to point to the generic data address space.
+
+(This option has no effect if @code{ds} is configured to be a callee-saved
+register (@option{-fcall-saved-ds})---in this case, @code{ds} is never
+assumed to equal @code{ss}.)
 @end table
 
 @node IA-64 Options
