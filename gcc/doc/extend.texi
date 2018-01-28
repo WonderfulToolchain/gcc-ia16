@@ -1507,13 +1507,9 @@ under GCC's grammar and Watcom-style grammar.
 
 @item
 @opindex ffixed
-@opindex frename-registers
-@opindex funroll-loops
-@opindex fpeel-loops
-The options @option{-ffixed-ds} and @option{-frename-registers} (and by
-extension @option{-funroll-loops} and @option{-fpeel-loops}) do not
-currently interact well with far pointer operations.  This, too, may change
-in the future.
+The option @option{-ffixed-ds} does not currently interact well with some
+far address operations---such as copying a struct between two far addresses. 
+This, too, may change in the future.
 
 @end itemize
 
