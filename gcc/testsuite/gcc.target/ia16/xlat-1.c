@@ -1,4 +1,4 @@
-/* { dg-do run } */
+/* { dg-do assemble } */
 /* { dg-options "-O3 --save-temps" } */
 
 /* Test that `xlat' instructions are prefixed with the proper segment override
