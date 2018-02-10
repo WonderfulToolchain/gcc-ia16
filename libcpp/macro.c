@@ -3090,7 +3090,7 @@ create_iso_definition (cpp_reader *pfile, cpp_macro *macro)
 	     function-like macros, but not at the end.  */
 	  if (following_paste_op)
 	    {
-	      cpp_error (pfile, CPP_DL_ERROR, paste_op_error_msg);
+	      cpp_error (pfile, CPP_DL_ERROR, "%s", paste_op_error_msg);
 	      return false;
 	    }
 	  break;
@@ -3103,7 +3103,7 @@ create_iso_definition (cpp_reader *pfile, cpp_macro *macro)
 	     function-like macros, but not at the beginning.  */
 	  if (macro->count == 1)
 	    {
-	      cpp_error (pfile, CPP_DL_ERROR, paste_op_error_msg);
+	      cpp_error (pfile, CPP_DL_ERROR, "%s", paste_op_error_msg);
 	      return false;
 	    }
 
