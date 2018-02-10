@@ -683,10 +683,10 @@ cpp_classify_number (cpp_reader *pfile, const cpp_token *token,
 
 	  if (CPP_OPTION (pfile, c99))
             cpp_warning_with_line (pfile, CPP_W_LONG_LONG, virtual_location,
-				   0, message);
+				   0, "%s", message);
           else
             cpp_pedwarning_with_line (pfile, CPP_W_LONG_LONG,
-				      virtual_location, 0, message);
+				      virtual_location, 0, "%s", message);
         }
 
       result |= CPP_N_INTEGER;
