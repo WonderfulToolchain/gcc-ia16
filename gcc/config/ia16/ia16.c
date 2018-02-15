@@ -135,16 +135,16 @@ ia16_preferred_reload_class (rtx x ATTRIBUTE_UNUSED, reg_class_t rclass)
 {
   /* Try to avoid roping in %ds.  */
   switch (rclass)
-  {
-  case SEGMENT_REGS:
-    return ES_REGS;
+    {
+    case SEGMENT_REGS:
+      return ES_REGS;
 
-  case SEG_GENERAL_REGS:
-    return ES_GENERAL_REGS;
+    case SEG_GENERAL_REGS:
+      return ES_GENERAL_REGS;
 
-  default:
-    return rclass;
-  }
+    default:
+      return rclass;
+    }
 }
 
 #undef  TARGET_SECONDARY_RELOAD
@@ -373,15 +373,98 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 /* Passing Function Arguments on the Stack */
 #undef	TARGET_RETURN_POPS_ARGS
 #define	TARGET_RETURN_POPS_ARGS ia16_return_pops_args
+
+#define IA16_CALLCVT_CDECL	0x01
+#define IA16_CALLCVT_STDCALL	0x02
+
+static unsigned
+ia16_get_callcvt (const_tree type)
+{
+  tree attrs = TYPE_ATTRIBUTES (type);
+
+  if (attrs != NULL_TREE)
+    {
+      if (lookup_attribute ("cdecl", attrs))
+	return IA16_CALLCVT_CDECL;
+
+      if (lookup_attribute ("stdcall", attrs))
+	return IA16_CALLCVT_STDCALL;
+    }
+
+  return TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
+}
+
 static int
-ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED,
-		       tree funtype ATTRIBUTE_UNUSED, int size)
+ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
 {
   /* Note that the `-mrtd' calling convention will also be applied to libgcc
      library functions (e.g. __udivdi3).  This usually means that, if we
      compile code using `-mrtd', we will need a libgcc multilib compiled with
      `-mrtd' to link against our code.  */
-  return TARGET_RTD && ! stdarg_p (funtype) ? size : 0;
+  if (ia16_get_callcvt (funtype) == IA16_CALLCVT_STDCALL
+      && ! stdarg_p (funtype))
+    return size;
+
+  return 0;
+}
+
+/* Defining target-specific uses of __attribute__ */
+#undef	TARGET_ATTRIBUTE_TABLE
+#define	TARGET_ATTRIBUTE_TABLE ia16_attribute_table
+
+static tree
+ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
+			     int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+{
+  switch (TREE_CODE (*node))
+    {
+    case FUNCTION_TYPE:
+    case METHOD_TYPE:
+    case FIELD_DECL:
+    case TYPE_DECL:
+      break;
+
+    default:
+      warning (OPT_Wattributes, "%qE attribute only applies to functions",
+				name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+
+  if (is_attribute_p ("stdcall", name)
+       && lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
+    {
+      error ("stdcall and cdecl attributes are not compatible");
+      *no_add_attrs = true;
+    }
+  else if (is_attribute_p ("cdecl", name)
+	   && lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
+    {
+      error ("stdcall and cdecl attributes are not compatible");
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+static const struct attribute_spec ia16_attribute_table[] =
+{
+  { "stdcall", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "cdecl",   0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { NULL,      0, 0, false, false, false, NULL,			     false }
+};
+
+#undef	TARGET_COMP_TYPE_ATTRIBUTES
+#define TARGET_COMP_TYPE_ATTRIBUTES ia16_comp_type_attributes
+
+static int
+ia16_comp_type_attributes (const_tree type1, const_tree type2)
+{
+  if (TREE_CODE (type1) != FUNCTION_TYPE
+      || TREE_CODE (type1) != METHOD_TYPE)
+    return 1;
+
+  return ia16_get_callcvt (type1) == ia16_get_callcvt (type2);
 }
 
 /* Addressing Modes */
