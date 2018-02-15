@@ -1,9 +1,8 @@
 /* { dg-do run } */
 /* { dg-options "-mrtd -Os --save-temps" } */
 
-/* Test whether the `-mrtd' switch works correctly and links with the correct
-   libgcc multilib.  This test should not require newlib to also be compiled
-   with `-mrtd'.  */
+/* Test whether the `-mrtd' switch in conjunction with __attribute__
+   ((cdecl)) works correctly and links with the correct libgcc multilib.  */
 
 extern void abort (void);
 
@@ -16,13 +15,11 @@ inc (unsigned x)
   return x + 1;
 }
 
-int
-main (int argc, char **argv, ...)
+__attribute__ ((cdecl)) int
+main (int argc, char **argv)
 {
   unsigned i;
 
-  /* If this code is linked against the wrong libgcc, this loop will
-     eventually cause a stack overflow and corrupt the data area.  */
   for (i = 0; i < 10000; ++i)
     {
       unsigned long long mod = quotient % divisor;

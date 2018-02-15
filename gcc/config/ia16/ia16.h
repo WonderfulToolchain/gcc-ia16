@@ -571,7 +571,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
  * Mode Switching Instructions
 
  * Defining target-specific uses of __attribute__
- * Maybe __attribute("far")__ some day.
+ * This is done in ia16.c .
 
  * Defining coprocessor specifics for MIPS targets.
 
