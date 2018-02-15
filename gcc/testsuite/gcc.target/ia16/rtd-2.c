@@ -1,23 +1,22 @@
 /* { dg-do run } */
-/* { dg-options "-mrtd -Os --save-temps" } */
+/* { dg-options "-Os --save-temps" } */
 
-/* Test whether the `-mrtd' switch works correctly and links with the correct
-   libgcc multilib.  This test should not require newlib to also be compiled
-   with `-mrtd'.  */
+/* Test whether `__attribute__ ((stdcall))' works correctly, and still gets
+   the program linked with the correct (non-stdcall) libgcc multilib.  */
 
 extern void abort (void);
 
 volatile unsigned long long quotient = 0x55bde67343803983ull,
 			    divisor = 0x1670107447a23170ull;
 
-unsigned
+__attribute__ ((stdcall)) unsigned
 inc (unsigned x)
 {
   return x + 1;
 }
 
 int
-main (int argc, char **argv, ...)
+main (int argc, char **argv)
 {
   unsigned i;
 
@@ -39,5 +38,5 @@ main (int argc, char **argv, ...)
 /* main (...) should _not_ pop two shortwords: */
 /* { dg-final { scan-assembler-not "ret\[ \\t\]\\\$4" } } */
 
-/* main (...) should not adjust the stack after calling __umoddi3: */
-/* { dg-final { scan-assembler-not "addw\[ \\t\]\\$.*,\[ \\t\]%sp" } } */
+/* main (...) should adjust the stack after calling __umoddi3: */
+/* { dg-final { scan-assembler "addw\[ \\t\]\\$.*,\[ \\t\]%sp" } } */
