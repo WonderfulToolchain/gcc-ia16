@@ -2340,6 +2340,7 @@ GCC plugins may provide their own attributes.
 * CR16 Function Attributes::
 * Epiphany Function Attributes::
 * H8/300 Function Attributes::
+* IA-16 Function Attributes::
 * IA-64 Function Attributes::
 * M32C Function Attributes::
 * M32R/D Function Attributes::
@@ -4062,6 +4063,29 @@ interrupt handler when this attribute is present.
 Use this attribute on the H8/300, H8/300H, and H8S to indicate that
 all registers except the stack pointer should be saved in the prologue
 regardless of whether they are used or not.
+@end table
+
+@node IA-16 Function Attributes
+@subsection IA-16 Function Attributes
+
+These function attributes are supported by the IA-16 back end:
+
+@table @code
+@item cdecl
+@cindex @code{cdecl} function attribute, IA-16
+@cindex functions that pop the argument stack on IA-16
+@opindex mrtd
+On the IA-16 target, the @code{cdecl} attribute causes the compiler to
+assume that the calling function pops off the stack space used to
+pass arguments.  This is
+useful to override the effects of the @option{-mrtd} switch.
+
+@item stdcall
+@cindex @code{stdcall} function attribute, IA-16
+@cindex functions that pop the argument stack on IA-16
+On the IA-16 target, the @code{stdcall} attribute causes the compiler to
+assume that the called function pops off the stack space used to
+pass arguments, unless it takes a variable number of arguments.
 @end table
 
 @node IA-64 Function Attributes
