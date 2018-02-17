@@ -221,6 +221,59 @@ ia16_save_reg_p (unsigned int r)
 	  (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
 }
 
+/* Return true iff TYPE is a type for a far function (which returns with
+   `lret').  Currently a function is considered to be "far" if its return
+   type is in the __far address space, or the function type itself is in
+   __far space.  */
+int
+ia16_far_function_type_p (const_tree funtype)
+{
+  return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR
+	 || TYPE_ADDR_SPACE (TREE_TYPE (funtype)) == ADDR_SPACE_FAR;
+}
+
+/* Return true iff we are currently compiling a far function.  */
+int
+ia16_in_far_function_p (void)
+{
+  return ia16_far_function_type_p (TREE_TYPE (cfun->decl));
+}
+
+/* Return true if ADDR is known to be the address of a far function.
+   FIXME: this may not be 100% reliable...  */
+int
+ia16_far_function_rtx_p (rtx addr)
+{
+  tree decl, type;
+
+  switch (GET_CODE (addr))
+    {
+    case MEM:
+      decl = MEM_EXPR (addr);
+      break;
+
+    case REG:
+      decl = REG_EXPR (addr);
+      break;
+
+    case SYMBOL_REF:
+      decl = SYMBOL_REF_DECL (addr);
+      break;
+
+    default:
+      return 0;
+    }
+
+  if (! decl)
+    return 0;
+
+  type = TREE_TYPE (decl);
+  while (POINTER_TYPE_P (type))
+    type = TREE_TYPE (type);
+
+  return ia16_far_function_type_p (type);
+}
+
 /* Basic Stack Layout */
 /* Right after the function prologue, before elimination, we have:
    argument N
@@ -241,15 +294,20 @@ ia16_save_reg_p (unsigned int r)
 /* Calculates the offset from the argument pointer to the first argument.
  * When a frame pointer is needed and bp must be saved, it is saved before the
  * frame is created.  This increases the offset to the parameters by 2 bytes.
- * A __far__ call (not yet implemented) would add another 2 bytes.
+ * A __far call would add another 2 bytes.
  * FIXME: Docs: This is called before register allocation.
  */
-HOST_WIDE_INT ia16_first_parm_offset (void)
+HOST_WIDE_INT
+ia16_first_parm_offset (tree fundecl)
 {
-	/* Start off with 2 bytes to skip over the saved pc register.  */
-	HOST_WIDE_INT offset = GET_MODE_SIZE (Pmode);
+  /* Start off with 2 bytes to skip over the saved pc register.  */
+  HOST_WIDE_INT offset = GET_MODE_SIZE (Pmode);
 
-	return (offset);
+  /* Add 2 bytes if this is a far function.  */
+  if (ia16_far_function_type_p (TREE_TYPE (fundecl)))
+    offset += GET_MODE_SIZE (Pmode);
+
+  return (offset);
 }
 
 /* Eliminating Frame Pointer and Arg Pointer */
@@ -367,7 +425,16 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 {
   /* For now, only allow sibcalling known functions.
      TODO: Try relaxing this.  */
-  return decl != 0;
+  if (! decl)
+    return false;
+
+  /* If the current function is a far function, but the callee is not a far
+     function, then do not allow a sibcall.  */
+  if (ia16_in_far_function_p ()
+      && ! ia16_far_function_type_p (TREE_TYPE (decl)))
+    return false;
+
+  return true;
 }
 
 /* Passing Function Arguments on the Stack */
@@ -376,22 +443,29 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 
 #define IA16_CALLCVT_CDECL	0x01
 #define IA16_CALLCVT_STDCALL	0x02
+#define IA16_CALLCVT_FAR	0x04
 
 static unsigned
 ia16_get_callcvt (const_tree type)
 {
   tree attrs = TYPE_ATTRIBUTES (type);
+  unsigned callcvt = 0;
 
   if (attrs != NULL_TREE)
     {
       if (lookup_attribute ("cdecl", attrs))
-	return IA16_CALLCVT_CDECL;
+	callcvt |= IA16_CALLCVT_CDECL;
 
       if (lookup_attribute ("stdcall", attrs))
-	return IA16_CALLCVT_STDCALL;
+	callcvt |= IA16_CALLCVT_STDCALL;
     }
+  else
+    callcvt |= TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
 
-  return TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
+  if (ia16_far_function_type_p (type))
+    callcvt |= IA16_CALLCVT_FAR;
+
+  return callcvt;
 }
 
 static int
@@ -401,11 +475,18 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
      library functions (e.g. __udivdi3).  This usually means that, if we
      compile code using `-mrtd', we will need a libgcc multilib compiled with
      `-mrtd' to link against our code.  */
-  if (ia16_get_callcvt (funtype) == IA16_CALLCVT_STDCALL
-      && ! stdarg_p (funtype))
-    return size;
+  if (stdarg_p (funtype))
+    return 0;
 
-  return 0;
+  switch (ia16_get_callcvt (funtype))
+    {
+    case IA16_CALLCVT_STDCALL:
+    case IA16_CALLCVT_STDCALL | IA16_CALLCVT_FAR:
+      return size;
+
+    default:
+      return 0;
+    }
 }
 
 /* Defining target-specific uses of __attribute__ */
