@@ -24,8 +24,11 @@ extern struct gcc_target targetm;
 extern unsigned char	ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER];
 extern enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER];
 extern int		ia16_regno_in_class_p (unsigned, unsigned);
+extern int		ia16_far_function_type_p (const_tree funtype);
+extern int		ia16_in_far_function_p (void);
+extern int		ia16_far_function_rtx_p (rtx addr);
 extern bool		ia16_have_seg_override_p (rtx x);
-extern HOST_WIDE_INT	ia16_first_parm_offset (void);
+extern HOST_WIDE_INT	ia16_first_parm_offset (tree fundecl);
 extern HOST_WIDE_INT	ia16_initial_frame_pointer_offset (void);
 extern HOST_WIDE_INT
 		ia16_initial_elimination_offset (unsigned int from, unsigned int to);

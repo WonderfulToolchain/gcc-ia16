@@ -331,7 +331,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define FRAME_GROWS_DOWNWARD 1
 #undef  ARGS_GROW_DOWNWARD
 #define STARTING_FRAME_OFFSET 0
-#define FIRST_PARM_OFFSET(fundecl) ia16_first_parm_offset ()
+#define FIRST_PARM_OFFSET(fundecl) ia16_first_parm_offset (fundecl)
 
 /* Because we have no way of knowing how many registers are saved between the
    return address and the frame pointer, we can't find the return address for
