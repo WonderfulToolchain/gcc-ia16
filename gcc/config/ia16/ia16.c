@@ -222,14 +222,21 @@ ia16_save_reg_p (unsigned int r)
 }
 
 /* Return true iff TYPE is a type for a far function (which returns with
-   `lret').  Currently a function is considered to be "far" if its return
-   type is in the __far address space, or the function type itself is in
-   __far space.  */
+   `lret').  Currently a function is considered to be "far" if
+     * the function type itself is in __far space, or
+     * its return type is in the __far address space, and `-mfar-function-
+       if-far-return-type' is enabled.  */
 int
 ia16_far_function_type_p (const_tree funtype)
 {
-  return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR
-	 || TYPE_ADDR_SPACE (TREE_TYPE (funtype)) == ADDR_SPACE_FAR;
+  if (TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR)
+    return 1;
+
+  if (TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE
+      && TYPE_ADDR_SPACE (TREE_TYPE (funtype)) == ADDR_SPACE_FAR)
+    return 1;
+
+  return 0;
 }
 
 /* Return true iff we are currently compiling a far function.  */
