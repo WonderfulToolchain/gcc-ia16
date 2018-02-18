@@ -67,9 +67,12 @@ ia16_cpu_cpp_builtins (void)
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_CDECL");
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_STDCALL");
 
-  /* Also define a macro to give the function calling convention in use.  */
+  /* Also define a macro to give the function calling convention settings
+     in use.  */
   def_or_undef_macro ("__IA16_CALLCVT_CDECL", ! TARGET_RTD);
   def_or_undef_macro ("__IA16_CALLCVT_STDCALL", TARGET_RTD);
+  def_or_undef_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE",
+    TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
 
   /* Define macros corresponding to the chosen memory model.  I define both
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL}__, and a simple
