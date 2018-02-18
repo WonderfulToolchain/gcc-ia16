@@ -16606,6 +16606,14 @@ In the default configuration (@option{-fcall-used-ds
 -mcallee-assume-ds-ss}), functions can assume that @code{ds} equals
 @code{ss} at function entry, and will arrange to reset @code{ds} to
 @code{ss}---if needed---just before returning.
+
+@item -mfar-function-if-far-return-type
+@opindex mfar-function-if-far-return-type
+Enable a highly experimental feature, where a function with a @code{__far}
+return type is compiled as a far function which returns to a 32-bit return
+address---that is, with the @code{lret} instruction.  (Callers must arrange
+to point @code{ds} and @code{ss} to the generic data address space before
+calling such a function.)
 @end table
 
 @node IA-64 Options
