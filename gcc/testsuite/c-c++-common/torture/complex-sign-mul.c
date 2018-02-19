@@ -2,6 +2,7 @@
    multiplication.  */
 /* { dg-do run } */
 /* { dg-options "-std=gnu99" { target c } } */
+/* { dg-additional-options "-mcmodel=small" { target ia16-*-* } } */
 
 #include "complex-sign.h"
 
