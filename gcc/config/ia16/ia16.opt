@@ -85,10 +85,18 @@ mrtd
 Target Report Mask(RTD)
 Alternate calling convention (callee pops arguments).
 
-mno-callee-assume-ds-ss
+mno-callee-assume-ds-data-space
 Target RejectNegative Report Mask(NO_ASSUME_DS_SS)
-Alternate calling convention (callee cannot assume %ds == %ss).
+Alternate calling convention (callee cannot assume %ds points to program's data space on entry).
 
+mcallee-assume-ds-data-space
+Target RejectNegative InverseMask(NO_ASSUME_DS_SS, ASSUME_DS_SS) Undocumented
+
+; Older name.
+mno-callee-assume-ds-ss
+Target RejectNegative Report Mask(NO_ASSUME_DS_SS) Undocumented
+
+; Older name.
 mcallee-assume-ds-ss
 Target RejectNegative InverseMask(NO_ASSUME_DS_SS, ASSUME_DS_SS) Undocumented
 
