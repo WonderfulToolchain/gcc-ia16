@@ -757,7 +757,7 @@ Objective-C and Objective-C++ Dialects}.
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd @gol
--mno-callee-assume-ds-ss}
+-mno-callee-assume-ds-data-space}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16589,23 +16589,23 @@ In addition, seriously incorrect code results if you call a
 function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
 
-@item -mno-callee-assume-ds-ss
-@itemx -mcallee-assume-ds-ss
-@opindex mno-callee-assume-ds-ss
-@opindex mcallee-assume-ds-ss
+@item -mno-callee-assume-ds-data-space
+@itemx -mcallee-assume-ds-data-space
+@opindex mno-callee-assume-ds-data-space
+@opindex mcallee-assume-ds-data-space
 Use (or do not use) a different function-calling convention, in which the
 @code{ds} register is treated as just an ordinary callee-used register (with
 @option{-fcall-used-ds}) or fixed register (@option{-ffixed-ds}) with no
-special meaning, and data items in the generic address space are always
-accessed via the @code{ss} register.
+special meaning.  Data items in the generic address space will be accessed
+via the @code{ss} register.
 
 This option is ignored if @code{ds} is set to be a callee-saved register
 (@option{-fcall-saved-ds}).
 
 In the default configuration (@option{-fcall-used-ds
--mcallee-assume-ds-ss}), functions can assume that @code{ds} equals
-@code{ss} at function entry, and will arrange to reset @code{ds} to
-@code{ss}---if needed---just before returning.
+-mcallee-assume-ds-data-space}), functions can assume that @code{ds} points
+to the program's data space at function entry, and will arrange to reset
+@code{ds}---if needed---just before returning.
 
 @item -mfar-function-if-far-return-type
 @opindex mfar-function-if-far-return-type
