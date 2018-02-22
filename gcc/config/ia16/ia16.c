@@ -455,19 +455,16 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 static unsigned
 ia16_get_callcvt (const_tree type)
 {
+  unsigned callcvt = TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
   tree attrs = TYPE_ATTRIBUTES (type);
-  unsigned callcvt = 0;
 
   if (attrs != NULL_TREE)
     {
       if (lookup_attribute ("cdecl", attrs))
-	callcvt |= IA16_CALLCVT_CDECL;
-
-      if (lookup_attribute ("stdcall", attrs))
-	callcvt |= IA16_CALLCVT_STDCALL;
+	callcvt = IA16_CALLCVT_CDECL;
+      else if (lookup_attribute ("stdcall", attrs))
+	callcvt = IA16_CALLCVT_STDCALL;
     }
-  else
-    callcvt |= TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
 
   if (ia16_far_function_type_p (type))
     callcvt |= IA16_CALLCVT_FAR;
@@ -490,9 +487,11 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
     case IA16_CALLCVT_STDCALL:
     case IA16_CALLCVT_STDCALL | IA16_CALLCVT_FAR:
       return size;
-
-    default:
+    case IA16_CALLCVT_CDECL:
+    case IA16_CALLCVT_CDECL | IA16_CALLCVT_FAR:
       return 0;
+    default:
+      gcc_unreachable ();
     }
 }
 
