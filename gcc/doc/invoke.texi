@@ -757,7 +757,7 @@ Objective-C and Objective-C++ Dialects}.
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd @gol
--mno-callee-assume-ds-data-space}
+-mno-callee-assume-ds-data-segment}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16589,23 +16589,26 @@ In addition, seriously incorrect code results if you call a
 function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
 
-@item -mno-callee-assume-ds-data-space
-@itemx -mcallee-assume-ds-data-space
-@opindex mno-callee-assume-ds-data-space
-@opindex mcallee-assume-ds-data-space
+@item -mno-callee-assume-ds-data-segment
+@itemx -mcallee-assume-ds-data-segment
+@opindex mno-callee-assume-ds-data-segment
+@opindex mcallee-assume-ds-data-segment
 Use (or do not use) a different function-calling convention, in which the
-@code{ds} register is treated as just an ordinary callee-used register (with
-@option{-fcall-used-ds}) or fixed register (@option{-ffixed-ds}) with no
-special meaning.  Data items in the generic address space will be accessed
-via the @code{ss} register.
+@code{ds} register is not assumed to point to the program's data segment
+(the generic address space) at function entry, and is treated as just an
+ordinary callee-used register (with @option{-fcall-used-ds}) or fixed
+register (@option{-ffixed-ds}) with no special meaning.
+
+The @code{ss} register is still assumed to point to the data segment---data
+items in the generic address space will be accessed via @code{ss}.
 
 This option is ignored if @code{ds} is set to be a callee-saved register
 (@option{-fcall-saved-ds}).
 
-In the default configuration (@option{-fcall-used-ds
--mcallee-assume-ds-data-space}), functions can assume that @code{ds} points
-to the program's data space at function entry, and will arrange to reset
-@code{ds}---if needed---just before returning.
+In the default configuration (@option{-mcallee-assume-ds-data-segment
+-fcall-used-ds}), functions can assume that @code{ds} points to the
+program's data segment at function entry, and will arrange to reset
+@code{ds} to @code{ss}---if needed---just before returning.
 
 @item -mfar-function-if-far-return-type
 @opindex mfar-function-if-far-return-type
