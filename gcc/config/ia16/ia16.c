@@ -2626,7 +2626,7 @@ ia16_print_operand_address (FILE *file, rtx e)
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
     }
-  else if (! TARGET_ALLOCABLE_DS_REG && ! TARGET_ASSUME_DS_SS)
+  else if (! TARGET_ALLOCABLE_DS_REG && ! TARGET_ASSUME_DS_DATA)
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
