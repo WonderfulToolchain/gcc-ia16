@@ -34,7 +34,7 @@
 #define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
 #define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
 				 && call_used_regs[DS_REG] \
-				 && TARGET_ASSUME_DS_SS)
+				 && TARGET_ASSUME_DS_DATA)
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
