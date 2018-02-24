@@ -185,19 +185,38 @@ rtx
 prepare_call_address (tree fndecl_or_type, rtx funexp, rtx static_chain_value,
 		      rtx *call_fusage, int reg_parm_seen, int sibcallp)
 {
+  /* Incorporate address space information from the function type, in order
+     to support far functions on ia16-elf.  -- tkchia */
+  addr_space_t as = ADDR_SPACE_GENERIC;
+
+  if (fndecl_or_type)
+    {
+      if (TREE_CODE (fndecl_or_type) != FUNCTION_DECL)
+	as = TYPE_ADDR_SPACE (fndecl_or_type);
+      else
+	as = TYPE_ADDR_SPACE (TREE_TYPE (fndecl_or_type));
+    }
+
   /* Make a valid memory address and copy constants through pseudo-regs,
      but not for a constant address if -fno-function-cse.  */
   if (GET_CODE (funexp) != SYMBOL_REF)
     /* If we are using registers for parameters, force the
        function address into a register now.  */
-    funexp = ((reg_parm_seen
-	       && targetm.small_register_classes_for_mode_p (FUNCTION_MODE))
-	      ? force_not_mem (memory_address (FUNCTION_MODE, funexp))
-	      : memory_address (FUNCTION_MODE, funexp));
+    {
+#ifdef TARGET_ADDR_SPACE_WEIRD_P
+      if (! TARGET_ADDR_SPACE_WEIRD_P (as))
+#endif
+	{
+	  funexp = memory_address_addr_space (FUNCTION_MODE, funexp, as);
+	  if (reg_parm_seen
+	      && targetm.small_register_classes_for_mode_p (FUNCTION_MODE))
+	    funexp = force_not_mem (funexp);
+	}
+    }
   else if (! sibcallp)
     {
       if (!NO_FUNCTION_CSE && optimize && ! flag_no_function_cse)
-	funexp = force_reg (Pmode, funexp);
+	funexp = force_reg (targetm.addr_space.address_mode (as), funexp);
     }
 
   if (static_chain_value != 0
@@ -290,7 +309,13 @@ emit_call_1 (rtx funexp, tree fntree ATTRIBUTE_UNUSED, tree fndecl ATTRIBUTE_UNU
      and we don't want to load it into a register as an optimization,
      because prepare_call_address already did it if it should be done.  */
   if (GET_CODE (funexp) != SYMBOL_REF)
-    funexp = memory_address (FUNCTION_MODE, funexp);
+    {
+      addr_space_t as = TYPE_ADDR_SPACE (funtype);
+#ifdef TARGET_ADDR_SPACE_WEIRD_P
+      if (! TARGET_ADDR_SPACE_WEIRD_P (as))
+#endif
+	funexp = memory_address_addr_space (FUNCTION_MODE, funexp, as);
+    }
 
   funmem = gen_rtx_MEM (FUNCTION_MODE, funexp);
   if (fndecl && TREE_CODE (fndecl) == FUNCTION_DECL)
