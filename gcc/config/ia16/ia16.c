@@ -441,6 +441,11 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
       && ! ia16_far_function_type_p (TREE_TYPE (decl)))
     return false;
 
+  /* Ditto if the current function is a near function but not the callee.  */
+  if (! ia16_in_far_function_p ()
+      && ia16_far_function_type_p (TREE_TYPE (decl)))
+    return false;
+
   return true;
 }
 
