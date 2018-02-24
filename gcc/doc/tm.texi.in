@@ -7497,12 +7497,16 @@ arithmetic of the same modes, or if
 
 @item
 the difference between two pointers or addresses might not fit into a
-@code{sizetype}.
+@code{sizetype}, or if
+
+@item
+function pointers pointing into @var{as}, when invoked, should not be
+converted into addresses.
 
 @end enumerate
 
 This macro is defined in the IA-16 backend to suppress certain optimizations
-over @code{__far} pointers.
+and processing steps involving @code{__far} pointers.
 @end defmac
 
 @defmac TARGET_WARN_ADDR_SPACE_SYNTAX_P (@var{as})
