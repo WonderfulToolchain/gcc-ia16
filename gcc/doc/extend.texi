@@ -1446,6 +1446,20 @@ unsigned long irq0_clock_ticks (void)
 @}
 @end smallexample
 
+Another way is to cast a generic data pointer or function pointer to a far
+pointer type.  For a data pointer, the resulting far pointer will have the
+data segment value---taken from the @code{ss} register---as its segment
+component; for a function pointer, the segment component will be from
+@code{cs}.
+
+@smallexample
+void set_diskette_params (const unsigned char params[])
+@{
+    * (const unsigned char __far * volatile __far *) (4 * 0x1e) =
+        (const unsigned char __far *) params;
+@}
+@end smallexample
+
 The preprocessor symbol @code{__FAR} is defined when far pointers are
 supported.
 
@@ -1469,22 +1483,27 @@ resulting pointer is undefined.  This may change in the future.
 @c made no sense.  -- tkchia
 
 @item
-Many kinds of useful operations involving far addresses are not yet
-supported.  These include placing a static storage @emph{variable} in the
-@code{__far} space, and invoking a far @emph{function}.
+Support for invoking far @emph{functions}, and for defining far function
+pointers, is still very preliminary.  In particular, the current syntax for
+defining a far function type is rather unwieldy:
+
+@smallexample
+typedef void func_t (void);
+typedef func_t __far far_func_t;
+@end smallexample
 @c
-@c The N1275 draft does not actually support the notion of functions in
-@c separate address spaces: (5.1.2) "Note that, since a function is not an
-@c object, address-space type qualifiers cannot be used with functions."
+@c 1) The N1275 draft does not actually support the notion of functions in
+@c    separate address spaces: (5.1.2) "Note that, since a function is not an
+@c    object, address-space type qualifiers cannot be used with functions."
+@c    But GCC supports the above syntax (even if accidentally), so I build
+@c    on it.
 @c
-@c However, GCC _does_ seem to allow declarations of far function pointers
-@c (perhaps unintentionally).  One needs to say e.g.
-@c	typedef int fn_t (char);
-@c	typedef __far fn_t *p_far_fn_t;
-@c Trying to call a function via such a pointer will currently crash GCC.
-@c
-@c The classical `int (__far *) (char);' declaration syntax does not work
-@c (see below).  -- tkchia
+@c 2) The classical `int (__far *) (char);' declaration syntax does not work
+@c    (see below).  -- tkchia
+
+@item
+Placing a static storage @emph{variable} in the @code{__far} space is
+currently not supported.
 
 @item
 For far pointer declarations, the GCC named address space syntax---which
