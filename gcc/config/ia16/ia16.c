@@ -2441,6 +2441,9 @@ static const char *reg_HInames[LAST_HARD_REG + 1] = {
    'W': Print the value of the constant E unsigned-divided by 2 (for loading
 	%cx before a `rep; movsw').
    'R': Don't print any register prefix before E.
+   'O': Print the low 16 bits of the 32-bit constant E (for immediate
+        `lcall' and `ljmp').
+   'S': Print the high 16 bits of the 32-bit constant E.
 */
 void
 ia16_print_operand (FILE *file, rtx e, int code)
@@ -2466,6 +2469,16 @@ ia16_print_operand (FILE *file, rtx e, int code)
     {
       gcc_assert (CONST_INT_P (e));
       x = GEN_INT ((INTVAL (e) / 2) & 0x7fff);
+    }
+  else if (code == 'O')
+    {
+      gcc_assert (CONST_INT_P (e));
+      x = GEN_INT (INTVAL (e) & 0xffff);
+    }
+  else if (code == 'S')
+    {
+      gcc_assert (CONST_INT_P (e));
+      x = GEN_INT ((INTVAL (e) >> 16) & 0xffff);
     }
   else
     x = e;
