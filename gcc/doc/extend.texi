@@ -1424,6 +1424,7 @@ Such code requires at least binutils 2.23, see
 
 @end itemize
 
+@anchor{IA-16 Named Address Spaces}
 @subsection IA-16 Named Address Spaces
 @cindex @code{__far} IA-16 Named Address Spaces
 
