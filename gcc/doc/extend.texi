@@ -1623,6 +1623,7 @@ see @ref{AVR Variable Attributes}.
 
 @end itemize
 
+@anchor{IA-16 Named Address Spaces}
 @subsection IA-16 Named Address Spaces
 @cindex @code{__far} IA-16 Named Address Spaces
 
