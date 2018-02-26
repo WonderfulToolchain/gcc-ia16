@@ -16613,10 +16613,75 @@ program's data segment at function entry, and will arrange to reset
 @item -mfar-function-if-far-return-type
 @opindex mfar-function-if-far-return-type
 Enable a highly experimental feature, where a function with a @code{__far}
-return type is compiled as a far function which returns to a 32-bit return
-address---that is, with the @code{lret} instruction.  (Callers must arrange
-to point @code{ds} and @code{ss} to the generic data address space before
-calling such a function.)
+return type (see @ref{IA-16 Named Address Spaces}) is compiled as a far
+function which returns to a 32-bit return address---that is, with the
+@code{lret} instruction.
+
+(Callers must arrange to point @code{ds} and @code{ss} to the generic data
+address space before calling such a function.)
+@end table
+
+@subsubsection IA-16 Built-in Macros
+
+@table @code
+@item __FAR
+This macro is defined only if the compiler supports the @code{__far} address
+space specifier (see @ref{IA-16 Named Address Spaces}).
+
+@item __IA16_CMODEL_TINY__
+@itemx __TINY__
+These macros are defined if the tiny code model is selected
+(@option{-mcmodel=tiny}).
+
+@item __IA16_CMODEL_SMALL__
+@itemx __SMALL__
+These macros are defined if the small code model is selected
+(@option{-mcmodel=small}).
+
+@item __IA16_ARCH_ANY
+@itemx __IA16_ARCH_ANY_186
+@itemx __IA16_ARCH_I8086
+@itemx __IA16_ARCH_I8088
+@itemx __IA16_ARCH_NEC_V30
+@itemx __IA16_ARCH_NEC_V20
+@itemx __IA16_ARCH_I80186
+@itemx __IA16_ARCH_I80188
+@itemx __IA16_ARCH_I80286
+@itemx __IA16_TUNE_I8086
+@itemx __IA16_TUNE_I8088
+@itemx __IA16_TUNE_NEC_V30
+@itemx __IA16_TUNE_NEC_V20
+@itemx __IA16_TUNE_I80186
+@itemx __IA16_TUNE_I80188
+@itemx __IA16_TUNE_I80286
+These macros are defined according to the @option{-march=@var{cpu-type}} and
+@option{-mtune=@var{cpu-type}} option settings.
+
+@item __IA16_FEATURE_SHIFT_IMM
+@itemx __IA16_FEATURE_PUSH_IMM
+@itemx __IA16_FEATURE_IMUL_IMM
+@itemx __IA16_FEATURE_PUSHA
+@itemx __IA16_FEATURE_ENTER_LEAVE
+@itemx __IA16_FEATURE_AAD_IMM
+@itemx __IA16_FEATURE_FSTSW_AX
+Each of these macros is defined only if the CPU selected by
+@option{-march=@var{cpu-type}} supports the named type of IA-16 instruction.
+
+@item __IA16_FEATURE_SHIFT_MASKED
+This macro is defined only if the selected CPU's bitwise shift and rotation
+instructions---@code{rcl}, @code{shr}, and so on---implicitly mask each
+shift count to their lower 5 bits.
+
+@item __IA16_FEATURE_ALLOCABLE_DS_REG
+This macro is defined only if the @code{ds} register is configured to be
+available for register allocation---that is, it is either callee-used or
+callee-saved, not fixed.
+
+@c I am not sure yet if I should document and codify the remaining macros,
+@c viz. __IA16_FEATURE_ATTRIBUTE_{CDECL, STDCALL}, __IA16_CALLCVT_{CDECL,
+@c STDCALL}, and __IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE...
+@c -- tkchia
+@c
 @end table
 
 @node IA-64 Options
