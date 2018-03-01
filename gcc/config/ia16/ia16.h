@@ -611,12 +611,23 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
    treeop1, target, mode, modifier).  The latter macro should say how to
    convert a POINTER_PLUS_EXPR node into RTL, when the pointer operand
    (treeop0) belongs to a "weird" address space.  */
-#define TARGET_EXPAND_WEIRD_POINTER_PLUS_EXPR ia16_expand_weird_pointer_plus_expr
+#define TARGET_EXPAND_WEIRD_POINTER_PLUS_EXPR \
+	ia16_expand_weird_pointer_plus_expr
 /* And, we hack gcc/explow.c to recognize a new macro to actually do address
    RTX -> pointer RTX and pointer RTX -> address RTX conversions for operands
    pointing into "weird" address spaces.  */
 #define TARGET_ADDR_SPACE_CONVERT_WEIRD_MEMORY_ADDRESS \
 	ia16_as_convert_weird_memory_address
+/* To support far functions and far function pointers, we hack the C parser
+   in gcc/c/c-parser.c to recognize a new macro which says we allow having
+   functions in a given non-default address space.  gcc/c/c-decl.c and
+   gcc/c/c-tree.h are also updated to account for the changes in the C
+   parser's internal structures.  */
+#define TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P(as) ((as) == ADDR_SPACE_FAR)
+/* Also, gcc/c/c-decl.c is updated to recognize a new macro which says
+   whether a function may get its address space from its return type.  */
+#define TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P(as) \
+	TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE
 
 /* Which processor to tune code generation for.  These must be in sync
    with processor_target_table in ia16.c.  */

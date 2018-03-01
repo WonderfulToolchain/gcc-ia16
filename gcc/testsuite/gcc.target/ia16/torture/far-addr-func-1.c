@@ -6,7 +6,8 @@
 typedef int func_t (long);
 typedef func_t __far far_func_t;
 
-int bar (far_func_t *foo, long x)
+int
+bar (far_func_t *foo, long x)
 {
   return foo (x);
 }

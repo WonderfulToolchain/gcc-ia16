@@ -1,15 +1,12 @@
 /* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
-/* Test if the compiler can emit an `lcall' with an absolute address.  */
-
-typedef void func_t (void);
-typedef func_t __far far_func_t;
+/* Test that the postfix __far syntax for declaring far functions works.  */
 
 void
 reset_video (void)
 {
-  ((far_func_t *) 0xc0000003ul) ();
+  ((void (*) (void) __far) 0xc0000003ul) ();
 }
 
 /* { dg-final { scan-assembler "lcall\[ \\t\]\\\$49152,\[ \\t]\\\$3" } } */
