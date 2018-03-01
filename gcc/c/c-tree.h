@@ -421,7 +421,12 @@ struct c_declarator {
        declarator.  */
     tree id;
     /* For functions.  */
-    struct c_arg_info *arg_info;
+    struct {
+      struct c_arg_info *arg_info;
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+      addr_space_t as;
+#endif
+    } function;
     /* For arrays.  */
     struct {
       /* The array dimension, or NULL for [] and [*].  */
@@ -564,6 +569,7 @@ extern struct c_parm *build_c_parm (struct c_declspecs *, tree,
 extern struct c_declarator *build_attrs_declarator (tree,
 						    struct c_declarator *);
 extern struct c_declarator *build_function_declarator (struct c_arg_info *,
+						       addr_space_t,
 						       struct c_declarator *);
 extern struct c_declarator *build_id_declarator (tree);
 extern struct c_declarator *make_pointer_declarator (struct c_declspecs *,
