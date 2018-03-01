@@ -1473,19 +1473,19 @@ int bar (void) __far
 @}
 @end smallexample
 @c
-@c 1) The N1275 draft does not actually support the notion of functions in
-@c    separate address spaces: (5.1.2) "Note that, since a function is not an
-@c    object, address-space type qualifiers cannot be used with functions."
-@c
-@c    But GCC supports the above syntax (even if accidentally), so I build
-@c    on it.
-@c
-@c 2) The unwieldy
+@c 1) The unwieldy
 @c	typedef void func_t (void);
 @c	typedef func_t __far far_func_t;
 @c    syntax for defining a far function pointer type can also be used, for
-@c    somewhat older (25--28 Feb 2018) versions of ia16-elf-gcc.  This
-@c    syntax is still supported. :-)
+@c    use with somewhat older (25--28 Feb 2018) versions of ia16-elf-gcc. 
+@c    This syntax is still supported on later versions. :-)
+@c
+@c 2) The N1275 draft does not actually support the notion of functions in
+@c    separate address spaces: (5.1.2) "Note that, since a function is not an
+@c    object, address-space type qualifiers cannot be used with functions."
+@c
+@c    But GCC supports the above unwieldy syntax (even if accidentally), so I
+@c    build on it.
 @c
 @c 3) The classical `int (__far *) (char);' declaration syntax does not work
 @c    (see below).  -- tkchia
