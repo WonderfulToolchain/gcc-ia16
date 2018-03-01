@@ -1996,7 +1996,7 @@ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok,
 		      while (ce != NULL)
 			if (ce->kind == cdk_function)
 			  {
-			    parms = ce->u.arg_info->parms;
+			    parms = ce->u.function.arg_info->parms;
 			    break;
 			  }
 			else
@@ -3395,6 +3395,34 @@ c_parser_declarator (c_parser *parser, bool type_seen_p, c_dtr_syn kind,
   return c_parser_direct_declarator (parser, type_seen_p, kind, seen_id);
 }
 
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+/* Special case for ia16-elf.  Parse an optional address space specifier
+   after a parameter list for a function.
+
+   direct-declarator:
+     direct-declarator ( parameter-type-list ) address-space-qualifier[opt]
+     direct-declarator ( identifier-list[opt] ) address-space-qualifier[opt]
+ */
+static addr_space_t
+c_parser_optional_address_space_qualifier (c_parser *parser)
+{
+  c_token *token = c_parser_peek_token (parser);
+  addr_space_t as;
+
+  if (token->id_kind != C_ID_ADDRSPACE)
+    return ADDR_SPACE_GENERIC;
+
+  as = token->keyword - RID_FIRST_ADDR_SPACE;
+
+  if (! ADDR_SPACE_GENERIC_P (as)
+      && ! TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (as))
+    return ADDR_SPACE_GENERIC;
+
+  c_parser_consume_token (parser);
+  return as;
+}
+#endif
+
 /* Parse a direct declarator or direct abstract declarator; arguments
    as c_parser_declarator.  */
 
@@ -3478,8 +3506,14 @@ c_parser_direct_declarator (c_parser *parser, bool type_seen_p, c_dtr_syn kind,
 	    return NULL;
 	  else
 	    {
+#ifndef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+	      addr_space_t as = ADDR_SPACE_GENERIC;
+#else
+	      addr_space_t as
+		= c_parser_optional_address_space_qualifier (parser);
+#endif
 	      inner
-		= build_function_declarator (args,
+		= build_function_declarator (args, as,
 					     build_id_declarator (NULL_TREE));
 	      return c_parser_direct_declarator_inner (parser, *seen_id,
 						       inner);
@@ -3628,7 +3662,12 @@ c_parser_direct_declarator_inner (c_parser *parser, bool id_present,
 	return NULL;
       else
 	{
-	  inner = build_function_declarator (args, inner);
+#ifndef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+	  addr_space_t as = ADDR_SPACE_GENERIC;
+#else
+	  addr_space_t as = c_parser_optional_address_space_qualifier (parser);
+#endif
+	  inner = build_function_declarator (args, as, inner);
 	  return c_parser_direct_declarator_inner (parser, id_present, inner);
 	}
     }

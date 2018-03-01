@@ -4601,7 +4601,7 @@ start_decl (struct c_declarator *declarator, struct c_declspecs *declspecs,
 	ce = declarator->declarator;
       if (ce->kind == cdk_function)
 	{
-	  tree args = ce->u.arg_info->parms;
+	  tree args = ce->u.function.arg_info->parms;
 	  for (; args; args = DECL_CHAIN (args))
 	    {
 	      tree type = TREE_TYPE (args);
@@ -6123,7 +6123,7 @@ grokdeclarator (const struct c_declarator *declarator,
 
 	    /* Construct the function type and go to the next
 	       inner layer of declarator.  */
-	    arg_info = declarator->u.arg_info;
+	    arg_info = declarator->u.function.arg_info;
 	    arg_types = grokparms (arg_info, really_funcdef);
 
 	    /* Type qualifiers before the return type of the function
@@ -6148,6 +6148,27 @@ grokdeclarator (const struct c_declarator *declarator,
 	    type_quals = TYPE_UNQUALIFIED;
 
 	    type = build_function_type (type, arg_types);
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+	    if (! ADDR_SPACE_GENERIC_P (declarator->u.function.as))
+	      {
+		type_quals
+		  = ENCODE_QUAL_ADDR_SPACE (declarator->u.function.as);
+		type = c_build_qualified_type (type, type_quals);
+	      }
+# ifdef TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
+	    else
+	      {
+		addr_space_t rv_as = TYPE_ADDR_SPACE (TREE_TYPE (type));
+		if (! ADDR_SPACE_GENERIC_P (rv_as)
+		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (rv_as)
+		    && TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P (rv_as))
+		  {
+		    type_quals = ENCODE_QUAL_ADDR_SPACE (rv_as);
+		    type = c_build_qualified_type (type, type_quals);
+		  }
+	      }
+# endif
+#endif
 	    declarator = declarator->declarator;
 
 	    /* Set the TYPE_CONTEXTs for each tagged type which is local to
@@ -9437,12 +9458,18 @@ build_attrs_declarator (tree attrs, struct c_declarator *target)
 
 struct c_declarator *
 build_function_declarator (struct c_arg_info *args,
+			   addr_space_t as,
 			   struct c_declarator *target)
 {
   struct c_declarator *ret = XOBNEW (&parser_obstack, struct c_declarator);
   ret->kind = cdk_function;
   ret->declarator = target;
-  ret->u.arg_info = args;
+  ret->u.function.arg_info = args;
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+  ret->u.function.as = as;
+#else
+  gcc_assert (as == ADDR_SPACE_GENERIC);
+#endif
   return ret;
 }
 

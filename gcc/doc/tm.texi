@@ -10484,6 +10484,28 @@ This macro is defined in the IA-16 backend to implement conversions between
 @code{__far} pointers and @code{__far} addresses.
 @end defmac
 
+@defmac TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (@var{as})
+This macro is not needed for most targets.  If defined, this macro should
+return true if the backend supports having functions inside the non-generic
+address space @var{as}.  (@emph{Note:} This is an extension @emph{on top of}
+the N1275 proposal, which simply forbids functions in alternate address
+spaces.)
+
+This macro is defined in the IA-16 backend to implement @code{__far}
+functions and pointers to such functions.
+@end defmac
+
+@defmac TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P (@var{as})
+This macro is not needed for most targets.  If defined---and if
+@code{TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P} is defined---this macro should
+return true, if GCC should treat a function as belonging to the address
+space @var{as}, whenever the function's return type is marked as belonging
+to @var{as} (and the function itself has no address space qualifier).
+
+This macro is defined in the IA-16 backend to implement the experimental
+option @option{-mfar-function-if-far-return-type}.
+@end defmac
+
 @node Misc
 @section Miscellaneous Parameters
 @cindex parameters, miscellaneous
