@@ -29,4 +29,4 @@
   ""
 
 #define LIB_SPEC	\
-  "%{!T*:%{mcmodel=small:-Tdos-exe-small.ld;:-Tdos-com.ld}}"
+  "%{!T*:%{mcmodel=small:%Tdos-exe-small.ld;:%Tdos-com.ld}}"
