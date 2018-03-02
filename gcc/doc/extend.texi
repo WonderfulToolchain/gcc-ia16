@@ -1514,6 +1514,10 @@ resulting pointer is undefined.  This may change in the future.
 @c made no sense.  -- tkchia
 
 @item
+To avoid ambiguity in parsing, the postfix @code{__far} notation above for
+declaring far functions is not allowed with K&R-style function definitions.
+
+@item
 Placing a static storage @emph{variable} in the @code{__far} space is
 currently not supported.
 

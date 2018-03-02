@@ -3396,12 +3396,15 @@ c_parser_declarator (c_parser *parser, bool type_seen_p, c_dtr_syn kind,
 }
 
 #ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
-/* Special case for ia16-elf.  Parse an optional address space specifier
-   after a parameter list for a function.
+
+/* Special case for ia16-elf.  Parse an optional address space qualifier
+   after a function's parameter type list.  (To avoid ambiguities, an
+   address space qualifier (e.g. __far) after a K&R-style identifier-list
+   is treated as part of the following declaration-list.)
 
    direct-declarator:
      direct-declarator ( parameter-type-list ) address-space-qualifier[opt]
-     direct-declarator ( identifier-list[opt] ) address-space-qualifier[opt]
+     direct-declarator ( ) address-space-qualifier[opt]
  */
 static addr_space_t
 c_parser_optional_address_space_qualifier (c_parser *parser)
@@ -3409,7 +3412,8 @@ c_parser_optional_address_space_qualifier (c_parser *parser)
   c_token *token = c_parser_peek_token (parser);
   addr_space_t as;
 
-  if (token->id_kind != C_ID_ADDRSPACE)
+  if (token->type != CPP_NAME
+      || token->id_kind != C_ID_ADDRSPACE)
     return ADDR_SPACE_GENERIC;
 
   as = token->keyword - RID_FIRST_ADDR_SPACE;
@@ -3506,11 +3510,13 @@ c_parser_direct_declarator (c_parser *parser, bool type_seen_p, c_dtr_syn kind,
 	    return NULL;
 	  else
 	    {
-#ifndef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
 	      addr_space_t as = ADDR_SPACE_GENERIC;
-#else
-	      addr_space_t as
-		= c_parser_optional_address_space_qualifier (parser);
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+	      /* Only accept an address space qualifier here if this is not
+		 a K&R-style identifier list.  */
+	      if (! args->types
+		  || TREE_CODE (TREE_VALUE (args->types)) != IDENTIFIER_NODE)
+		as = c_parser_optional_address_space_qualifier (parser);
 #endif
 	      inner
 		= build_function_declarator (args, as,
@@ -3662,10 +3668,11 @@ c_parser_direct_declarator_inner (c_parser *parser, bool id_present,
 	return NULL;
       else
 	{
-#ifndef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
 	  addr_space_t as = ADDR_SPACE_GENERIC;
-#else
-	  addr_space_t as = c_parser_optional_address_space_qualifier (parser);
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+	  if (! args->types
+	      || TREE_CODE (TREE_VALUE (args->types)) != IDENTIFIER_NODE)
+	    as = c_parser_optional_address_space_qualifier (parser);
 #endif
 	  inner = build_function_declarator (args, as, inner);
 	  return c_parser_direct_declarator_inner (parser, id_present, inner);
