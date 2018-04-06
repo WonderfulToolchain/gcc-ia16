@@ -51,6 +51,8 @@
 #include "tree-vectorizer.h"
 #include "builtins.h"
 #include "cfgrtl.h"
+#include "libiberty.h"
+#include "hashtab.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -760,17 +762,38 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
     if (! ia16_parse_address (x, &r1, &r2, &c, &r9))
       return x;
 
-    if (! r9)
-      return x;
-
     if (no_emit)
       return NULL_RTX;
+
+    if (! r9)
+      {
+	/* x is probably the address of a far static variable.  */
+	if (! TARGET_CMODEL_IS_SMALL)
+	  {
+	    error ("tiny code model does not support MZ relocations");
+	    /* continue after that... */
+	  }
+
+	gcc_assert (SYMBOL_REF_P (x));
+
+	/* If CFUN is NULL, we are building a static initializer containing
+	   the address of a far static variable.  */
+	if (! cfun)
+	  return gen_static_far_ptr (x);
+
+	/* Otherwise, create a pseudo-register the normal way, for the
+	   segment term.  */
+	r9 = gen_seg16_reloc (x);
+      }
 
     off = NULL_RTX;
     if (r1)
       off = r2 ? gen_rtx_PLUS (HImode, r1, r2) : r1;
     if (c)
       off = off ? gen_rtx_PLUS (HImode, x, c) : c;
+
+    if (!off)
+      off = const0_rtx;
 
     x = gen_reg_rtx (SImode);
     emit_move_insn (gen_rtx_SUBREG (HImode, x, 0), off);
@@ -802,6 +825,16 @@ ia16_expand_weird_pointer_plus_expr (rtx op0, rtx op1, rtx target,
 
   gcc_assert (GET_MODE (op0) == SImode || GET_MODE (op0) == VOIDmode);
   gcc_assert (GET_MODE (op1) == HImode || GET_MODE (op1) == VOIDmode);
+
+  if (GET_CODE (op0) == CONST
+      && GET_CODE (XEXP (op0, 0)) == UNSPEC
+      && XINT (XEXP (op0, 0), 1) == UNSPEC_STATIC_FAR_PTR)
+    {
+      /* This pointer arithmetic operation occurs within a static
+	 initializer.  */
+      op0 = XVECEXP (XEXP (op0, 0), 0, 0);
+      return gen_static_far_ptr (gen_rtx_PLUS (GET_MODE (op0), op0, op1));
+    }
 
   op0 = force_reg (SImode, op0);
 
@@ -880,7 +913,7 @@ ia16_split_seg_override_and_offset (rtx x, rtx *ovr, rtx *off)
 #define	TARGET_ADDR_SPACE_LEGITIMIZE_ADDRESS ia16_as_legitimize_address
 
 static rtx
-ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
+ia16_as_legitimize_address (rtx x, rtx oldx,
 			    machine_mode mode ATTRIBUTE_UNUSED,
 			    addr_space_t as ATTRIBUTE_UNUSED)
 {
@@ -915,15 +948,21 @@ ia16_as_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
 
   ia16_split_seg_override_and_offset (x, &ovr, &off);
 
-  /* This (lack of a segment override) sometimes occurs due to GCC's
-      probing.  Specifically, tree-ssa-loop-ivopts.c creates
-     nonsense addresses in order to gauge the costs of using different
-     addressing modes.  We just fabricate something semi-sane here.  */
-  if (! ovr)
-    ovr = gen_seg_override (force_reg (HImode, const0_rtx));
-
   if (! off)
     off = const0_rtx;
+
+  /* This lack of a segment override may mean one of two things.
+
+     One possibility is that we want to take the address of a far static
+     variable.
+
+     Alternatively, it may be due to GCC's internal probing ---
+     specifically, tree-ssa-loop-ivopts.c creates nonsense addresses in
+     order to gauge the costs of using different addressing modes.
+
+     This code needs to work in both cases.  */
+  if (! ovr)
+    ovr = gen_seg_override (force_reg (HImode, gen_seg16_reloc (oldx)));
 
   newx = gen_rtx_PLUS (HImode, off, ovr);
   if (ia16_as_legitimate_address_p (mode, newx, false, as))
@@ -2348,6 +2387,138 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
     }
 }
 
+/* Dividing the Output into Sections */
+#undef	TARGET_ASM_SELECT_SECTION
+#define	TARGET_ASM_SELECT_SECTION ia16_asm_select_section
+
+/* Convenience function --- fabricate a section name for a given __far
+   variable declaration, or return NULL if something is wrong.
+
+   The caller should free the section name's memory with free (.) once it is
+   done with it.
+
+   To fabricate the section name, I first decide the prefix for the section
+   type, then add the name of the variable; and finally I compute a hash
+   value of everything and append the hash.
+
+   (Note: apparently CFUN tends to be NULL at this point, even if the
+   variable is defined inside a function.)  */
+static char *
+ia16_fabricate_section_name_for_decl (tree decl, int reloc)
+{
+  const char *prefix;
+  const char *dname;
+  char *name1, *name2;
+  unsigned short hash;
+  bool one_only;
+
+  if (! DECL_P (decl))
+    return NULL;
+
+  if (! TARGET_CMODEL_IS_SMALL)
+    {
+      error ("tiny code model does not support %<__far%> static storage "
+	     "variables");
+      return NULL;
+    }
+
+  one_only = DECL_COMDAT_GROUP (decl) && ! HAVE_COMDAT_GROUP;
+
+  switch (categorize_decl_for_section (decl, reloc))
+    {
+    case SECCAT_DATA:
+    case SECCAT_DATA_REL:
+    case SECCAT_DATA_REL_LOCAL:
+    case SECCAT_BSS:
+      prefix = one_only ? ".gnu.linkonce.fd." : ".fardata.";
+      break;
+
+    case SECCAT_DATA_REL_RO:
+    case SECCAT_DATA_REL_RO_LOCAL:
+    case SECCAT_RODATA:
+    case SECCAT_RODATA_MERGE_STR:
+    case SECCAT_RODATA_MERGE_STR_INIT:
+    case SECCAT_RODATA_MERGE_CONST:
+      prefix = one_only ? ".gnu.linkonce.fr." : ".farrodata.";
+      break;
+
+    default:
+      return NULL;
+    }
+
+  dname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
+  dname = targetm.strip_name_encoding (dname);
+
+  name1 = ACONCAT ((prefix, dname, NULL));
+  hash = (unsigned short) htab_hash_string (name1);
+  hash *=  036627u;
+  hash &= 0177777u;
+  hash = hash << 4 | hash >> 12;
+  hash &=  077777u;
+
+  if (asprintf (&name2, "%s.%05ho", name1, hash) <= 0)
+    {
+      error ("not enough memory for %<__far%> variable section name");
+      return NULL;
+    }
+
+  return name2;
+}
+
+static section *
+ia16_asm_select_section (tree exp, int reloc, unsigned HOST_WIDE_INT align)
+{
+  char *sname;
+
+  switch (TYPE_ADDR_SPACE (TREE_TYPE (exp)))
+    {
+    default:
+      gcc_unreachable ();
+
+    case ADDR_SPACE_FAR:
+      sname = ia16_fabricate_section_name_for_decl (exp, reloc);
+
+      if (sname)
+	{
+	  section *sect = get_named_section (exp, sname, reloc);
+	  free (sname);
+	  return sect;
+	}
+
+      /* fall through */
+    case ADDR_SPACE_GENERIC:
+      return default_elf_select_section (exp, reloc, align);
+    }
+}
+
+#undef	TARGET_ASM_UNIQUE_SECTION
+#define	TARGET_ASM_UNIQUE_SECTION ia16_asm_unique_section
+
+static void
+ia16_asm_unique_section (tree decl, int reloc)
+{
+  char *sname;
+
+  switch (TYPE_ADDR_SPACE (TREE_TYPE (decl)))
+    {
+    default:
+      gcc_unreachable ();
+
+    case ADDR_SPACE_FAR:
+      sname = ia16_fabricate_section_name_for_decl (decl, reloc);
+      if (sname)
+	{
+	  set_decl_section_name (decl, sname);
+	  free (sname);
+	  return;
+	}
+
+      /* fall through */
+    case ADDR_SPACE_GENERIC:
+      default_unique_section (decl, reloc);
+    }
+}
+
 /* Continued: Run-time Target Specification */
 #undef  TARGET_OPTION_OVERRIDE
 #define TARGET_OPTION_OVERRIDE	ia16_option_override
@@ -2416,6 +2587,71 @@ ia16_asm_file_start (void)
 #define TARGET_ASM_UNALIGNED_SI_OP	"\t.long\t"
 #define TARGET_ASM_UNALIGNED_DI_OP	"\t.quad\t"
 #define TARGET_ASM_UNALIGNED_TI_OP	"\t.octa\t"
+
+#undef	TARGET_ASM_INTEGER
+#define	TARGET_ASM_INTEGER	ia16_asm_integer
+
+static rtx
+ia16_find_base_symbol_ref (rtx x)
+{
+  rtx b0;
+
+  switch (GET_CODE (x))
+    {
+    case SYMBOL_REF:
+      return x;
+
+    case PLUS:
+      b0 = ia16_find_base_symbol_ref (XEXP (x, 0));
+      if (b0)
+	return b0;
+      return ia16_find_base_symbol_ref (XEXP (x, 1));
+
+    case MINUS:
+      return ia16_find_base_symbol_ref (XEXP (x, 0));
+
+    default:
+      return NULL_RTX;
+    }
+}
+
+static bool
+ia16_asm_integer (rtx x, unsigned size, int aligned_p)
+{
+  rtx base;
+
+  if (default_assemble_integer (x, size, aligned_p))
+    return true;
+
+  while (GET_CODE (x) == CONST)
+    x = XEXP (x, 0);
+
+  if (GET_CODE (x) != UNSPEC
+      || XINT (x, 1) != UNSPEC_STATIC_FAR_PTR
+      || GET_MODE (x) != SImode)
+    return false;
+
+  x = XVECEXP (x, 0, 0);
+  base = ia16_find_base_symbol_ref (x);
+
+  if (! base)
+    return false;
+
+  fputs (TARGET_ASM_ALIGNED_HI_OP, asm_out_file);
+  output_addr_const (asm_out_file, x);
+
+  /* GNU as does not yet accept the syntax
+	.hword	foo@SEGMENT16
+     so we have to say
+	.reloc	., R_386_SEGMENT16, foo
+	.hword	0
+     instead.  */
+  fputs ("\n"
+	 "\t.reloc\t., R_386_SEGMENT16, ", asm_out_file);
+  output_addr_const (asm_out_file, base);
+  fputs ("\n" TARGET_ASM_ALIGNED_HI_OP "0\n", asm_out_file);
+  return true;
+}
 
 static const char *reg_QInames[FIRST_NOQI_REG] = {
 	"cl", "ch", "al", "ah", "dl", "dh", "bl", "bh"
