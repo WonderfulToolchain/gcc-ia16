@@ -767,23 +767,36 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 
     if (! r9)
       {
-	/* x is probably the address of a far static variable.  */
-	if (! TARGET_CMODEL_IS_SMALL)
+	switch (GET_CODE (x))
 	  {
-	    error ("tiny code model does not support MZ relocations");
-	    /* continue after that... */
+	  case CONST_INT:
+	    /* Absolute far address --- nothing to do.  */
+	    return x;
+
+	  case SYMBOL_REF:
+	    /* Address of a far static variable.  */
+	    if (! TARGET_CMODEL_IS_SMALL)
+	      {
+		error ("tiny code model does not support MZ relocations");
+		/* continue after that... */
+	      }
+
+	    /* If CFUN is NULL, we are building a static initializer
+	       containing the address of a far static variable.  */
+	    if (! cfun)
+	      return gen_static_far_ptr (x);
+
+	    /* Otherwise, create a pseudo-register the normal way for the
+	       segment term.  */
+	    r9 = gen_seg16_reloc (x);
+	    break;
+
+	  default:
+	    fprintf (stderr, "No idea how to convert this far address/pointer "
+			     "to an SImode:\n");
+	    debug_rtx (x);
+	    gcc_unreachable ();
 	  }
-
-	gcc_assert (SYMBOL_REF_P (x));
-
-	/* If CFUN is NULL, we are building a static initializer containing
-	   the address of a far static variable.  */
-	if (! cfun)
-	  return gen_static_far_ptr (x);
-
-	/* Otherwise, create a pseudo-register the normal way, for the
-	   segment term.  */
-	r9 = gen_seg16_reloc (x);
       }
 
     off = NULL_RTX;
