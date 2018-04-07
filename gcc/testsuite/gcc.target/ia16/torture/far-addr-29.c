@@ -1,7 +1,7 @@
 /* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
-/* Test that we can pass an absolute-address far pointer as a parameter a
+/* Test that we can pass an absolute-address far pointer as a parameter to a
    function.
 
    This test case is partly taken from the FreeDOS kernel code (in
