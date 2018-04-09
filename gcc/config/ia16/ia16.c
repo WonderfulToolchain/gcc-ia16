@@ -2430,8 +2430,9 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   if (! TARGET_CMODEL_IS_SMALL)
     {
-      error ("tiny code model does not support %<__far%> static storage "
-	     "variables");
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"tiny code model does not support %<__far%> static storage "
+		"variables");
       return NULL;
     }
 
