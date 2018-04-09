@@ -3652,6 +3652,75 @@ ia16_expand_epilogue (bool sibcall)
     emit_jump_insn (gen_simple_return ());
 }
 
+/* Return the insn template for a normal call to a subroutine at address
+   ADDR and with machine mode MODE.  ADDR should correspond to operand 0
+   (%0) in the (define_insn ...) if CALL_VALUE_P is false, or operand 1
+   otherwise.
+
+   There are 3 cases we need to handle:
+     * we are calling a near function (with a 16-bit address)
+     * we are calling a far function through a 32-bit pointer
+     * we are calling a far function --- which returns with `lret' --- but
+       the pointer is 16-bit so we need a `pushw %cs'.  */
+#define P(part)	(call_value_p ? part "1" : part "0")
+#define P2(part_a, part_b) \
+			(call_value_p ? part_a "1" part_b "1" : \
+					part_a "0" part_b "0")
+const char *
+ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
+{
+  if (mode == SImode)
+    {
+      if (CONST_INT_P (addr))
+	return P2 ("lcall\t%S", ",\t%O");
+      else
+	return P ("lcall\t*%");
+    }
+  else if (ia16_far_function_rtx_p (addr))
+    {
+      if (MEM_P (addr))
+	return P ("pushw\t%%cs\n\tcall\t*%");
+      else if (CONSTANT_P (addr))
+	return P ("pushw\t%%cs\n\tcall\t%c");
+      else
+	return P ("pushw\t%%cs\n\tcall\t*%");
+    }
+  else
+    {
+      if (MEM_P (addr))
+	return P ("call\t*%");
+      else if (CONSTANT_P (addr))
+	return P ("call\t%c");
+      else
+	return P ("call\t*%");
+    }
+}
+
+/* Return the insn template for a sibling call to a subroutine at address
+   ADDR and with machine mode MODE.  ADDR should correspond to operand 0
+   (%0) in the (define_insn ...) if CALL_VALUE_P is false, or operand 1
+   otherwise.  */
+const char *
+ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
+{
+  if (mode == SImode)
+    {
+      if (CONST_INT_P (addr))
+	return P2 ("ljmp\t%S", ",\t%O");
+      else
+	return P ("ljmp\t*%");
+    }
+  else if (MEM_P (addr))
+    return P ("jmp\t*%");
+  else if (CONSTANT_P (addr))
+    return P ("jmp\t%c");
+  else
+    return P ("jmp\t*%");
+}
+
+#undef P
+#undef P2
+
 void
 ia16_asm_output_addr_diff_elt (FILE *stream, rtx body ATTRIBUTE_UNUSED,
 			   int value, int rel)
