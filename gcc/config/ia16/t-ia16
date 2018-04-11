@@ -1,11 +1,15 @@
 # 16.1 Target Makefile Fragments
 
 # Build ia16-c.o.  Also take the opportunity to check for any previously
-# installed `i80286' multilib (which I included from 8 Oct to 9 Dec 2017),
-# which should really be cleaned away.  -- tkchia
+# installed `i80286' multilibs (which I included from 8 Oct to 9 Dec 2017)
+# or `wide-types' multilibs (which I included up to 11 Apr 2018), which
+# should really be cleaned away.  -- tkchia
 #
 ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
-	@if test -e "$(prefix)"/ia16-elf/lib/i80286; then \
+	@if test -e "$(prefix)"/ia16-elf/lib/i80286 -o \
+		 -e "$(prefix)"/ia16-elf/lib/wide-types -o \
+		 -e "$(prefix)"/ia16-elf/lib/rtd/frame-pointer -o \
+		 -e "$(prefix)"/ia16-elf/lib/any_186/frame-pointer; then \
 	  exec >&2; \
 	  echo; \
 	  echo '*** multilib settings have changed, please rebuild! ***'; \
@@ -17,6 +21,8 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
 	  echo '  $$ ./build.sh gcc1 newlib gcc2'; \
 	  echo 'Alternatively, manually remove the following directories:'; \
 	  find "$(prefix)" -name i80286 -ls; \
+	  find "$(prefix)" -name wide-types -ls; \
+	  find "$(prefix)" -name frame-pointer -ls; \
 	  echo 'and arrange to rebuild GCC.'; \
 	  echo; \
 	  exit 1; \
@@ -24,18 +30,17 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
 MULTILIB_OPTIONS=mrtd march=any_186 \
-	Os/fno-omit-frame-pointer/fno-split-wide-types
-MULTILIB_DIRNAMES=rtd any_186 size frame-pointer wide-types
+	Os/fno-omit-frame-pointer
+MULTILIB_DIRNAMES=rtd any_186 size frame-pointer
 MULTILIB_MATCHES=march?any_186=march?i80186 march?any_186=march?i80188 \
 	march?any_186=march?v20 march?any_186=march?v30 \
 	march?any_186=march?i80286
 # To save build times, avoid building separate multilibs for `-mrtd
-# -fno-omit-frame-pointer' and `-mrtd -fno-split-wide-types'.
+# -fno-omit-frame-pointer' and `-march=any_186 -fno-omit-frame-pointer'.
 MULTILIB_EXCEPTIONS=\
 	*mrtd*/*fno-omit-frame-pointer* \
-	*mrtd*/*fno-split-wide-types
+	*march?any_186*/*fno-omit-frame-pointer*
 MULTILIB_REUSE=\
 	mrtd=mrtd/fno-omit-frame-pointer \
-	mrtd=mrtd/fno-split-wide-types \
 	mrtd/march.any_186=mrtd/march.any_186/fno-omit-frame-pointer \
-	mrtd/march.any_186=mrtd/march.any_186/fno-split-wide-types
+	march.any_186=march.any_186/fno-omit-frame-pointer
