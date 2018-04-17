@@ -1,4 +1,4 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
 /* Test that the __builtin_ia16_selector (.) function allows a value to be
