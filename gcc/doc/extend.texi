@@ -1509,6 +1509,9 @@ int bar (void) __far
 @c 3) The classical `int (__far *) (char);' declaration syntax does not work
 @c    (see below).  -- tkchia
 
+@noindent
+@b{Preprocessor symbols}
+
 The preprocessor symbol @code{__FAR} is defined when far pointers are
 supported.  In addition, @code{__IA16_FEATURE_FAR_FUNCTION_SYNTAX} is
 defined if the above syntax for declaring far functions is supported, and
@@ -1546,9 +1549,10 @@ static int __far x, y, z;
 @end smallexample
 
 there is @emph{no} guarantee that the variables @code{x}, @code{y}, and
-@code{z} will be placed in the same far segment.  GCC only guarantees that
-each of @code{x}, @code{y}, and @code{z} will be placed outside the generic
-(near) data address space.
+@code{z} will be placed in the same far segment.  GCC only
+guarantees---given an appropriate linker script at link time---that each of
+@code{x}, @code{y}, and @code{z} will be placed outside the generic (near)
+data address space.
 
 To place a set of variables in a single far segment, you can either wrap
 them in a struct, or use the @code{section} attribute (@pxref{Variable
@@ -4158,6 +4162,23 @@ useful to override the effects of the @option{-mrtd} switch.
 On the IA-16 target, the @code{stdcall} attribute causes the compiler to
 assume that the called function pops off the stack space used to
 pass arguments, unless it takes a variable number of arguments.
+
+@item assume_ds_data
+@cindex @code{assume_ds_data} function attribute, IA-16
+
+This attribute, attached to a function, causes the compiler to assume that
+the @code{ds} register points to the program's data segment on function
+entry.  This is useful to override the effects of the
+@option{-mno-callee-assume-ds-data-segment} switch.
+
+This attribute has no effect if @code{ds} is a call-saved register
+(@option{-fcall-saved-ds}).
+
+@item no_assume_ds_data
+@cindex @code{no_assume_ds_data} function attribute, IA-16
+This attribute, attached to a function, causes the compiler @emph{not} to
+assume that @code{ds} points to the program's data segment on function
+entry.  It has no effect if @code{ds} is a call-saved register.
 @end table
 
 @node IA-64 Function Attributes
