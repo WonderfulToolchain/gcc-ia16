@@ -1,4 +1,4 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
 /* Test that we can pass an absolute-address far pointer as a parameter to a

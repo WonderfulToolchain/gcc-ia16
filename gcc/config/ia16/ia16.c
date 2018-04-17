@@ -225,12 +225,53 @@ ia16_save_reg_p (unsigned int r)
 	  (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
 }
 
+/* Given the address ADDR of a function, return its declaration node, or
+   NULL_TREE if none can be found.  */
+static tree
+ia16_get_function_decl_for_addr (rtx addr)
+{
+  switch (GET_CODE (addr))
+    {
+    case MEM:
+      return MEM_EXPR (addr);
+      break;
+
+    case REG:
+      return REG_EXPR (addr);
+      break;
+
+    case SYMBOL_REF:
+      return SYMBOL_REF_DECL (addr);
+      break;
+
+    default:
+      return NULL_TREE;
+    }
+}
+
+/* Given the address ADDR of a function, return its type node, or NULL_TREE
+   if no type node can be found.  */
+static tree
+ia16_get_function_type_for_addr (rtx addr)
+{
+  tree decl = ia16_get_function_decl_for_addr (addr), type;
+
+  if (! decl)
+    return NULL_TREE;
+
+  type = TREE_TYPE (decl);
+  while (POINTER_TYPE_P (type))
+    type = TREE_TYPE (type);
+
+  return type;
+}
+
 /* Return true iff TYPE is a type for a far function (which returns with
    `lret').  Currently a function is considered to be "far" if the function
    type itself is in __far space.  The `-mfar-function-if-far-return-type'
    switch will also cause a __far on the return type to magically become a
    __far on the function itself.  */
-int
+static int
 ia16_far_function_type_p (const_tree funtype)
 {
   return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR;
@@ -240,42 +281,73 @@ ia16_far_function_type_p (const_tree funtype)
 int
 ia16_in_far_function_p (void)
 {
-  return ia16_far_function_type_p (TREE_TYPE (cfun->decl));
+  return cfun && cfun->decl
+	 && ia16_far_function_type_p (TREE_TYPE (cfun->decl));
 }
 
 /* Return true if ADDR is known to be the address of a far function.
    FIXME: this may not be 100% reliable...  */
-int
+static int
 ia16_far_function_rtx_p (rtx addr)
 {
-  tree decl, type;
+  tree type = ia16_get_function_type_for_addr (addr);
+  return type && ia16_far_function_type_p (type);
+}
 
-  switch (GET_CODE (addr))
-    {
-    case MEM:
-      decl = MEM_EXPR (addr);
-      break;
+/* Return true iff TYPE is a type for a function which assumes that %ds
+   points to the program's data segment on function entry.
 
-    case REG:
-      decl = REG_EXPR (addr);
-      break;
-
-    case SYMBOL_REF:
-      decl = SYMBOL_REF_DECL (addr);
-      break;
-
-    default:
-      return 0;
-    }
-
-  if (! decl)
+   If %ds is a call-saved register (-fcall-saved-ds), this is always false.  */
+int
+ia16_ds_data_function_type_p (const_tree funtype)
+{
+  if (! call_used_regs[DS_REG])
     return 0;
+  else if (TARGET_ASSUME_DS_DATA)
+    return ! lookup_attribute ("no_assume_ds_data", TYPE_ATTRIBUTES (funtype));
+  else
+    return lookup_attribute ("assume_ds_data", TYPE_ATTRIBUTES (funtype))
+	   != NULL_TREE;
+}
 
-  type = TREE_TYPE (decl);
-  while (POINTER_TYPE_P (type))
-    type = TREE_TYPE (type);
+/* Return true iff TYPE is a type for a function which follows the default
+   ABI for %ds --- which says that %ds
+     * is considered (by the GCC middle-end) to be a call-used register,
+     * is assumed to point to the program's data segment on function entry,
+     * and is restored to the data segment on function exit.  */
+static int
+ia16_default_ds_abi_function_type_p (const_tree funtype)
+{
+  return TARGET_ALLOCABLE_DS_REG
+	 && ia16_ds_data_function_type_p (funtype);
+}
 
-  return ia16_far_function_type_p (type);
+static int
+ia16_in_ds_data_function_p (void)
+{
+  return cfun && cfun->decl
+	 && ia16_ds_data_function_type_p (TREE_TYPE (cfun->decl));
+}
+
+static int
+ia16_in_default_ds_abi_function_p (void)
+{
+  return cfun && cfun->decl
+	 && ia16_default_ds_abi_function_type_p (TREE_TYPE (cfun->decl));
+}
+
+static int
+ia16_ds_data_function_rtx_p (rtx addr)
+{
+  tree type = ia16_get_function_type_for_addr (addr);
+  return type && ia16_ds_data_function_type_p (type);
+}
+
+static int
+ia16_default_ds_abi_function_rtx_p (rtx addr)
+{
+  tree type = ia16_get_function_type_for_addr (addr);
+  return type && ia16_default_ds_abi_function_type_p (type);
 }
 
 /* Basic Stack Layout */
@@ -453,6 +525,7 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #define IA16_CALLCVT_CDECL	0x01
 #define IA16_CALLCVT_STDCALL	0x02
 #define IA16_CALLCVT_FAR	0x04
+#define IA16_CALLCVT_DS_DATA	0x08
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -467,6 +540,9 @@ ia16_get_callcvt (const_tree type)
       else if (lookup_attribute ("stdcall", attrs))
 	callcvt = IA16_CALLCVT_STDCALL;
     }
+
+  if (ia16_ds_data_function_type_p (type))
+    callcvt |= IA16_CALLCVT_DS_DATA;
 
   if (ia16_far_function_type_p (type))
     callcvt |= IA16_CALLCVT_FAR;
@@ -484,13 +560,12 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
   if (stdarg_p (funtype))
     return 0;
 
-  switch (ia16_get_callcvt (funtype))
+  switch (ia16_get_callcvt (funtype)
+	  & (IA16_CALLCVT_STDCALL | IA16_CALLCVT_CDECL))
     {
     case IA16_CALLCVT_STDCALL:
-    case IA16_CALLCVT_STDCALL | IA16_CALLCVT_FAR:
       return size;
     case IA16_CALLCVT_CDECL:
-    case IA16_CALLCVT_CDECL | IA16_CALLCVT_FAR:
       return 0;
     default:
       gcc_unreachable ();
@@ -520,17 +595,46 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (is_attribute_p ("stdcall", name)
-       && lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
+  if (is_attribute_p ("stdcall", name))
     {
-      error ("stdcall and cdecl attributes are not compatible");
+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("stdcall and cdecl attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+    }
+  else if (is_attribute_p ("cdecl", name))
+    {
+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("stdcall and cdecl attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+    }
+  /* The following attributes are ignored if %ds is a call-saved register.  */
+  else if (! call_used_regs[DS_REG])
+    {
+      warning (OPT_Wattributes, "%qE attribute directive ignored as %%ds is "
+	       "a call-saved register", name);
       *no_add_attrs = true;
     }
-  else if (is_attribute_p ("cdecl", name)
-	   && lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
+  else if (is_attribute_p ("assume_ds_data", name))
     {
-      error ("stdcall and cdecl attributes are not compatible");
-      *no_add_attrs = true;
+      if (lookup_attribute ("no_assume_ds_data", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("assume_ds_data and no_assume_ds_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+    }
+  else if (is_attribute_p ("no_assume_ds_data", name))
+    {
+      if (lookup_attribute ("assume_ds_data", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("assume_ds_data and no_assume_ds_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
     }
 
   return NULL_TREE;
@@ -540,6 +644,10 @@ static const struct attribute_spec ia16_attribute_table[] =
 {
   { "stdcall", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "cdecl",   0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "assume_ds_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "no_assume_ds_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { NULL,      0, 0, false, false, false, NULL,			     false }
 };
 
@@ -2889,10 +2997,11 @@ ia16_print_operand_address (FILE *file, rtx e)
 
      On the RTL side:
        * A null segment override (RS) means we are accessing an operand in
-	 the generic address space.  We can assume that %ss points to this
-	 space.  %ds _might_ point to this space --- if the function we are
-	 compiling does not use %ds for anything (liveness information for
-	 %ds is available to us at this stage).
+	 the generic address space.  We currently assume that %ss points to
+	 this space.  %ds _might_ point to this space --- if the function
+	 assumes that %ds == .data on startup, and if we are compiling does
+	 not use %ds for anything (liveness information for %ds is available
+	 to us at this stage).
        * If RS is not null, then we are accessing an operand at an offset
 	 from the specified segment.
 
@@ -2905,12 +3014,8 @@ ia16_print_operand_address (FILE *file, rtx e)
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
     }
-  else if (! TARGET_ALLOCABLE_DS_REG && ! TARGET_ASSUME_DS_DATA)
-    {
-      if (ia16_to_print_seg_override_p (SS_REG, rb))
-	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
-    }
-  else if (TARGET_DEFAULT_DS_ABI && df_regs_ever_live_p (DS_REG))
+  else if (TARGET_ALLOCABLE_DS_REG ? df_regs_ever_live_p (DS_REG)
+				   : ! ia16_in_ds_data_function_p ())
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
@@ -3140,7 +3245,7 @@ ia16_shift_truncation_mask (enum machine_mode mode)
 
 /* Return true iff INSN is a (set (reg:SEG DS_REG) (reg:SEG SS_REG)).  */
 static bool
-ia16_insn_is_set_ds_ss_p (rtx_insn *insn)
+ia16_insn_is_reset_ds_p (rtx_insn *insn)
 {
   rtx pat, op;
 
@@ -3196,29 +3301,57 @@ ia16_elide_unneeded_ss_stuff (void)
   int sp = 0;
   rtx ds = gen_rtx_REG (SEGmode, DS_REG),
       override = ia16_seg_override_term (ds);
+  bool default_ds_abi_p = ia16_in_ds_data_function_p ();
   bool keep_any_resets_p = false;
+  edge e;
+  edge_iterator ei;
 
-  /* Starting from insns which set (or clobber) %ds to not-%ss, "flood"
+  /* Starting from insns which set (or clobber) %ds to not-.data, "flood"
      insns along the control flow until we hit
 	(set (reg:SEG DS_REG) (reg:SEG SS_REG)).
+     For now we assume %ss == .data always.
 
-     Mark all the insns along the path --- excluding the first set to
-     non-%ss, but including the final %ds <- %ss --- as insns we want to
+     If the current function does not assume %ds == .data on entry, also
+     flood from the function entry point.
+
+     Mark all the insns along each path --- excluding the first set to
+     non-.data, but including the final %ds <- .data --- as insns we want to
      "keep" as is.  */
+  if (! default_ds_abi_p)
+    {
+      FOR_EACH_EDGE (e, ei, ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs)
+	{
+	  insn = BB_HEAD (e->dest);
+	  if (! insn_pushed_p[INSN_UID (insn)])
+	    {
+	      stack[sp++] = insn;
+	      insn_pushed_p[INSN_UID (insn)] = true;
+	    }
+	}
+    }
+
   for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
     {
-      /* GCC's machine-independent code thinks function calls clobber %ds,
-	 but we know that this is not really true.  */
+      /* GCC's machine-independent code thinks function calls always clobber
+	 %ds, but we know that this is not really true.  */
       if (CALL_P (insn))
-	continue;
+	{
+	  rtx call = get_call_rtx_from (insn);
+	  rtx callee = XEXP (XEXP (call, 0), 0);
+	  if (ia16_ds_data_function_rtx_p (callee))
+	    continue;
+	}
 
       if (NOTE_P (insn)
 	  || ! reg_set_p (ds, insn)
-	  || ia16_insn_is_set_ds_ss_p (insn))
+	  || ia16_insn_is_reset_ds_p (insn))
 	continue;
 
-      stack[sp++] = insn;
-      insn_pushed_p[INSN_UID (insn)] = true;
+      if (! insn_pushed_p[INSN_UID (insn)])
+	{
+	  stack[sp++] = insn;
+	  insn_pushed_p[INSN_UID (insn)] = true;
+	}
     }
 
   while (sp != 0)
@@ -3229,7 +3362,7 @@ ia16_elide_unneeded_ss_stuff (void)
       gcc_assert (sp > 0 && sp <= max_insn_uid);
       insn = stack[--sp];
 
-      if (ia16_insn_is_set_ds_ss_p (insn))
+      if (ia16_insn_is_reset_ds_p (insn))
 	{
 	  keep_any_resets_p = true;
 	  continue;
@@ -3248,9 +3381,6 @@ ia16_elide_unneeded_ss_stuff (void)
 	}
       else
 	{
-	  edge e;
-	  edge_iterator ei;
-
 	  FOR_EACH_EDGE (e, ei, bb->succs)
 	    {
 	      if (e->dest == EXIT_BLOCK_PTR_FOR_FN (cfun))
@@ -3278,7 +3408,7 @@ ia16_elide_unneeded_ss_stuff (void)
       if (keep_insn_p[INSN_UID (insn)])
 	continue;
 
-      if (ia16_insn_is_set_ds_ss_p (insn))
+      if (ia16_insn_is_reset_ds_p (insn))
 	{
 	  /* Rewrite
 		(set (reg:SEG DS_REG) (reg:SEG SS_REG))
@@ -3347,9 +3477,9 @@ ia16_elide_unneeded_ss_stuff (void)
 	}
     }
 
-  /* If at no point in the function do we need to reset %ds to %ss, then
+  /* If at no point in the function do we need to reset %ds to .data, then
      deduce that %ds is no longer live within the function.  */
-  if (! keep_any_resets_p)
+  if (default_ds_abi_p && ! keep_any_resets_p)
     df_set_regs_ever_live (DS_REG, false);
 
   free (insn_pushed_p);
@@ -3366,7 +3496,7 @@ ia16_machine_dependent_reorg (void)
   if (! optimize)
     return;
 
-  if (TARGET_DEFAULT_DS_ABI)
+  if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
     {
       compute_bb_for_insn ();
       ia16_elide_unneeded_ss_stuff ();
@@ -3634,7 +3764,7 @@ ia16_non_overlapping_mem_p (rtx m1, rtx m2)
     return (false);
 }
 
-/* Emit instructions to reset %ds to %ss.  REGNO is either a scratch
+/* Emit instructions to reset %ds to .data.  REGNO is either a scratch
    register number, or a large number.  */
 static void
 ia16_expand_reset_ds_internal (void)
@@ -3647,21 +3777,28 @@ ia16_expand_reset_ds_internal (void)
 }
 
 void
-ia16_expand_reset_ds_for_call (void)
+ia16_expand_reset_ds_for_call (rtx addr)
 {
-  if (! TARGET_DEFAULT_DS_ABI)
-    return;
-
-  ia16_expand_reset_ds_internal ();
+  if (ia16_default_ds_abi_function_rtx_p (addr))
+    ia16_expand_reset_ds_internal ();
+  else if (! TARGET_ALLOCABLE_DS_REG
+	   && ! ia16_in_ds_data_function_p ()
+	   && ia16_ds_data_function_rtx_p (addr))
+    {
+      /* An __attribute__ ((no_assume_ds_data)) function wants to call an
+	 __attribute__ ((assume_ds_data)) function.  This is probably not a
+	 good thing to do.  */
+      warning (OPT_Wmaybe_uninitialized,
+	       "%%ds is fixed, not resetting %%ds for call to assume_ds_ss "
+	       "function");
+    }
 }
 
 static void
 ia16_expand_reset_ds_for_epilogue (void)
 {
-  if (! TARGET_DEFAULT_DS_ABI)
-    return;
-
-  ia16_expand_reset_ds_internal ();
+  if (ia16_in_default_ds_abi_function_p ())
+    ia16_expand_reset_ds_internal ();
 }
 
 void

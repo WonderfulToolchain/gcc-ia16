@@ -32,9 +32,6 @@
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
 
 #define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
-#define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
-				 && call_used_regs[DS_REG] \
-				 && TARGET_ASSUME_DS_DATA)
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
@@ -390,11 +387,11 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define CUMULATIVE_ARGS				int
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
   ((CUM) = 0)
-/* If we are using the default ABI, pretend that %ds "might" be used to pass
-   arguments to functions, so that when GCC sees a %ds <- %ss just before a
-   subroutine call, it does not try to separate the two.  */
+/* If %ds is an allocatable register, pretend that it "might" be used to
+   pass arguments to functions, so that when GCC sees a %ds <- %ss just
+   before a subroutine call, it does not try to separate the two.  */
 #define FUNCTION_ARG_REGNO_P(regno) \
-	(TARGET_DEFAULT_DS_ABI ? (regno) == DS_REG : false)
+	(TARGET_ALLOCABLE_DS_REG ? (regno) == DS_REG : false)
 
 /* How Scalar Function Values Are Returned */
 #define LIBCALL_VALUE(mode)	\
