@@ -226,7 +226,8 @@ ia16_save_reg_p (unsigned int r)
 }
 
 /* Given the address ADDR of a function, return its declaration node, or
-   NULL_TREE if none can be found.  */
+   NULL_TREE if none can be found.
+   FIXME: this may not be 100% reliable...  */
 static tree
 ia16_get_function_decl_for_addr (rtx addr)
 {
@@ -285,15 +286,6 @@ ia16_in_far_function_p (void)
 	 && ia16_far_function_type_p (TREE_TYPE (cfun->decl));
 }
 
-/* Return true if ADDR is known to be the address of a far function.
-   FIXME: this may not be 100% reliable...  */
-static int
-ia16_far_function_rtx_p (rtx addr)
-{
-  tree type = ia16_get_function_type_for_addr (addr);
-  return type && ia16_far_function_type_p (type);
-}
-
 /* Return true iff TYPE is a type for a function which assumes that %ds
    points to the program's data segment on function entry.
 
@@ -301,13 +293,17 @@ ia16_far_function_rtx_p (rtx addr)
 int
 ia16_ds_data_function_type_p (const_tree funtype)
 {
+  tree attrs;
+
   if (! call_used_regs[DS_REG])
     return 0;
-  else if (TARGET_ASSUME_DS_DATA)
-    return ! lookup_attribute ("no_assume_ds_data", TYPE_ATTRIBUTES (funtype));
+
+  attrs = TYPE_ATTRIBUTES (funtype);
+
+  if (TARGET_ASSUME_DS_DATA)
+    return ! attrs || ! lookup_attribute ("no_assume_ds_data", attrs);
   else
-    return lookup_attribute ("assume_ds_data", TYPE_ATTRIBUTES (funtype))
-	   != NULL_TREE;
+    return attrs && lookup_attribute ("assume_ds_data", attrs);
 }
 
 /* Return true iff TYPE is a type for a function which follows the default
@@ -348,6 +344,13 @@ ia16_default_ds_abi_function_rtx_p (rtx addr)
 {
   tree type = ia16_get_function_type_for_addr (addr);
   return type && ia16_default_ds_abi_function_type_p (type);
+}
+
+static int
+ia16_near_section_function_type_p (const_tree funtype)
+{
+  tree attrs = TYPE_ATTRIBUTES (funtype);
+  return attrs && lookup_attribute ("near_section", attrs);
 }
 
 /* Basic Stack Layout */
@@ -522,10 +525,17 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #undef	TARGET_RETURN_POPS_ARGS
 #define	TARGET_RETURN_POPS_ARGS ia16_return_pops_args
 
-#define IA16_CALLCVT_CDECL	0x01
-#define IA16_CALLCVT_STDCALL	0x02
-#define IA16_CALLCVT_FAR	0x04
-#define IA16_CALLCVT_DS_DATA	0x08
+/* Calling convention flags as returned by ia16_get_callcvt (.).
+
+   These should only cover specifiers, qualifiers, and attributes that
+   affect what happens when one function tries to call another function. 
+   Attributes which only affect how code behaves _within_ a function should
+   not be included.  */
+#define IA16_CALLCVT_CDECL		0x01
+#define IA16_CALLCVT_STDCALL		0x02
+#define IA16_CALLCVT_FAR		0x04
+#define IA16_CALLCVT_DS_DATA		0x08
+#define IA16_CALLCVT_NEAR_SECTION	0x10
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -539,6 +549,9 @@ ia16_get_callcvt (const_tree type)
 	callcvt = IA16_CALLCVT_CDECL;
       else if (lookup_attribute ("stdcall", attrs))
 	callcvt = IA16_CALLCVT_STDCALL;
+
+      if (lookup_attribute ("near_section", attrs))
+	callcvt |= IA16_CALLCVT_NEAR_SECTION;
     }
 
   if (ia16_ds_data_function_type_p (type))
@@ -597,7 +610,8 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 
   if (is_attribute_p ("stdcall", name))
     {
-      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("cdecl", attrs))
 	{
 	  error ("stdcall and cdecl attributes are not compatible");
 	  *no_add_attrs = true;
@@ -605,7 +619,8 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     }
   else if (is_attribute_p ("cdecl", name))
     {
-      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("stdcall", attrs))
 	{
 	  error ("stdcall and cdecl attributes are not compatible");
 	  *no_add_attrs = true;
@@ -620,7 +635,8 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     }
   else if (is_attribute_p ("assume_ds_data", name))
     {
-      if (lookup_attribute ("no_assume_ds_data", TYPE_ATTRIBUTES (*node)))
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("no_assume_ds_data", attrs))
 	{
 	  error ("assume_ds_data and no_assume_ds_data attributes are not "
 		 "compatible");
@@ -629,7 +645,8 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     }
   else if (is_attribute_p ("no_assume_ds_data", name))
     {
-      if (lookup_attribute ("assume_ds_data", TYPE_ATTRIBUTES (*node)))
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("assume_ds_data", attrs))
 	{
 	  error ("assume_ds_data and no_assume_ds_data attributes are not "
 		 "compatible");
@@ -647,6 +664,8 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "assume_ds_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ds_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { NULL,      0, 0, false, false, false, NULL,			     false }
 };
@@ -3901,7 +3920,10 @@ ia16_expand_epilogue (bool sibcall)
      * we are calling a near function (with a 16-bit address)
      * we are calling a far function through a 32-bit pointer
      * we are calling a far function --- which returns with `lret' --- but
-       the pointer is 16-bit so we need a `pushw %cs'.  */
+       the function is defined (in the default text section) in the current
+       module, so we can get away with a `pushw %cs' plus a near call
+     * we are calling a far function in another module --- use `lcall' and do
+       not assume that the function resides in the default text section.  */
 #define P(part)	(call_value_p ? part "1" : part "0")
 #define P2(part_a, part_b) \
 			(call_value_p ? part_a "1" part_b "1" : \
@@ -3909,6 +3931,8 @@ ia16_expand_epilogue (bool sibcall)
 const char *
 ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
 {
+  tree fndecl, fntype = NULL_TREE;
+
   if (mode == SImode)
     {
       if (CONST_INT_P (addr))
@@ -3916,23 +3940,39 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
       else
 	return P ("lcall\t*%");
     }
-  else if (ia16_far_function_rtx_p (addr))
+
+  fndecl = ia16_get_function_decl_for_addr (addr);
+  if (fndecl)
     {
-      if (MEM_P (addr))
-	return P ("pushw\t%%cs\n\tcall\t*%");
-      else if (CONSTANT_P (addr))
-	return P ("pushw\t%%cs\n\tcall\t%c");
+      fntype = TREE_TYPE (fndecl);
+      while (POINTER_TYPE_P (fntype))
+	fntype = TREE_TYPE (fntype);
+    }
+
+  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
+    {
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
+	return P ("call\t*%");
       else
+	return P ("call\t%c");
+    }
+  else if (DECL_INITIAL (fndecl)
+	   || ia16_near_section_function_type_p (fntype))
+    {
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("pushw\t%%cs\n\tcall\t*%");
+      else
+	return P ("pushw\t%%cs\n\tcall\t%c");
     }
   else
     {
-      if (MEM_P (addr))
-	return P ("call\t*%");
-      else if (CONSTANT_P (addr))
-	return P ("call\t%c");
-      else
-	return P ("call\t*%");
+      if (! TARGET_CMODEL_IS_SMALL)
+	error ("tiny code model does not support MZ relocations");
+      /* GNU as does not like
+		lcall	$foo@SEGMENT16,	$foo
+	 and says "Error: can't handle non absolute segment in `lcall'".  */
+      return P2 (  ".reloc\t.+3, R_386_SEGMENT16, %c", "\n"
+		 "\tlcall\t$0,\t%");
     }
 }
 
@@ -3943,6 +3983,8 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
 const char *
 ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
 {
+  tree fndecl, fntype = NULL_TREE;
+
   if (mode == SImode)
     {
       if (CONST_INT_P (addr))
@@ -3950,16 +3992,42 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
       else
 	return P ("ljmp\t*%");
     }
-  else if (MEM_P (addr))
-    return P ("jmp\t*%");
-  else if (CONSTANT_P (addr))
-    return P ("jmp\t%c");
+
+  fndecl = ia16_get_function_decl_for_addr (addr);
+  if (fndecl)
+    {
+      fntype = TREE_TYPE (fndecl);
+      while (POINTER_TYPE_P (fntype))
+	fntype = TREE_TYPE (fntype);
+    }
+
+  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
+    {
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
+	return P ("jmp\t*%");
+      else
+	return P ("jmp\t%c");
+    }
+  else if (DECL_INITIAL (fndecl)
+	   || ia16_near_section_function_type_p (fntype))
+    {
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
+	return P ("jmp\t*%");
+      else
+	return P ("jmp\t%c");
+    }
   else
-    return P ("jmp\t*%");
+    {
+      if (! TARGET_CMODEL_IS_SMALL)
+	error ("tiny code model does not support MZ relocations");
+      return P2 (  ".reloc\t.+3, R_386_SEGMENT16, %c", "\n"
+		 "\tljmp\t$0,\t%");
+    }
 }
 
 #undef P
 #undef P2
+#undef P3
 
 void
 ia16_asm_output_addr_diff_elt (FILE *stream, rtx body ATTRIBUTE_UNUSED,

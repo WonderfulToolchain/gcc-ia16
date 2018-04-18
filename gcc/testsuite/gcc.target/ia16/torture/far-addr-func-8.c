@@ -5,7 +5,7 @@
    type is far, if the `-mfar-function-if-far-return-type' option is
    explicitly turned off.  */
 
-extern int foo (long) __far;
+extern int foo (long) __far __attribute__ ((near_section));
 
 int __far
 bar (long x)
