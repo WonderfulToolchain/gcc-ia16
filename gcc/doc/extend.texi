@@ -1509,6 +1509,36 @@ int bar (void) __far
 @c 3) The classical `int (__far *) (char);' declaration syntax does not work
 @c    (see below).  -- tkchia
 
+By default, GCC treats far functions similarly to the Open Watcom C/C++
+compiler:
+
+@itemize
+
+@item
+When a module defines a far function, GCC places it in the program's text
+segment.
+
+@item
+If a module calls a far function which is defined in the same module, GCC
+can tell that the caller and callee reside in the same IA-16 segment.  GCC
+will output a @samp{pushw %cs; call} or @samp{jmp} instruction sequence to
+realize the call.
+
+@item
+However, if a module calls a far function which is defined elsewhere---or if
+the call is done through a pointer---GCC assumes nothing about where the
+function is.  GCC will use a far @code{lcall} or @code{ljmp}, possibly with
+a segment relocation, to realize the call.
+
+@end itemize
+If you know that an externally defined far function is guaranteed to be in
+the program's text segment, you can get GCC to use @code{call} or @code{jmp}
+for this function, with an attribute:
+
+@smallexample
+int baz (long) __far __attribute__ ((near_section));
+@end smallexample
+
 @noindent
 @b{Preprocessor symbols}
 
@@ -1559,8 +1589,12 @@ them in a struct, or use the @code{section} attribute (@pxref{Variable
 Attributes}).
 
 @item
-Placing a static storage variable in the @code{__far} space is currently not
-supported when using the (default) tiny memory model.
+When using the (default) tiny memory model, operations which require the
+output code to contain segment relocations are not allowed.
+
+In particular, you cannot place a static storage variable in the
+@code{__far} space, or invoke an externally defined far function by name
+(unless it is marked @code{near_section}).
 
 @item
 For far pointer declarations, the GCC named address space syntax---which
@@ -4165,7 +4199,6 @@ pass arguments, unless it takes a variable number of arguments.
 
 @item assume_ds_data
 @cindex @code{assume_ds_data} function attribute, IA-16
-
 This attribute, attached to a function, causes the compiler to assume that
 the @code{ds} register points to the program's data segment on function
 entry.  This is useful to override the effects of the
@@ -4179,6 +4212,12 @@ This attribute has no effect if @code{ds} is a call-saved register
 This attribute, attached to a function, causes the compiler @emph{not} to
 assume that @code{ds} points to the program's data segment on function
 entry.  It has no effect if @code{ds} is a call-saved register.
+
+@item near_section
+@cindex @code{near_section} function attribute, IA-16
+This attribute, attached to a far function declaration, tells GCC that
+the function is known to reside in the program's text segment.  @xref{IA-16
+Named Address Spaces}.
 @end table
 
 @node IA-64 Function Attributes

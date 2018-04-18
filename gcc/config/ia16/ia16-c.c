@@ -78,6 +78,7 @@ ia16_cpu_cpp_builtins (void)
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_STDCALL");
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
+  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
 
   /* Also define a macro to give the function calling convention settings
      in use.  */
