@@ -321,29 +321,43 @@ ia16_default_ds_abi_function_type_p (const_tree funtype)
 static int
 ia16_in_ds_data_function_p (void)
 {
-  return cfun && cfun->decl
-	 && ia16_ds_data_function_type_p (TREE_TYPE (cfun->decl));
+  if (cfun && cfun->decl)
+    return ia16_ds_data_function_type_p (TREE_TYPE (cfun->decl));
+  else
+    return TARGET_ASSUME_DS_DATA;
 }
+
+#define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
+				 && call_used_regs[DS_REG] \
+				 && TARGET_ASSUME_DS_DATA)
 
 static int
 ia16_in_default_ds_abi_function_p (void)
 {
-  return cfun && cfun->decl
-	 && ia16_default_ds_abi_function_type_p (TREE_TYPE (cfun->decl));
+  if (cfun && cfun->decl)
+    return ia16_default_ds_abi_function_type_p (TREE_TYPE (cfun->decl));
+  else
+    return TARGET_DEFAULT_DS_ABI;
 }
 
 static int
 ia16_ds_data_function_rtx_p (rtx addr)
 {
   tree type = ia16_get_function_type_for_addr (addr);
-  return type && ia16_ds_data_function_type_p (type);
+  if (type)
+    return ia16_ds_data_function_type_p (type);
+  else
+    return TARGET_ASSUME_DS_DATA;
 }
 
 static int
 ia16_default_ds_abi_function_rtx_p (rtx addr)
 {
   tree type = ia16_get_function_type_for_addr (addr);
-  return type && ia16_default_ds_abi_function_type_p (type);
+  if (type)
+    return ia16_default_ds_abi_function_type_p (type);
+  else
+    return TARGET_DEFAULT_DS_ABI;
 }
 
 static int
