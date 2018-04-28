@@ -607,6 +607,9 @@ LIBGFOR_CHECK_UNLINK_OPEN_FILE
 # Check whether line terminator is LF or CRLF
 LIBGFOR_CHECK_CRLF
 
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
+
 AC_CACHE_SAVE
 
 if test ${multilib} = yes; then

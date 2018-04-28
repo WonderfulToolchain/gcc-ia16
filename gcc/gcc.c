@@ -3735,6 +3735,10 @@ driver_handle_option (struct gcc_options *opts,
       printf ("%s\n", spec_machine);
       exit (0);
 
+    case OPT_dumpfullversion:
+      printf ("%s\n", BASEVER);
+      exit (0);
+
     case OPT__version:
       print_version = 1;
 
