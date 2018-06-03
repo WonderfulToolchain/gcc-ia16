@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-additional-options "-mcmodel=small" { target ia16-*-* } } */
 #define vector(elcount, type)  \
 __attribute__((vector_size((elcount)*sizeof(type)))) type
 
