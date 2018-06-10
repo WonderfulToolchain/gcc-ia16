@@ -1448,23 +1448,25 @@ unsigned long irq0_clock_ticks (void)
 @end smallexample
 
 Another way is to cast a generic data pointer or function pointer to a far
-pointer type.  For a data pointer, the resulting far pointer will have the
+pointer type.  For a data pointer, the resulting pointer will have the
 data segment value---taken from the @code{ss} register---as its segment
-component; for a function pointer, the segment component will be from
-@code{cs}.
+component; for a function pointer, this will be from @code{cs}.
 
 @smallexample
 void set_diskette_params (const unsigned char params[])
 @{
-    * (const unsigned char __far * volatile __far *) (4 * 0x1e) =
-        (const unsigned char __far *) params;
+    /* Set the BIOS diskette parameters (int $0x1e vector).  */
+    * (const unsigned char __far * volatile __far *)
+        (4 * 0x1e) =
+            (const unsigned char __far *) params;
 @}
 @end smallexample
 
 @noindent
 @b{Far static storage variables}
 
-Under the small memory model (@option{-mcmodel=small}), you can also define
+Under the small memory model (@option{-mcmodel=small})@footnote{Unless you
+also specify @option{-mno-segment-relocation-stuff}.}, you can also define
 far variables with static storage duration, and take their addresses, like
 so:
 
@@ -1542,11 +1544,21 @@ int baz (long) __far __attribute__ ((near_section));
 @noindent
 @b{Preprocessor symbols}
 
-The preprocessor symbol @code{__FAR} is defined when far pointers are
-supported.  In addition, @code{__IA16_FEATURE_FAR_FUNCTION_SYNTAX} is
-defined if the above syntax for declaring far functions is supported, and
+@itemize
+
+@item
+The preprocessor symbol @code{__FAR} is defined only if far pointers are
+supported.
+
+@item
+@code{__IA16_FEATURE_FAR_FUNCTION_SYNTAX} is defined if the above syntax for
+declaring far functions is supported.
+
+@item
 @code{__IA16_FEATURE_FAR_STATIC_STORAGE} is defined if far static storage
 variables are supported.
+
+@end itemize
 
 @noindent
 @b{Limitations and caveats}
@@ -1589,8 +1601,9 @@ them in a struct, or use the @code{section} attribute (@pxref{Variable
 Attributes}).
 
 @item
-When using the (default) tiny memory model, operations which require the
-output code to contain segment relocations are not allowed.
+When using the (default) tiny memory model, or if
+@option{-mno-segment-relocation-stuff} is in effect, operations which
+require the output code to contain segment relocations are not allowed.
 
 In particular, you cannot place a static storage variable in the
 @code{__far} space, or invoke an externally defined far function by name

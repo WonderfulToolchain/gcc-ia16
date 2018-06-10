@@ -66,20 +66,29 @@ mshort-jumps
 Target Mask(SHORT_JUMPS)
 Do (not - this is the default) use jump instructions which can only jump -128/+127 bytes.
 
+; This is now unified with -mcmodel=small (below).
 mseparate-code-segment
-Target Mask(SEPARATE_CSEG)
-Do (not - this is the default) use a separate code segment.
-
-mcmodel=tiny
-Target RejectNegative
-Generate code for the tiny code model (default), with one combined data and text segment.
+Target Alias(mcmodel=small) Undocumented
 
 ; For the compiler back-end, -mcmodel=small in contrast to -mcmodel=tiny is
-; just about having separate code and data address spaces.  Most of the work
-; for implementing the small model happens at the linking stage.
+; mainly just about having separate code and data address spaces.  Most of
+; the work for implementing the small model happens at the linking stage.
+;
+; With the help of elf.h, this option also enables -msegment-relocation-stuff.
 mcmodel=small
-Target RejectNegative Mask(SEPARATE_CSEG) Mask(CMODEL_IS_SMALL)
+Target RejectNegative Mask(CMODEL_IS_SMALL)
 Generate code for the small code model, with one data and one text segment.
+
+mcmodel=tiny
+Target RejectNegative InverseMask(CMODEL_IS_SMALL)
+Generate code for the tiny code model (default), with one combined data and text segment.
+
+msegment-relocation-stuff
+Target RejectNegative Mask(SEG_RELOC_STUFF) Undocumented
+
+mno-segment-relocation-stuff
+Target RejectNegative InverseMask(SEG_RELOC_STUFF)
+Disable language features which use segment relocations.
 
 mrtd
 Target Report Mask(RTD)
@@ -93,25 +102,31 @@ mcallee-assume-ds-data-segment
 Target RejectNegative InverseMask(NO_ASSUME_DS_DATA, ASSUME_DS_DATA) Undocumented
 
 ; Older name.
-mno-callee-assume-ds-ss
-Target RejectNegative Report Mask(NO_ASSUME_DS_DATA) Undocumented
-
-; Older name.
 mcallee-assume-ds-ss
-Target RejectNegative InverseMask(NO_ASSUME_DS_DATA, ASSUME_DS_DATA) Undocumented
-
-; Older name.
-mno-callee-assume-ds-data-space
-Target RejectNegative Report Mask(NO_ASSUME_DS_DATA) Undocumented
+Target Alias(mcallee-assume-ds-data-segment) Undocumented
 
 ; Older name.
 mcallee-assume-ds-data-space
-Target RejectNegative InverseMask(NO_ASSUME_DS_DATA, ASSUME_DS_DATA) Undocumented
+Target Alias(mcallee-assume-ds-data-segment) Undocumented
 
 mfar-function-if-far-return-type
 Target Report Mask(FAR_FUNCTION_IF_FAR_RETURN_TYPE)
-Treat a function as __far if it has a __far return type.
+Treat a function as __far if it has a __far return type (experimental).
 
 mprotected-mode
 Target Report Mask(PROTECTED_MODE)
 Try to produce code suitable for running in protected mode.
+
+; With the help of elf.h, this also enables -mprotected-mode.
+melks
+Target Report RejectNegative Mask(SYS_ELKS)
+Generate executables for ELKS OS (experimental).
+
+mmsdos
+Target Report RejectNegative InverseMask(SYS_ELKS)
+Generate executables for MS-DOS (default).
+
+; This is currently a no-op option.  It may come in useful if and when ELKS
+; supports more than one executable format.
+maout
+Target RejectNegative Undocumented

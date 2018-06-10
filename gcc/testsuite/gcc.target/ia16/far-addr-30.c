@@ -11,7 +11,7 @@ static int __far var = 1;
 int __far *
 p_var (void)
 {
-  return &var;			/* { dg-error " does not support MZ " } */
+  return &var;	/* { dg-error " cannot take address of .*far.* static " } */
 }
 
 int

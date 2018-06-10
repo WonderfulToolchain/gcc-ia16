@@ -757,8 +757,9 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mseparate-code-segment -mcmodel=tiny -mcmodel=small -mrtd @gol
--mno-callee-assume-ds-data-segment -mprotected-mode}
+-mmsdos -melks -mcmodel=tiny -mcmodel=small -mseparate-code-segment @gol
+-mno-segment-relocation-stuff -mrtd -mno-callee-assume-ds-data-segment @gol
+-mprotected-mode}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16543,27 +16544,57 @@ for @var{cpu-type} are the same as for @option{-mtune}.  Moreover,
 specifying @option{-march=@var{cpu-type}} implies
 @option{-mtune=@var{cpu-type}}.
 
+@c The standard GCC way of supporting multiple target OSes is to have a whole
+@c separate toolchain for each such OS --- and indeed I see that Lambertsen
+@c and Jenner had included code for an ia16-*-elks toolchain which targets
+@c the ELKS OS rather than MS-DOS.
+@c
+@c However, MFLD felt this approach to be rather wasteful (https://github.com/
+@c tkchia/gcc-ia16/issues/23#issuecomment-395982101), and so did I.  -- tkchia
+@c
+@item -mmsdos
+@opindex mmsdos
+Produce executables for MS-DOS.  This is the default.
+
+@item -melks
+@opindex melks
+Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
+system.  This also turns on @option{-mprotected-mode}.
+
+ELKS support is currently experimental and incomplete.
+
 @item -mcmodel=tiny
 @opindex mcmodel=tiny
 Generate code for the tiny code model, with a single combined data and text
 segment in a 64@tie{}KiB address space.  This is the default.
 
 @item -mcmodel=small
+@itemx -mseparate-code-segment
 @opindex mcmodel=small
-Generate code for the small code model, with one data segment and one text
-segment, in separate 64@tie{}KiB spaces.  At the linking stage, this option
-also causes the output to be an MS-DOS @code{MZ} executable (unless
-@option{-T} is used).  @option{-mcmodel=small} implies
-@option{-mseparate-code-segment}.
-
-@item -mseparate-code-segment
-@itemx -mno-separate-code-segment
 @opindex mseparate-code-segment
-@opindex mno-separate-code-segment
-Assume (or don't assume) that the code segment may not be the same as the
-data and stack segments. The default is to assume that they are the same
-segment, unless @option{-mcmodel=small} is used. Currently, trampolines are
-disabled when using this option.
+Generate code for the small code model, with one data segment and one text
+segment, in separate 64@tie{}KiB spaces.  At the compile stage, this
+currently disables trampolines for nested functions.  At the linking
+stage---unless @option{-T} is used---this option also causes GCC to switch to
+a different output format to better support separate segments:
+@itemize
+@item
+If targeting MS-DOS, GCC will produce an @code{MZ} executable.
+@item
+If targeting ELKS, GCC will produce a ``separate I/D'' a.out executable.
+@end itemize
+@c
+@c -mseparate-code-segment used to be a separate option which merely
+@c disabled trampolines.  Since this is not very useful in itself, I have
+@c now unified it with -mcmodel=small.  -- tkchia
+
+@item -msegment-relocation-stuff
+@itemx -mno-segment-relocation-stuff
+@opindex msegment-relocation-stuff
+@opindex mno-segment-relocation-stuff
+Enable (or disable) language features, such as static pointers to far
+variables, that rely on segment relocations to work.  If the small code
+model is used, the default is to allow such language features.
 
 @item -mshort-jumps
 @itemx -mno-short-jumps
