@@ -22,6 +22,11 @@
 
 /* Controlling the Compilation Driver, gcc.  */
 
+#define CC1_SPEC	\
+  "%{!mno-protected-mode:%{melks:-mprotected-mode}} " \
+  "%{!mno-segment-relocation-stuff:" \
+    "%{mcmodel=small:-msegment-relocation-stuff}}"
+
 #define STARTFILE_SPEC	\
   ""
 
@@ -29,4 +34,10 @@
   ""
 
 #define LIB_SPEC	\
-  "%{!T*:%{mcmodel=small:%Tdos-exe-small.ld;:%Tdos-com.ld}}"
+  "%{!T*:"		\
+    "%{mcmodel=small:" \
+      "%{melks:%Telks-separate.ld;:%Tdos-exe-small.ld};" \
+      "melks:%Telks-combined.ld;" \
+      ":%Tdos-com.ld"	\
+    "}"			\
+  "}"
