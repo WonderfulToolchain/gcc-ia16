@@ -79,6 +79,8 @@ ia16_cpu_cpp_builtins (void)
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
   cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
+  def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
+		      TARGET_SEG_RELOC_STUFF);
 
   /* Also define a macro to give the function calling convention settings
      in use.  */
@@ -131,6 +133,20 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_TUNE_I80186", target_tune == PROCESSOR_I80186);
   def_or_undef_macro ("__IA16_TUNE_I80188", target_tune == PROCESSOR_I80188);
   def_or_undef_macro ("__IA16_TUNE_I80286", target_tune == PROCESSOR_I80286);
+
+  /* Define macros corresponding to the chosen target operating system.
+     Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
+     either __MSDOS__ or __ELKS__.  */
+  if (TARGET_SYS_ELKS)
+    {
+      cpp_define (parse_in, "__ELKS__");
+      cpp_define (parse_in, "__IA16_SYS_ELKS");
+    }
+  else
+    {
+      cpp_define (parse_in, "__MSDOS__");
+      cpp_define (parse_in, "__IA16_SYS_MSDOS");
+    }
 }
 
 /* Implements REGISTER_TARGET_PRAGMAS.  */
