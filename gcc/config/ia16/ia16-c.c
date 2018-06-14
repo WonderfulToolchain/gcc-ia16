@@ -141,11 +141,13 @@ ia16_cpu_cpp_builtins (void)
     {
       cpp_define (parse_in, "__ELKS__");
       cpp_define (parse_in, "__IA16_SYS_ELKS");
+      cpp_assert (parse_in, "system=elks");
     }
   else
     {
       cpp_define (parse_in, "__MSDOS__");
       cpp_define (parse_in, "__IA16_SYS_MSDOS");
+      cpp_assert (parse_in, "system=msdos");
     }
 }
 
