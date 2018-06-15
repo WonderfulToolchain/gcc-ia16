@@ -353,6 +353,14 @@ else
 
     AC_DEFINE(HAVE_ICONV)
     AC_DEFINE(HAVE_MEMALIGN)
+
+    # newlib-ia16 has strtold, which we can use to prevent c++locale.cc from
+    # pulling in sscanf, etc.  Messy hack.  -- tkchia 20180615
+    case "${host}" in
+      ia16-*-elf)
+        AC_DEFINE(HAVE_STRTOLD)
+        ;;
+    esac
   elif test "x$with_headers" != "xno"; then
     GLIBCXX_CROSSCONFIG
   fi

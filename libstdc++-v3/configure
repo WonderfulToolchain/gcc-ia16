@@ -29237,6 +29237,14 @@ else
 
     $as_echo "#define HAVE_MEMALIGN 1" >>confdefs.h
 
+    # newlib-ia16 has strtold, which we can use to prevent c++locale.cc from
+    # pulling in sscanf, etc.  Messy hack.  -- tkchia 20180615
+    case "${host}" in
+      ia16-*-elf)
+        $as_echo "#define HAVE_STRTOLD 1" >>confdefs.h
+
+        ;;
+    esac
   elif test "x$with_headers" != "xno"; then
 
 # Base decisions on target environment.
