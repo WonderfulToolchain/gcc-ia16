@@ -367,6 +367,22 @@ ia16_near_section_function_type_p (const_tree funtype)
   return attrs && lookup_attribute ("near_section", attrs);
 }
 
+static int
+ia16_far_section_function_type_p (const_tree funtype)
+{
+  tree attrs = TYPE_ATTRIBUTES (funtype);
+  return attrs && lookup_attribute ("far_section", attrs);
+}
+
+static int
+ia16_in_far_section_function_p (void)
+{
+  if (cfun && cfun->decl)
+    return ia16_far_section_function_type_p (TREE_TYPE (cfun->decl));
+  else
+    return 0;
+}
+
 /* Basic Stack Layout */
 /* Right after the function prologue, before elimination, we have:
    argument N
@@ -550,6 +566,7 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #define IA16_CALLCVT_FAR		0x04
 #define IA16_CALLCVT_DS_DATA		0x08
 #define IA16_CALLCVT_NEAR_SECTION	0x10
+#define IA16_CALLCVT_FAR_SECTION	0x20
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -566,6 +583,8 @@ ia16_get_callcvt (const_tree type)
 
       if (lookup_attribute ("near_section", attrs))
 	callcvt |= IA16_CALLCVT_NEAR_SECTION;
+      else if (lookup_attribute ("far_section", attrs))
+	callcvt |= IA16_CALLCVT_FAR_SECTION;
     }
 
   if (ia16_ds_data_function_type_p (type))
@@ -640,13 +659,34 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  *no_add_attrs = true;
 	}
     }
-  /* The following attributes are ignored if %ds is a call-saved register.  */
-  else if (! call_used_regs[DS_REG])
+  else if (is_attribute_p ("near_section", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("far_section", attrs))
+	{
+	  error ("near_section and far_section attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+    }
+  else if (is_attribute_p ("far_section", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("near_section", attrs))
+	{
+	  error ("near_section and far_section attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+    }
+
+  if (! call_used_regs[DS_REG]
+      && (is_attribute_p ("assume_ds_data", name)
+	  || is_attribute_p ("no_assume_ds_data", name)))
     {
       warning (OPT_Wattributes, "%qE attribute directive ignored as %%ds is "
 	       "a call-saved register", name);
       *no_add_attrs = true;
     }
+  /* The following attributes are ignored if %ds is a call-saved register.  */
   else if (is_attribute_p ("assume_ds_data", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
@@ -680,6 +720,8 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "no_assume_ds_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "far_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { NULL,      0, 0, false, false, false, NULL,			     false }
 };
@@ -2574,7 +2616,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 #define	TARGET_ASM_SELECT_SECTION ia16_asm_select_section
 
 /* Convenience function --- fabricate a section name for a given __far
-   variable declaration, or return NULL if something is wrong.
+   variable or function declaration, or return NULL if something is wrong.
 
    The caller should free the section name's memory with free (.) once it is
    done with it.
@@ -2600,7 +2642,7 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
   if (! TARGET_SEG_RELOC_STUFF)
     {
       error_at (DECL_SOURCE_LOCATION (decl),
-		"cannot create %<__far%> static storage variable");
+		"cannot create %<__far%> function or static storage variable");
       inform (DECL_SOURCE_LOCATION (decl), "use %<-m%s%> to allow this",
 	      TARGET_CMODEL_IS_SMALL ? "segment-relocation-stuff"
 				     : "cmodel=small");
@@ -2611,6 +2653,10 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   switch (categorize_decl_for_section (decl, reloc))
     {
+    case SECCAT_TEXT:
+      prefix = one_only ? ".gnu.linkonce.ft." : ".fartext.";
+      break;
+
     case SECCAT_DATA:
     case SECCAT_DATA_REL:
     case SECCAT_DATA_REL_LOCAL:
@@ -2643,7 +2689,8 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   if (asprintf (&name2, "%s.%05ho", name1, hash) <= 0)
     {
-      error ("not enough memory for %<__far%> variable section name");
+      error ("not enough memory for %<__far%> function or variable "
+	     "section name");
       return NULL;
     }
 
@@ -2653,16 +2700,16 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 static section *
 ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
 {
+  tree type = TREE_TYPE (expr);
   char *sname;
 
-  switch (TYPE_ADDR_SPACE (TREE_TYPE (expr)))
+  switch (TYPE_ADDR_SPACE (type))
     {
     default:
       gcc_unreachable ();
 
     case ADDR_SPACE_FAR:
       sname = ia16_fabricate_section_name_for_decl (expr, reloc);
-
       if (sname)
 	{
 	  section *sect = get_named_section (expr, sname, reloc);
@@ -2683,8 +2730,9 @@ static void
 ia16_asm_unique_section (tree decl, int reloc)
 {
   char *sname;
+  tree type = TREE_TYPE (decl);
 
-  switch (TYPE_ADDR_SPACE (TREE_TYPE (decl)))
+  switch (TYPE_ADDR_SPACE (type))
     {
     default:
       gcc_unreachable ();
@@ -2751,6 +2799,31 @@ ia16_asm_file_start (void)
 				"\t.code%s\n"
 				"\t.att_syntax prefix\n", arch, code);
 	default_file_start ();
+}
+
+#undef	TARGET_ASM_FUNCTION_SECTION
+#define	TARGET_ASM_FUNCTION_SECTION	ia16_asm_function_section
+
+static section *
+ia16_asm_function_section (tree decl, enum node_frequency freq, bool startup,
+			   bool stop)
+{
+  char *sname;
+  const int reloc = 0;
+
+  if (! decl
+      || TYPE_ADDR_SPACE (TREE_TYPE (decl)) != ADDR_SPACE_FAR
+      || ! ia16_far_section_function_type_p (TREE_TYPE (decl)))
+    return default_function_section (decl, freq, startup, stop);
+
+  sname = ia16_fabricate_section_name_for_decl (decl, reloc);
+  if (sname)
+    {
+      section *sect = get_named_section (decl, sname, reloc);
+      free (sname);
+      return sect;
+    }
+  return NULL;
 }
 
 /* Output of Data */
@@ -3943,14 +4016,15 @@ ia16_expand_epilogue (bool sibcall)
    (%0) in the (define_insn ...) if CALL_VALUE_P is false, or operand 1
    otherwise.
 
-   There are 3 cases we need to handle:
+   There are 4 cases we need to handle:
      * we are calling a near function (with a 16-bit address)
      * we are calling a far function through a 32-bit pointer
      * we are calling a far function --- which returns with `lret' --- but
        the function is defined (in the default text section) in the current
-       module, so we can get away with a `pushw %cs' plus a near call
-     * we are calling a far function in another module --- use `lcall' and do
-       not assume that the function resides in the default text section.  */
+       module, and is not marked __attribute__ ((far_section)), so we can get
+       away with a `pushw %cs' plus a near call
+     * none of the above --- use `lcall' and do not assume that the function
+       resides in the default text section.  */
 #define P(part)	(call_value_p ? part "1" : part "0")
 #define P2(part_a, part_b) \
 			(call_value_p ? part_a "1" part_b "1" : \
@@ -3978,12 +4052,21 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
 
   if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
     {
+      if (ia16_in_far_section_function_p ())
+	{
+	  /* FIXME: Make the error message more informative, e.g. pinpoint
+	     the precise location of the function call, provide the name if
+	     the call is a libcall, etc.  -- tkchia  */
+	  error_at (DECL_SOURCE_LOCATION (cfun->decl),
+		    "calling near function from outside near text segment");
+	}
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("call\t*%");
       else
 	return P ("call\t%c");
     }
-  else if (DECL_INITIAL (fndecl)
+  else if ((DECL_INITIAL (fndecl)
+	    && ! ia16_far_section_function_type_p (fntype))
 	   || ia16_near_section_function_type_p (fntype))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))

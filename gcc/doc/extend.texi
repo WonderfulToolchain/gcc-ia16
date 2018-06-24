@@ -1533,6 +1533,7 @@ function is.  GCC will use a far @code{lcall} or @code{ljmp}, possibly with
 a segment relocation, to realize the call.
 
 @end itemize
+
 If you know that an externally defined far function is guaranteed to be in
 the program's text segment, you can get GCC to use @code{call} or @code{jmp}
 for this function, with an attribute:
@@ -1540,6 +1541,18 @@ for this function, with an attribute:
 @smallexample
 int baz (long) __far __attribute__ ((near_section));
 @end smallexample
+
+Conversely, if you would like to place a locally defined far function
+@emph{outside} the normal text segment, you can use a different attribute:
+
+@smallexample
+__attribute__ ((far_section))
+static int qux (long x)
+@{ ... @}
+@end smallexample
+
+@code{far_section} functions are not allowed to call non-far functions---not
+even compiler support routines---so they must be written carefully.
 
 @noindent
 @b{Preprocessor symbols}
@@ -4231,6 +4244,12 @@ entry.  It has no effect if @code{ds} is a call-saved register.
 This attribute, attached to a far function declaration, tells GCC that
 the function is known to reside in the program's text segment.  @xref{IA-16
 Named Address Spaces}.
+
+@item far_section
+@cindex @code{far_section} function attribute, IA-16
+This attribute, attached to a far function definition, tells GCC to place
+the function outside the normal text segment.  @xref{IA-16 Named Address
+Spaces}.
 @end table
 
 @node IA-64 Function Attributes
