@@ -25,7 +25,7 @@
 #define CC1_SPEC	\
   "%{!mno-protected-mode:%{melks:-mprotected-mode}} " \
   "%{!mno-segment-relocation-stuff:" \
-    "%{mcmodel=small:-msegment-relocation-stuff}}"
+    "%{mcmodel=small|mcmodel=medium:-msegment-relocation-stuff}}"
 
 #define STARTFILE_SPEC	\
   ""
@@ -37,6 +37,8 @@
   "%{!T*:"		\
     "%{mcmodel=small:" \
       "%{melks:%Telks-separate.ld;:%Tdos-exe-small.ld};" \
+      "mcmodel=medium:" \
+      "%{melks:%Telks-separate.ld;:%Tdos-exe-medium.ld};" \
       "melks:%Telks-combined.ld;" \
       ":%Tdos-com.ld"	\
     "}"			\
