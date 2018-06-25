@@ -1,10 +1,8 @@
-/* { dg-skip-if "" { *-*-* } { "-flto" } { "" } } */
+/* { dg-options "-ffixed-ds -std=gnu11 -Wall -fno-inline --save-temps" } */
 /* { dg-do assemble } */
 
 /* Test that a warning is issued when an `no_assume_ds_data' function calls
-   an `assume_ds_data' function and %ds is a fixed register.
-
-   FIXME: no warnings are issued if LTO is in effect.  */
+   an `assume_ds_data' function and %ds is a fixed register.  */
 
 int puts (const char *);
 void abort (void);
@@ -24,16 +22,16 @@ bar (unsigned p)
 {
   qux = 6;
 
-  foo (p);	/* { dg-warning "%ds is fixed" "" { xfail lto } } */
+  foo (p);	/* { dg-warning "%ds is fixed" } */
 
   if (qux != 11)
-    abort ();	/* { dg-warning "%ds is fixed" "" { xfail lto } } */
+    abort ();	/* { dg-warning "%ds is fixed" } */
   qux = 7;
 
   __asm volatile ("# 2" : : "e" (__builtin_ia16_selector (p)));
   qux = 8;
 
-  foo (p);	/* { dg-warning "%ds is fixed" "" { xfail lto } } */
+  foo (p);	/* { dg-warning "%ds is fixed" } */
   qux = 9;
 }
 
