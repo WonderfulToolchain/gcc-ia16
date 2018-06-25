@@ -3362,6 +3362,68 @@ ia16_shift_truncation_mask (enum machine_mode mode)
   return (TARGET_SHIFT_MASKED && (mode == HImode || mode == QImode) ? 31 : 0);
 }
 
+/* If we are in an __attribute__ ((no_assume_ds_data)) function, and %ds is
+   fixed, check whether it calls any __attribute__ ((assume_ds_data)).  Flag
+   warnings if it does.  */
+static void
+ia16_verify_calls_from_no_assume_ds (void)
+{
+  rtx_insn *insn;
+
+  if (TARGET_ALLOCABLE_DS_REG
+      || ia16_in_ds_data_function_p ())
+    return;
+
+  for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
+    {
+      if (CALL_P (insn))
+	{
+	  rtx call = get_call_rtx_from (insn);
+	  rtx callee = XEXP (XEXP (call, 0), 0);
+	  if (ia16_ds_data_function_rtx_p (callee))
+	      warning_at (LOCATION_LOCUS (INSN_LOCATION (insn)),
+			  OPT_Wmaybe_uninitialized,
+			  "%%ds is fixed, not resetting %%ds for call to "
+			  "assume_ds_ss function");
+	}
+    }
+}
+
+/* If we are in an __attribute__ ((far_section)) function, check whether it
+   calls any near functions.  Flag warnings if it does.  */
+static void
+ia16_verify_calls_from_far_section (void)
+{
+  rtx_insn *insn;
+
+  if (! ia16_in_far_section_function_p ())
+    return;
+
+  for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
+    {
+      if (CALL_P (insn))
+	{
+	  rtx call = get_call_rtx_from (insn);
+	  rtx callee = XEXP (XEXP (call, 0), 0);
+
+	  tree fndecl = ia16_get_function_decl_for_addr (callee);
+	  tree fntype = NULL_TREE;
+	  if (fndecl)
+	    {
+	      fntype = TREE_TYPE (fndecl);
+	      while (POINTER_TYPE_P (fntype))
+		fntype = TREE_TYPE (fntype);
+	    }
+
+	  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
+	      warning_at (LOCATION_LOCUS (INSN_LOCATION (insn)),
+			  OPT_Waddress,
+			  "calling near function from outside near text "
+			  "segment");
+	}
+    }
+}
+
 /* Return true iff INSN is a (set (reg:SEG DS_REG) (reg:SEG SS_REG)).  */
 static bool
 ia16_insn_is_reset_ds_p (rtx_insn *insn)
@@ -3612,10 +3674,10 @@ ia16_elide_unneeded_ss_stuff (void)
 static void
 ia16_machine_dependent_reorg (void)
 {
-  if (! optimize)
-    return;
+  ia16_verify_calls_from_no_assume_ds ();
+  ia16_verify_calls_from_far_section ();
 
-  if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
+  if (optimize && TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
     {
       compute_bb_for_insn ();
       ia16_elide_unneeded_ss_stuff ();
@@ -3900,17 +3962,6 @@ ia16_expand_reset_ds_for_call (rtx addr)
 {
   if (ia16_default_ds_abi_function_rtx_p (addr))
     ia16_expand_reset_ds_internal ();
-  else if (! TARGET_ALLOCABLE_DS_REG
-	   && ! ia16_in_ds_data_function_p ()
-	   && ia16_ds_data_function_rtx_p (addr))
-    {
-      /* An __attribute__ ((no_assume_ds_data)) function wants to call an
-	 __attribute__ ((assume_ds_data)) function.  This is probably not a
-	 good thing to do.  */
-      warning (OPT_Wmaybe_uninitialized,
-	       "%%ds is fixed, not resetting %%ds for call to assume_ds_ss "
-	       "function");
-    }
 }
 
 static void
@@ -4052,14 +4103,6 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
 
   if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
     {
-      if (ia16_in_far_section_function_p ())
-	{
-	  /* FIXME: Make the error message more informative, e.g. pinpoint
-	     the precise location of the function call, provide the name if
-	     the call is a libcall, etc.  -- tkchia  */
-	  error_at (DECL_SOURCE_LOCATION (cfun->decl),
-		    "calling near function from outside near text segment");
-	}
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("call\t*%");
       else
