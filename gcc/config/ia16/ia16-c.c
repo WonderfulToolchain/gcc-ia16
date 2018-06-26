@@ -27,10 +27,16 @@
 #include "hard-reg-set.h"
 
 static void
+def_macro (const char *name)
+{
+  cpp_define (parse_in, name);
+}
+
+static void
 def_or_undef_macro (const char *name, bool def_p)
 {
   if (def_p)
-    cpp_define (parse_in, name);
+    def_macro (name);
   else
     cpp_undef (parse_in, name);
 }
@@ -40,7 +46,7 @@ void
 ia16_cpu_cpp_builtins (void)
 {
   builtin_define_std ("ia16");
-  cpp_define (parse_in, "__FAR");
+  def_macro ("__FAR");
 
   /* Define macros corresponding to features supported in the chosen -march=
      architecture.  Here I follow the ARM convention of defining macros with
@@ -72,13 +78,13 @@ ia16_cpu_cpp_builtins (void)
        * function calling conventions available through __attribute__ ((.)). 
    */
   def_or_undef_macro ("__IA16_FEATURE_FAR_STATIC_STORAGE",
-		      TARGET_CMODEL_IS_SMALL);
-  cpp_define (parse_in, "__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
-  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_CDECL");
-  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_STDCALL");
-  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
-  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
-  cpp_define (parse_in, "__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
+		      ! TARGET_CMODEL_IS_TINY);
+  def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_CDECL");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_STDCALL");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
 
@@ -90,18 +96,28 @@ ia16_cpu_cpp_builtins (void)
     TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
 
   /* Define macros corresponding to the chosen memory model.  I define both
-     an AArch64-style macro __IA16_CMODEL_{TINY | SMALL}__, and a simple
-     __{TINY | SMALL}__ macro as used in the classical Borland C and Open
-     Watcom compilers (and others).
-
-     This code currently assumes that there are only two memory models ---
-     "tiny" and "small".  If more memory models are added, we will probably
-     need to define an `enum' in a whole separate header file, similar to
-     gcc/config/i386/i386-opts.h .  -- tkchia */
-  def_or_undef_macro ("__IA16_CMODEL_TINY__", ! TARGET_CMODEL_IS_SMALL);
-  def_or_undef_macro ("__TINY__", ! TARGET_CMODEL_IS_SMALL);
-  def_or_undef_macro ("__IA16_CMODEL_SMALL__", TARGET_CMODEL_IS_SMALL);
-  def_or_undef_macro ("__SMALL__", TARGET_CMODEL_IS_SMALL);
+     an AArch64-style macro __IA16_CMODEL_{TINY | SMALL | ...}__, and a
+     simple __{TINY | SMALL | ...}__ macro as used in the classical Borland
+     C and Open Watcom compilers (and others).  -- tkchia */
+  switch (target_cmodel)
+    {
+      case CMODEL_TINY:
+	def_macro ("__IA16_CMODEL_TINY__");
+	def_macro ("__TINY__");
+	break;
+      case CMODEL_SMALL:
+	def_macro ("__IA16_CMODEL_SMALL__");
+	def_macro ("__SMALL__");
+	break;
+#if 0
+      case CMODEL_MEDIUM:
+	def_macro ("__IA16_CMODEL_MEDIUM__");
+	def_macro ("__MEDIUM__");
+	break;
+#endif
+      default:
+	gcc_unreachable ();
+    }
 
   /* Define a macro for the chosen -march=.  A source file can use this to
      decide whether to employ a capability not covered by the
@@ -139,14 +155,14 @@ ia16_cpu_cpp_builtins (void)
      either __MSDOS__ or __ELKS__.  */
   if (TARGET_SYS_ELKS)
     {
-      cpp_define (parse_in, "__ELKS__");
-      cpp_define (parse_in, "__IA16_SYS_ELKS");
+      def_macro ("__ELKS__");
+      def_macro ("__IA16_SYS_ELKS");
       cpp_assert (parse_in, "system=elks");
     }
   else
     {
-      cpp_define (parse_in, "__MSDOS__");
-      cpp_define (parse_in, "__IA16_SYS_MSDOS");
+      def_macro ("__MSDOS__");
+      def_macro ("__IA16_SYS_MSDOS");
       cpp_assert (parse_in, "system=msdos");
     }
 }
