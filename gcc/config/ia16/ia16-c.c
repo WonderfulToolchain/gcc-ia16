@@ -45,6 +45,8 @@ def_or_undef_macro (const char *name, bool def_p)
 void
 ia16_cpu_cpp_builtins (void)
 {
+  bool def_p;
+
   builtin_define_std ("ia16");
   def_macro ("__FAR");
 
@@ -99,25 +101,24 @@ ia16_cpu_cpp_builtins (void)
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL | ...}__, and a
      simple __{TINY | SMALL | ...}__ macro as used in the classical Borland
      C and Open Watcom compilers (and others).  -- tkchia */
-  switch (target_cmodel)
-    {
-      case CMODEL_TINY:
-	def_macro ("__IA16_CMODEL_TINY__");
-	def_macro ("__TINY__");
-	break;
-      case CMODEL_SMALL:
-	def_macro ("__IA16_CMODEL_SMALL__");
-	def_macro ("__SMALL__");
-	break;
-#if 0
-      case CMODEL_MEDIUM:
-	def_macro ("__IA16_CMODEL_MEDIUM__");
-	def_macro ("__MEDIUM__");
-	break;
-#endif
-      default:
-	gcc_unreachable ();
-    }
+  def_p = (target_cmodel == CMODEL_TINY);
+  def_or_undef_macro ("__IA16_CMODEL_TINY__", def_p);
+  def_or_undef_macro ("__TINY__", def_p);
+  def_p = (target_cmodel == CMODEL_SMALL);
+  def_or_undef_macro ("__IA16_CMODEL_SMALL__", def_p);
+  def_or_undef_macro ("__SMALL__", def_p);
+  def_p = (target_cmodel == CMODEL_MEDIUM);
+  def_or_undef_macro ("__IA16_CMODEL_MEDIUM__", def_p);
+  def_or_undef_macro ("__MEDIUM__", def_p);
+  def_p = (target_cmodel == CMODEL_COMPACT);
+  def_or_undef_macro ("__IA16_CMODEL_COMPACT__", def_p);
+  def_or_undef_macro ("__COMPACT__", def_p);
+  def_p = (target_cmodel == CMODEL_LARGE);
+  def_or_undef_macro ("__IA16_CMODEL_LARGE__", def_p);
+  def_or_undef_macro ("__LARGE__", def_p);
+  def_p = (target_cmodel == CMODEL_HUGE);
+  def_or_undef_macro ("__IA16_CMODEL_HUGE__", def_p);
+  def_or_undef_macro ("__HUGE__", def_p);
 
   /* Define a macro for the chosen -march=.  A source file can use this to
      decide whether to employ a capability not covered by the
