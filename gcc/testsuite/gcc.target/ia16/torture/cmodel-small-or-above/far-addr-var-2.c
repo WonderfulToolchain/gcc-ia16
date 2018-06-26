@@ -1,8 +1,8 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do run } */
 
 /* Test that we can manipulate far variables (even without creating pointers
-   to them), when using the small code model.  */
+   to them), when using the small code model or above.  */
 
 void abort (void);
 

@@ -1,8 +1,8 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do run } */
 
 /* Test that we can create far variables, and also fabricate pointers to
-   them, when using the small memory model.  */
+   them, when using the small memory model or above.  */
 
 int printf (const char *, ...);
 void abort (void);
