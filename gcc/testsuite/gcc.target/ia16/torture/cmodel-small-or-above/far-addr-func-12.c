@@ -1,12 +1,12 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do assemble } */
 
 /* Test that a call from a module to a far function (sans `__attribute__
    ((near_section))') outside the module is done with an `lcall' or `ljmp'
    instruction, if the call can be made a sibcall.
 
-   (The code requires the small memory model, as the `lcall' or `ljmp' will
-   very likely need a segment relocation.)  */
+   (The code requires the small memory model or above, as the `lcall' or
+   `ljmp' will very likely need a segment relocation.) */
 
 extern int foo (long) __far;
 
