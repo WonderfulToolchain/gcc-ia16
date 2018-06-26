@@ -1,8 +1,8 @@
-/* { dg-options "-mcmodel=small -std=gnu11 --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do run } */
 
 /* Can we statically initialize far pointers to point to specific far
-   variables, under the small code model?  */
+   variables, under the small code model or above?  */
 
 void abort (void);
 
