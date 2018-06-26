@@ -912,12 +912,12 @@ ia16_seg_override_term (rtx seg)
 #define SEGmode		(TARGET_PROTECTED_MODE ? PHImode : HImode)
 
 static void
-ia16_error_seg_reloc (const char *msg)
+ia16_error_seg_reloc (location_t loc, const char *msg)
 {
-  error ("%s", msg);
-  inform (input_location, "use %<-m%s%> to allow this",
-	  TARGET_CMODEL_IS_SMALL ? "segment-relocation-stuff"
-				 : "cmodel=small");
+  if (msg)
+    error_at (loc, "%s", msg);
+  inform (loc, "use %<-m%s%> to allow this",
+	  TARGET_CMODEL_IS_TINY ? "cmodel=small" : "segment-relocation-stuff");
 }
 
 rtx
@@ -987,7 +987,8 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 	    /* Address of a far static variable.  */
 	    if (! TARGET_SEG_RELOC_STUFF)
 	      {
-		ia16_error_seg_reloc ("cannot take address of far static "
+		ia16_error_seg_reloc (input_location,
+				      "cannot take address of far static "
 				      "variable");
 		/* continue after that... */
 	      }
@@ -2641,11 +2642,10 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   if (! TARGET_SEG_RELOC_STUFF)
     {
-      error_at (DECL_SOURCE_LOCATION (decl),
+      location_t loc = DECL_SOURCE_LOCATION (decl);
+      error_at (loc,
 		"cannot create %<__far%> function or static storage variable");
-      inform (DECL_SOURCE_LOCATION (decl), "use %<-m%s%> to allow this",
-	      TARGET_CMODEL_IS_SMALL ? "segment-relocation-stuff"
-				     : "cmodel=small");
+      ia16_error_seg_reloc (loc, NULL);
       return NULL;
     }
 
@@ -3194,10 +3194,9 @@ ia16_trampoline_init (rtx tr, tree fn, rtx sc)
   unsigned char mov_opcode = 0xb8;
   unsigned char regno = STATIC_CHAIN_REGNUM;
 
-  if (TARGET_CMODEL_IS_SMALL)
+  if (! TARGET_CMODEL_IS_TINY)
     {
-      sorry ("Trampolines are disabled by %<-mcmodel=small%>/"
-	     "%<-mseparate-code-segment%>.");
+      sorry ("Trampolines are disabled under non-tiny memory models.");
       abort ();
     }
 
@@ -4120,8 +4119,8 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
   else
     {
       if (! TARGET_SEG_RELOC_STUFF)
-	ia16_error_seg_reloc ("cannot create relocatable call to "
-			      "far function");
+	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
+					      "to far function");
       /* GNU as does not like
 		lcall	$foo@SEGMENT16,	$foo
 	 and says "Error: can't handle non absolute segment in `lcall'".  */
@@ -4173,8 +4172,8 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
   else
     {
       if (! TARGET_SEG_RELOC_STUFF)
-	ia16_error_seg_reloc ("cannot create relocatable sibcall to "
-			      "far function");
+	ia16_error_seg_reloc (input_location, "cannot create relocatable "
+					      "sibcall to far function");
       return P2 (  ".reloc\t.+3, R_386_SEGMENT16, %c", "\n"
 		 "\tljmp\t$0,\t%");
     }

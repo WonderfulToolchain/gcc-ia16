@@ -32,6 +32,7 @@
 #define TARGET_TUNE_8BIT	(ia16_features & 16)
 
 #define TARGET_ALLOCABLE_DS_REG	(! fixed_regs[DS_REG])
+#define TARGET_CMODEL_IS_TINY	(target_cmodel == CMODEL_TINY)
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
@@ -646,6 +647,16 @@ enum processor_type
 };
 
 extern int ia16_features;
+
+/* Which memory model to use.  */
+
+enum cmodel_type
+{
+  CMODEL_TINY,
+  CMODEL_SMALL,
+  CMODEL_MEDIUM,
+  CMODEL_max
+};
 
 /* The linker will take care of this.  */
 #define CTOR_LISTS_DEFINED_EXTERNALLY 1

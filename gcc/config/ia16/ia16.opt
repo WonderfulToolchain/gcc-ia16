@@ -70,18 +70,18 @@ Do (not - this is the default) use jump instructions which can only jump -128/+1
 mseparate-code-segment
 Target Alias(mcmodel=small) Undocumented
 
+mcmodel=tiny
+Target RejectNegative Var(target_cmodel,CMODEL_TINY) Init(CMODEL_TINY)
+Generate code for the tiny code model (default), with one combined data and text segment.
+
 ; For the compiler back-end, -mcmodel=small in contrast to -mcmodel=tiny is
 ; mainly just about having separate code and data address spaces.  Most of
 ; the work for implementing the small model happens at the linking stage.
 ;
 ; With the help of elf.h, this option also enables -msegment-relocation-stuff.
 mcmodel=small
-Target RejectNegative Mask(CMODEL_IS_SMALL)
+Target RejectNegative Var(target_cmodel,CMODEL_SMALL)
 Generate code for the small code model, with one data and one text segment.
-
-mcmodel=tiny
-Target RejectNegative InverseMask(CMODEL_IS_SMALL)
-Generate code for the tiny code model (default), with one combined data and text segment.
 
 msegment-relocation-stuff
 Target RejectNegative Mask(SEG_RELOC_STUFF) Undocumented
