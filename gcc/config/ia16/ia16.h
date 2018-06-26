@@ -648,13 +648,17 @@ enum processor_type
 
 extern int ia16_features;
 
-/* Which memory model to use.  */
+/* Which memory model to use.  Some memory models may not actually be
+   implemented and available through the front-end.  */
 
 enum cmodel_type
 {
   CMODEL_TINY,
   CMODEL_SMALL,
   CMODEL_MEDIUM,
+  CMODEL_COMPACT,
+  CMODEL_LARGE,
+  CMODEL_HUGE,
   CMODEL_max
 };
 
