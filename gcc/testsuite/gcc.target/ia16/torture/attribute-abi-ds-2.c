@@ -1,4 +1,4 @@
-/* { dg-options "-std=gnu11 -mno-callee-assume-ds-data-segment -fno-inline --save-temps" } */
+/* { dg-options "-std=gnu11 -mno-callee-assume-ds-data-segment -fno-inline -fno-builtin-puts -fno-builtin-abort --save-temps" } */
 /* { dg-do run } */
 
 /* Test that the `assume_ds_data' and `no_assume_ds_data' attributes work

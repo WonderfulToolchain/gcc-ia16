@@ -733,7 +733,7 @@ static int
 ia16_comp_type_attributes (const_tree type1, const_tree type2)
 {
   if (TREE_CODE (type1) != FUNCTION_TYPE
-      || TREE_CODE (type1) != METHOD_TYPE)
+      && TREE_CODE (type1) != METHOD_TYPE)
     return 1;
 
   return ia16_get_callcvt (type1) == ia16_get_callcvt (type2);
