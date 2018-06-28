@@ -566,7 +566,6 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #define IA16_CALLCVT_FAR		0x04
 #define IA16_CALLCVT_DS_DATA		0x08
 #define IA16_CALLCVT_NEAR_SECTION	0x10
-#define IA16_CALLCVT_FAR_SECTION	0x20
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -583,8 +582,6 @@ ia16_get_callcvt (const_tree type)
 
       if (lookup_attribute ("near_section", attrs))
 	callcvt |= IA16_CALLCVT_NEAR_SECTION;
-      else if (lookup_attribute ("far_section", attrs))
-	callcvt |= IA16_CALLCVT_FAR_SECTION;
     }
 
   if (ia16_ds_data_function_type_p (type))
