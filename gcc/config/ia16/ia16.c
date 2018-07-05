@@ -1220,7 +1220,11 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
       /* We only handle pointers for now --- not addresses.  */
       gcc_assert (GET_MODE (op) == SImode || GET_MODE (op) == VOIDmode);
 
-      return gen_rtx_TRUNCATE (HImode, op);
+      /* Use (subreg ...) if we can.  Otherwise use (truncate ...).  */
+      if (REG_P (op))
+	return gen_rtx_SUBREG (HImode, op, 0);
+      else
+	return gen_rtx_TRUNCATE (HImode, op);
     }
   else if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_GENERIC
 	   && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_FAR)
