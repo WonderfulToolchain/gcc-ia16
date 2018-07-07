@@ -3760,6 +3760,31 @@ ia16_expand_builtin (tree expr, rtx target ATTRIBUTE_UNUSED,
     }
 }
 
+#undef	TARGET_FOLD_BUILTIN
+#define	TARGET_FOLD_BUILTIN	ia16_fold_builtin
+
+static tree
+ia16_fold_builtin (tree fndecl, int n_args, tree *args,
+		   bool ignore ATTRIBUTE_UNUSED)
+{
+  unsigned fcode = DECL_FUNCTION_CODE (fndecl);
+
+  switch (fcode)
+    {
+    case IA16_BUILTIN_SELECTOR:
+      gcc_assert (n_args == 1);
+      /* If -mprotected-mode is off, `__builtin_ia16_selector (seg)' is the
+	 same as `seg', so we can fold the call right here.  If not, pass
+	 the buck to ia16_expand_builtin (...) above.  */
+      if (TARGET_PROTECTED_MODE)
+	return NULL_TREE;
+      return args[0];
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
 /* The Global targetm Variable */
 
 /* #include "target.h" */
