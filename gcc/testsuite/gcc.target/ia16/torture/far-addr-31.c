@@ -14,10 +14,10 @@
 	far-addr-31.c:52:1: internal compiler error: in extract_insn, at
 	 recog.c:2287 "
 
-   This test case is partly taken a modified version of the FreeDOS kernel
-   code (in kernel/memmgr.c).  The FP_OFF (.) definition below triggered a
-   bug in GCC in the code for casting far pointers to near pointers.
-	-- tkchia */
+   This test case is partly taken from a modified version of the FreeDOS
+   kernel code (in kernel/memmgr.c).  The FP_OFF (.) definition below
+   triggered a bug in GCC in the code for casting far pointers to near
+   pointers.  -- tkchia */
 
 #define MK_FP(seg, ofs) \
 	((void __far *) ((unsigned long) (seg) << 16 | (unsigned) (ofs)))

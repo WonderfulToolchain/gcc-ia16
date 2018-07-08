@@ -13080,14 +13080,23 @@ into the data cache.  The instruction is issued in slot I1@.
 @node IA-16 Built-in Functions
 @subsection IA-16 Built-in Functions
 
-The following built-in function is always available.
+For each built-in function for IA-16, there is an equally named, uppercase
+built-in macro defined---for example, @code{__BUILTIN_IA16_FP_OFF}.  That
+way users can easily query if or if not a specific built-in is implemented
+or not.
 
 @table @code
+
 @item __builtin_ia16_segment_t __builtin_ia16_selector (unsigned @var{sel})
 With @option{-mprotected-mode} (@xref{IA-16 Options}), internally flag
 @var{sel} as a segment selector value which can be loaded into a segment
 register, and return the flagged value.  Without @option{-mprotected-mode},
 simply return @var{sel}.
+
+@item unsigned __builtin_ia16_FP_OFF (const void __far *@var{fp})
+Extract the offset portion of the far pointer @var{fp}.  This function can
+be used within a static initializer.
+
 @end table
 
 @node MIPS DSP Built-in Functions

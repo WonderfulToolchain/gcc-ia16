@@ -1202,6 +1202,16 @@ ia16_as_subset_p (addr_space_t subset, addr_space_t superset)
   return subset == ADDR_SPACE_GENERIC && superset == ADDR_SPACE_FAR;
 }
 
+static rtx
+ia16_far_pointer_offset (rtx op)
+{
+  /* Use (subreg ...) if we can.  Otherwise use (truncate ...).  */
+  if (REG_P (op))
+    return gen_rtx_SUBREG (HImode, op, 0);
+  else
+    return gen_rtx_TRUNCATE (HImode, op);
+}
+
 #undef	TARGET_ADDR_SPACE_CONVERT
 #define	TARGET_ADDR_SPACE_CONVERT ia16_as_convert
 
@@ -1220,11 +1230,7 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
       /* We only handle pointers for now --- not addresses.  */
       gcc_assert (GET_MODE (op) == SImode || GET_MODE (op) == VOIDmode);
 
-      /* Use (subreg ...) if we can.  Otherwise use (truncate ...).  */
-      if (REG_P (op))
-	return gen_rtx_SUBREG (HImode, op, 0);
-      else
-	return gen_rtx_TRUNCATE (HImode, op);
+      return ia16_far_pointer_offset (op);
     }
   else if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_GENERIC
 	   && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_FAR)
@@ -3688,6 +3694,7 @@ ia16_machine_dependent_reorg (void)
 enum ia16_builtin
 {
   IA16_BUILTIN_SELECTOR,
+  IA16_BUILTIN_FP_OFF,
   IA16_BUILTIN_MAX
 };
 
@@ -3699,7 +3706,9 @@ static GTY (()) tree ia16_builtin_decls[IA16_BUILTIN_MAX];
 static void
 ia16_init_builtins (void)
 {
-  tree intSEG_type_node = unsigned_intHI_type_node, intSEG_ftype_intHI, func;
+  tree intSEG_type_node = unsigned_intHI_type_node, const_void_far_type_node,
+       const_void_far_ptr_type_node,
+       intSEG_ftype_intHI, unsigned_intHI_ftype_const_void_far_ptr, func;
 
   /* With -mprotected-mode, we need a type node for PHImode for use with
      __builtin_ia16_selector (), but there is no such existing node.  So
@@ -3711,16 +3720,31 @@ ia16_init_builtins (void)
     }
   (*lang_hooks.types.register_builtin_type) (intSEG_type_node,
 					     "__builtin_ia16_segment_t");
+  const_void_far_type_node
+    = build_qualified_type (void_type_node,
+			    TYPE_QUAL_CONST
+			    | ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_FAR));
+  const_void_far_ptr_type_node = build_pointer_type (const_void_far_type_node);
 
   intSEG_ftype_intHI = build_function_type_list (intSEG_type_node,
 						 unsigned_intHI_type_node,
 						 NULL_TREE);
+  unsigned_intHI_ftype_const_void_far_ptr
+    = build_function_type_list (unsigned_intHI_type_node,
+				const_void_far_ptr_type_node, NULL_TREE);
 
   func = add_builtin_function ("__builtin_ia16_selector", intSEG_ftype_intHI,
 			       IA16_BUILTIN_SELECTOR, BUILT_IN_MD, NULL,
 			       NULL_TREE);
   TREE_READONLY (func) = 1;
   ia16_builtin_decls[IA16_BUILTIN_SELECTOR] = func;
+
+  func = add_builtin_function ("__builtin_ia16_FP_OFF",
+			       unsigned_intHI_ftype_const_void_far_ptr,
+			       IA16_BUILTIN_FP_OFF, BUILT_IN_MD, NULL,
+			       NULL_TREE);
+  TREE_READONLY (func) = 1;
+  ia16_builtin_decls[IA16_BUILTIN_FP_OFF] = func;
 }
 
 #undef	TARGET_BUILTIN_DECL
@@ -3755,9 +3779,20 @@ ia16_expand_builtin (tree expr, rtx target ATTRIBUTE_UNUSED,
       op0 = expand_normal (arg0);
       return ia16_bless_selector (op0);
 
+    case IA16_BUILTIN_FP_OFF:
+      arg0 = CALL_EXPR_ARG (expr, 0);
+      op0 = expand_normal (arg0);
+      return ia16_far_pointer_offset (op0);
+
     default:
       gcc_unreachable ();
     }
+}
+
+static bool
+ia16_fp_off_foldable_for_as (addr_space_t as)
+{
+  return as == ADDR_SPACE_FAR || as == ADDR_SPACE_GENERIC;
 }
 
 #undef	TARGET_FOLD_BUILTIN
@@ -3767,7 +3802,9 @@ static tree
 ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 		   bool ignore ATTRIBUTE_UNUSED)
 {
+  static tree ptrtype = NULL_TREE;
   unsigned fcode = DECL_FUNCTION_CODE (fndecl);
+  tree op, fake;
 
   switch (fcode)
     {
@@ -3779,6 +3816,58 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       if (TARGET_PROTECTED_MODE)
 	return NULL_TREE;
       return args[0];
+
+    case IA16_BUILTIN_FP_OFF:
+      gcc_assert (n_args == 1);
+      /* Do a hack to handle the special case of using a far pointer's
+	 offset in a static initializer, like so:
+		void foo (void) __far;
+		static unsigned bar = __builtin_ia16_FP_OFF (foo);
+	 The FreeDOS kernel code does something like the above when installing
+	 its interrupt handlers.  */
+      op = args[0];
+
+      if (! TREE_CONSTANT (op))
+	return NULL_TREE;
+
+      /* Check if we are taking the address of an _externally defined_
+	 near/far function or near/far variable; if not, again hand over to
+	 ia16_expand_ builtin (...).  First strip away layers of NOP_EXPR.
+
+	 TODO: generalize this to handle other types of far addresses.  */
+      while (TREE_CODE (op) == NOP_EXPR
+	     && POINTER_TYPE_P (TREE_TYPE (op))
+	     && ia16_fp_off_foldable_for_as (TYPE_ADDR_SPACE
+					     (TREE_TYPE (TREE_TYPE (op)))))
+	op = TREE_OPERAND (op, 0);
+
+      if (TREE_CODE (op) != ADDR_EXPR
+	  || ! POINTER_TYPE_P (TREE_TYPE (op))
+	  || ! ia16_fp_off_foldable_for_as (TYPE_ADDR_SPACE
+					    (TREE_TYPE (TREE_TYPE (op)))))
+	return NULL_TREE;
+
+      op = TREE_OPERAND (op, 0);
+      if (! VAR_OR_FUNCTION_DECL_P (op) || ! DECL_EXTERNAL (op))
+	return NULL_TREE;
+
+      /* Create a fake external "declaration" which has the same assembler
+	 name, but which is placed in the generic address space.  Then take
+	 the address of that.  Mark the pointer as being able to alias
+	 anything.  */
+      fake = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			 create_tmp_var_name (NULL), char_type_node);
+      SET_DECL_ASSEMBLER_NAME (fake, DECL_ASSEMBLER_NAME (op));
+      DECL_EXTERNAL (fake) = 1;
+
+      if (! ptrtype)
+	ptrtype = build_pointer_type_for_mode (char_type_node, HImode, true);
+
+      mark_addressable (fake);
+      op = build_fold_addr_expr_with_type_loc (UNKNOWN_LOCATION, fake,
+					       ptrtype);
+      op = fold_build1 (NOP_EXPR, unsigned_intHI_type_node, op);
+      return op;
 
     default:
       gcc_unreachable ();
