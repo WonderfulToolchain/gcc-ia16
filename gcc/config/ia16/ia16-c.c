@@ -77,8 +77,8 @@ ia16_cpu_cpp_builtins (void)
   /* Define macros for various compiler features:
        * far static variables
        * far functions of the form `int foo (void) __far;'
-       * function calling conventions available through __attribute__ ((.)). 
-   */
+       * function calling conventions available through __attribute__ ((.))
+       * __builtin_ia16_... (.) functions.  */
   def_or_undef_macro ("__IA16_FEATURE_FAR_STATIC_STORAGE",
 		      ! TARGET_CMODEL_IS_TINY);
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
@@ -89,6 +89,8 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
+  def_macro ("__BUILTIN_IA16_SELECTOR");
+  def_macro ("__BUILTIN_IA16_FP_OFF");
 
   /* Also define a macro to give the function calling convention settings
      in use.  */
