@@ -13095,7 +13095,7 @@ simply return @var{sel}.
 
 @item unsigned __builtin_ia16_FP_OFF (const void __far *@var{fp})
 Extract the offset portion of the far pointer @var{fp}.  This function can
-be used within a static initializer.
+be used within a static initializer, under certain conditions.
 
 @end table
 
