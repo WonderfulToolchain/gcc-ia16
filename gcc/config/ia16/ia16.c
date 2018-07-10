@@ -3818,6 +3818,9 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       return args[0];
 
     case IA16_BUILTIN_FP_OFF:
+      if (flag_lto)
+	return NULL_TREE;
+
       gcc_assert (n_args == 1);
       /* Do a hack to handle the special case of using a far pointer's
 	 offset in a static initializer, like so:
@@ -3830,11 +3833,12 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       if (! TREE_CONSTANT (op))
 	return NULL_TREE;
 
-      /* Check if we are taking the address of an _externally defined_
-	 near/far function or near/far variable; if not, again hand over to
-	 ia16_expand_ builtin (...).  First strip away layers of NOP_EXPR.
+      /* Check if we are taking the address of a public or external near/far
+	 function or near/far variable; if not, again hand over to
+	 ia16_expand_builtin (...).  First strip away layers of NOP_EXPR.
 
-	 TODO: generalize this to handle other types of far addresses.  */
+	 TODO: generalize this to handle other types of far addresses.  And,
+	 get this feature to work with LTO.  */
       while (TREE_CODE (op) == NOP_EXPR
 	     && POINTER_TYPE_P (TREE_TYPE (op))
 	     && ia16_fp_off_foldable_for_as (TYPE_ADDR_SPACE
@@ -3848,17 +3852,23 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 	return NULL_TREE;
 
       op = TREE_OPERAND (op, 0);
-      if (! VAR_OR_FUNCTION_DECL_P (op) || ! DECL_EXTERNAL (op))
+      if (! VAR_OR_FUNCTION_DECL_P (op))
 	return NULL_TREE;
+      if (! DECL_EXTERNAL (op) && ! TREE_PUBLIC (op))
+	return NULL_TREE;
+
+      /* Mark the original declaration as addressable.  */
+      mark_addressable (op);
 
       /* Create a fake external "declaration" which has the same assembler
 	 name, but which is placed in the generic address space.  Then take
-	 the address of that.  Mark the pointer as being able to alias
-	 anything.  */
+	 the address of that.  Mark the pointer as artificial, and as being
+	 able to alias anything.  */
       fake = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			 create_tmp_var_name (NULL), char_type_node);
       SET_DECL_ASSEMBLER_NAME (fake, DECL_ASSEMBLER_NAME (op));
       DECL_EXTERNAL (fake) = 1;
+      DECL_ARTIFICIAL (fake) = 1;
 
       if (! ptrtype)
 	ptrtype = build_pointer_type_for_mode (char_type_node, HImode, true);
