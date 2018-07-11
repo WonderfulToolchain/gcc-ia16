@@ -16576,7 +16576,8 @@ Generate code for the small code model, with one data segment and one text
 segment, in separate 64@tie{}KiB spaces.  At the compile stage, this
 currently disables trampolines for nested functions.  At the linking
 stage---unless @option{-T} is used---this option also causes GCC to switch to
-a different output format to better support separate segments:
+a different output format to better support separate segments@footnote{This
+requires support from the linker script which comes with the C library.}:
 @itemize
 @item
 If targeting MS-DOS, GCC will produce an @code{MZ} executable.
@@ -16757,7 +16758,8 @@ This macro is defined only if static storage variables can be placed in
 @item __BUILTIN_IA16_SELECTOR
 @itemx __BUILTIN_IA16_FP_OFF
 Each of these macros is defined only if the corresponding
-@code{__builtin_ia16}@dots{} macro is defined.
+@code{__builtin_ia16_}@dots{} macro is defined (see @ref{IA-16 Built-in
+Functions}).
 
 @c I am not sure yet if I should document and codify the remaining macros,
 @c viz. __IA16_FEATURE_ATTRIBUTE_{CDECL, STDCALL}, __IA16_CALLCVT_{CDECL,
