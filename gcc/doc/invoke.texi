@@ -16656,15 +16656,10 @@ You can override this option for individual functions, by using the
 @code{assume_ds_data} and @code{no_assume_ds_data} function attributes.
 @xref{Function Attributes}.
 
-@item -mfar-function-if-far-return-type
-@opindex mfar-function-if-far-return-type
-Enable a highly experimental feature, where a function with a @code{__far}
-return type (see @ref{IA-16 Named Address Spaces}) is compiled as a far
-function which returns to a 32-bit return address---that is, with the
-@code{lret} instruction.
-
-(Callers must arrange to point @code{ds} and @code{ss} to the generic data
-address space before calling such a function.)
+@item -mno-far-function-if-far-return-type
+@opindex mno-far-function-if-far-return-type
+Do not treat a function with a @code{__far} return type as a far function.
+@xref{IA-16 Named Address Spaces}.
 
 @item -mprotected-mode
 @opindex mprotected-mode
@@ -16688,6 +16683,7 @@ void foo (unsigned selector)
 @end smallexample
 @end table
 
+@anchor{IA-16 Built-in Macros}
 @subsubsection IA-16 Built-in Macros
 
 @table @code
@@ -16751,6 +16747,10 @@ call-saved, not fixed.
 This macro is defined only if the postfix @code{__far} syntax for declaring
 far functions is supported (see @ref{IA-16 Named Address Spaces}).
 
+@item __IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE
+This macro is defined only if the classical syntax for declaring far
+functions is supported (see @ref{IA-16 Named Address Spaces}).
+
 @item __IA16_FEATURE_FAR_STATIC_STORAGE
 This macro is defined only if static storage variables can be placed in
 @code{__far} space (see @ref{IA-16 Named Address Spaces}).
@@ -16762,8 +16762,8 @@ Each of these macros is defined only if the corresponding
 Functions}).
 
 @c I am not sure yet if I should document and codify the remaining macros,
-@c viz. __IA16_FEATURE_ATTRIBUTE_{CDECL, STDCALL}, __IA16_CALLCVT_{CDECL,
-@c STDCALL}, and __IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE...
+@c viz. __IA16_FEATURE_ATTRIBUTE_{CDECL, STDCALL}, and __IA16_CALLCVT_{CDECL,
+@c STDCALL}...
 @c -- tkchia
 @c
 @end table
