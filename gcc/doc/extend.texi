@@ -1465,10 +1465,9 @@ void set_diskette_params (const unsigned char params[])
 @noindent
 @b{Far static storage variables}
 
-Under the small memory model (@option{-mcmodel=small})@footnote{Unless you
-also specify @option{-mno-segment-relocation-stuff}.}, you can also define
-far variables with static storage duration, and take their addresses, like
-so:
+Under the small memory model (@option{-mcmodel=small})---and unless you
+specify @option{-mno-segment-relocation-stuff}---you can also define far
+variables with static storage duration, and take their addresses, like so:
 
 @smallexample
 int __far x;
@@ -1493,6 +1492,17 @@ int bar (void) __far
     return foo (3L) + 1;
 @}
 @end smallexample
+
+You can also declare or define a far function using a syntax more compatible
+with that of classical IA-16 compilers (unless you specify
+@option{-mno-far-function-if-far-return-type}):
+
+@smallexample
+int __far baz (void)
+@{
+    return 2;
+@}
+@end smallexample
 @c
 @c 1) The unwieldy
 @c	typedef void func_t (void);
@@ -1507,9 +1517,6 @@ int bar (void) __far
 @c
 @c    But GCC supports the above unwieldy syntax (even if accidentally), so I
 @c    build on it.
-@c
-@c 3) The classical `int (__far *) (char);' declaration syntax does not work
-@c    (see below).  -- tkchia
 
 By default, GCC treats far functions similarly to the Open Watcom C/C++
 compiler:
@@ -1557,21 +1564,7 @@ even compiler support routines---so they must be written carefully.
 @noindent
 @b{Preprocessor symbols}
 
-@itemize
-
-@item
-The preprocessor symbol @code{__FAR} is defined only if far pointers are
-supported.
-
-@item
-@code{__IA16_FEATURE_FAR_FUNCTION_SYNTAX} is defined if the above syntax for
-declaring far functions is supported.
-
-@item
-@code{__IA16_FEATURE_FAR_STATIC_STORAGE} is defined if far static storage
-variables are supported.
-
-@end itemize
+@xref{IA-16 Built-in Macros}.
 
 @noindent
 @b{Limitations and caveats}
@@ -1640,6 +1633,14 @@ pointer.
 If @option{-Waddress} (or @option{-Wall}) is enabled, GCC will warn about
 cases like the above, where a declaration can be interpreted differently
 under GCC's grammar and Watcom-style grammar.
+
+Also note that, unlike Open Watcom, GCC does not support the
+
+@smallexample
+int (__far *foo) (long);
+@end smallexample
+
+syntax for declaring far function pointers.
 
 @item
 @opindex ffixed
