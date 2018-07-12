@@ -15,3 +15,4 @@ bar (long x)
 
 /* { dg-final { scan-assembler "ret" } } */
 /* { dg-final { scan-assembler-not "lret" } } */
+/* { dg-final { scan-assembler "pushw\\t%cs" } } */
