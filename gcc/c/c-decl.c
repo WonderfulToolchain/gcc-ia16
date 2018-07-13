@@ -6163,6 +6163,21 @@ grokdeclarator (const struct c_declarator *declarator,
 		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (rv_as)
 		    && TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P (rv_as))
 		  {
+		    /* Remove the address space qualifier from the return
+		       type, and construct the function type again.
+
+		       Removing the return type's address space is not
+		       really needed for the compiled output to be correct. 
+		       However, doing so does ward off some spurious
+		       "function with qualified void return type called"
+		       warning messages.
+
+		       See https://github.com/tkchia/gcc-ia16/issues/25 .
+			 -- tkchia */
+		    tree rtype = TREE_TYPE (type);
+		    rtype = c_build_qualified_type
+			      (rtype, TYPE_QUALS_NO_ADDR_SPACE (rtype));
+		    type = build_function_type (rtype, arg_types);
 		    type_quals = ENCODE_QUAL_ADDR_SPACE (rv_as);
 		    type = c_build_qualified_type (type, type_quals);
 		  }
