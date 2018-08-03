@@ -646,6 +646,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  error ("stdcall and cdecl attributes are not compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
   else if (is_attribute_p ("cdecl", name))
     {
@@ -655,7 +656,19 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  error ("stdcall and cdecl attributes are not compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
+
+  if (! ia16_far_function_type_p (DECL_P (*node) ? TREE_TYPE (*node) : *node)
+      && (is_attribute_p ("near_section", name)
+	  || is_attribute_p ("far_section", name)))
+    {
+      warning (OPT_Wattributes, "%qE attribute directive ignored for "
+				"non-far function", name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  /* The following attributes are ignored for non-far functions.  */
   else if (is_attribute_p ("near_section", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
@@ -664,6 +677,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  error ("near_section and far_section attributes are not compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
   else if (is_attribute_p ("far_section", name))
     {
@@ -673,6 +687,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  error ("near_section and far_section attributes are not compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
 
   if (! call_used_regs[DS_REG]
@@ -680,8 +695,9 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  || is_attribute_p ("no_assume_ds_data", name)))
     {
       warning (OPT_Wattributes, "%qE attribute directive ignored as %%ds is "
-	       "a call-saved register", name);
+				"a call-saved register", name);
       *no_add_attrs = true;
+      return NULL_TREE;
     }
   /* The following attributes are ignored if %ds is a call-saved register.  */
   else if (is_attribute_p ("assume_ds_data", name))
@@ -693,6 +709,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 		 "compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
   else if (is_attribute_p ("no_assume_ds_data", name))
     {
@@ -703,6 +720,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 		 "compatible");
 	  *no_add_attrs = true;
 	}
+      return NULL_TREE;
     }
 
   return NULL_TREE;
