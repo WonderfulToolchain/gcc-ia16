@@ -94,10 +94,14 @@ ia16_cpu_cpp_builtins (void)
 
   /* Also define a macro to give the function calling convention settings
      in use.  */
-  def_or_undef_macro ("__IA16_CALLCVT_CDECL", ! TARGET_RTD);
-  def_or_undef_macro ("__IA16_CALLCVT_STDCALL", TARGET_RTD);
+  def_or_undef_macro ("__IA16_CALLCVT_CDECL",
+		      target_call_parm_cvt == CALL_PARM_CVT_CDECL);
+  def_or_undef_macro ("__IA16_CALLCVT_STDCALL",
+		      target_call_parm_cvt == CALL_PARM_CVT_STDCALL);
+  def_or_undef_macro ("__IA16_CALLCVT_REGPARMCALL",
+		      target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL);
   def_or_undef_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE",
-    TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
+		      TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
 
   /* Define macros corresponding to the chosen memory model.  I define both
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL | ...}__, and a
