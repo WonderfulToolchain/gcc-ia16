@@ -662,6 +662,19 @@ enum cmodel_type
   CMODEL_max
 };
 
+/* General calling convention for this compilation unit --- specifically, how
+   function parameters are passed and cleaned up, for functions which do not
+   have attributes.  Some of these may not actually be implemented and
+   available through the front-end.  */
+
+enum call_parm_cvt_type
+{
+  CALL_PARM_CVT_CDECL,
+  CALL_PARM_CVT_STDCALL,
+  CALL_PARM_CVT_REGPARMCALL,
+  CALL_PARM_CVT_max
+};
+
 /* The linker will take care of this.  */
 #define CTOR_LISTS_DEFINED_EXTERNALLY 1
 

@@ -90,9 +90,15 @@ mno-segment-relocation-stuff
 Target RejectNegative InverseMask(SEG_RELOC_STUFF)
 Disable language features which use segment relocations.
 
+mcdecl
+Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_CDECL) Init(CALL_PARM_CVT_CDECL) Undocumented
+
 mrtd
-Target Report Mask(RTD)
+Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_STDCALL)
 Alternate calling convention (callee pops arguments).
+
+mstdcall
+Target Alias(mrtd) Undocumented
 
 mno-callee-assume-ds-data-segment
 Target RejectNegative Report Mask(NO_ASSUME_DS_DATA)
