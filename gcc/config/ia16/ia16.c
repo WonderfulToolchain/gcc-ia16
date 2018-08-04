@@ -563,15 +563,31 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
    not be included.  */
 #define IA16_CALLCVT_CDECL		0x01
 #define IA16_CALLCVT_STDCALL		0x02
-#define IA16_CALLCVT_FAR		0x04
-#define IA16_CALLCVT_DS_DATA		0x08
-#define IA16_CALLCVT_NEAR_SECTION	0x10
+#define IA16_CALLCVT_REGPARMCALL	0x04
+#define IA16_CALLCVT_FAR		0x08
+#define IA16_CALLCVT_DS_DATA		0x10
+#define IA16_CALLCVT_NEAR_SECTION	0x20
 
 static unsigned
 ia16_get_callcvt (const_tree type)
 {
-  unsigned callcvt = TARGET_RTD ? IA16_CALLCVT_STDCALL : IA16_CALLCVT_CDECL;
   tree attrs = TYPE_ATTRIBUTES (type);
+  unsigned callcvt;
+
+  switch (target_call_parm_cvt)
+    {
+    case CALL_PARM_CVT_CDECL:
+      callcvt = IA16_CALLCVT_CDECL;
+      break;
+    case CALL_PARM_CVT_STDCALL:
+      callcvt = IA16_CALLCVT_STDCALL;
+      break;
+    case CALL_PARM_CVT_REGPARMCALL:
+      callcvt = IA16_CALLCVT_REGPARMCALL;
+      break;
+    default:
+      gcc_unreachable ();
+    }
 
   if (attrs != NULL_TREE)
     {
@@ -579,6 +595,8 @@ ia16_get_callcvt (const_tree type)
 	callcvt = IA16_CALLCVT_CDECL;
       else if (lookup_attribute ("stdcall", attrs))
 	callcvt = IA16_CALLCVT_STDCALL;
+      else if (lookup_attribute ("regparmcall", attrs))
+	callcvt = IA16_CALLCVT_REGPARMCALL;
 
       if (lookup_attribute ("near_section", attrs))
 	callcvt |= IA16_CALLCVT_NEAR_SECTION;
@@ -596,17 +614,20 @@ ia16_get_callcvt (const_tree type)
 static int
 ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
 {
-  /* Note that the `-mrtd' calling convention will also be applied to libgcc
-     library functions (e.g. __udivdi3).  This usually means that, if we
-     compile code using `-mrtd', we will need a libgcc multilib compiled with
-     `-mrtd' to link against our code.  */
+  /* Note that the `-mrtd' or `-mregparmcall' calling convention will also be
+     applied to libgcc library functions (e.g. __udivdi3).  This usually
+     means that, if we compile code using `-mrtd'/`-mregparmcall', we will
+     need a libgcc multilib compiled with the same option to link against our
+     code.  */
   if (stdarg_p (funtype))
     return 0;
 
   switch (ia16_get_callcvt (funtype)
-	  & (IA16_CALLCVT_STDCALL | IA16_CALLCVT_CDECL))
+	  & (IA16_CALLCVT_STDCALL | IA16_CALLCVT_CDECL
+	     | IA16_CALLCVT_REGPARMCALL))
     {
     case IA16_CALLCVT_STDCALL:
+    case IA16_CALLCVT_REGPARMCALL:
       return size;
     case IA16_CALLCVT_CDECL:
       return 0;
@@ -641,9 +662,11 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
   if (is_attribute_p ("stdcall", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
-      if (attrs && lookup_attribute ("cdecl", attrs))
+      if (attrs && (lookup_attribute ("cdecl", attrs)
+		    || lookup_attribute ("regparmcall", attrs)))
 	{
-	  error ("stdcall and cdecl attributes are not compatible");
+	  error ("stdcall, cdecl, and regparmcall attributes are "
+		 "not compatible");
 	  *no_add_attrs = true;
 	}
       return NULL_TREE;
@@ -651,9 +674,23 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
   else if (is_attribute_p ("cdecl", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
-      if (attrs && lookup_attribute ("stdcall", attrs))
+      if (attrs && (lookup_attribute ("stdcall", attrs)
+		    || lookup_attribute ("regparmcall", attrs)))
 	{
-	  error ("stdcall and cdecl attributes are not compatible");
+	  error ("stdcall, cdecl, and regparmcall attributes are "
+		 "not compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("regparmcall", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && (lookup_attribute ("cdecl", attrs)
+		    || lookup_attribute ("stdcall", attrs)))
+	{
+	  error ("stdcall, cdecl, and regparmcall attributes are "
+		 "not compatible");
 	  *no_add_attrs = true;
 	}
       return NULL_TREE;
