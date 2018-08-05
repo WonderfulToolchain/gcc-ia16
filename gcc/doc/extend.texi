@@ -4224,6 +4224,30 @@ On the IA-16 target, the @code{stdcall} attribute causes the compiler to
 assume that the called function pops off the stack space used to
 pass arguments, unless it takes a variable number of arguments.
 
+@item regparmcall
+@cindex @code{regparmcall} function attribute, IA-16
+@cindex functions that pop the argument stack on IA-16
+@cindex functions that are passed arguments in registers on IA-16
+On the IA-16 target, the @code{regparmcall} attribute causes the compiler to
+pass its first few arguments to the function in the registers @code{ax},
+@code{dx}, @code{bx}, and @code{cx}, instead of on the stack.  The called
+function pops the arguments off the stack.
+
+An exception is that, if the number of arguments is variable, all arguments
+are pushed on the stack, and the calling function pops the arguments off the
+stack.
+
+If the function returns a 64-bit integer value (e.g., a @code{long long})
+or a 64-bit floating point value (a @code{double}), this attribute also causes
+the function to return its value in registers---as @code{cx:bx:dx:ax}---rather
+than in memory.
+
+The @code{regparmcall} calling convention is similar---but not
+identical---to Open Watcom C/C++'s default @code{__watcall} calling
+convention.
+
+@code{regparmcall} support is still experimental.
+
 @item assume_ds_data
 @cindex @code{assume_ds_data} function attribute, IA-16
 This attribute, attached to a function, causes the compiler to assume that
