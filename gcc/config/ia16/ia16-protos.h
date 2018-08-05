@@ -30,6 +30,8 @@ extern HOST_WIDE_INT	ia16_first_parm_offset (tree fundecl);
 extern HOST_WIDE_INT	ia16_initial_frame_pointer_offset (void);
 extern HOST_WIDE_INT
 		ia16_initial_elimination_offset (unsigned int from, unsigned int to);
+extern void	ia16_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree,
+					   int);
 extern enum machine_mode
 		ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2);
 
