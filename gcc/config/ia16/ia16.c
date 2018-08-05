@@ -473,28 +473,6 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
 #undef  TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG ia16_function_arg
 
-/* Return an rtx for a 64-bit return value or `regparmcall' value.
-
-   (Open Watcom has this really weird thing of passing (and returning)
-   64-bit integer values in %ax:%bx:%cx:%dx, with the registers in an
-   unexpected order.  I do not do that here.
-
-   Also, the protocol for passing and returning floating values is completely
-   different in Open Watcom.  -- tkchia)  */
-static rtx
-ia16_quad_reg_value_rtx (machine_mode mode)
-{
-  rtx dxax = gen_rtx_REG (SImode, A_REG);
-  rtx list0 = gen_rtx_EXPR_LIST (VOIDmode, dxax, const0_rtx);
-  rtx bx = gen_rtx_REG (HImode, B_REG);
-  rtx list1 = gen_rtx_EXPR_LIST (VOIDmode, bx,
-				 gen_rtx_CONST_INT (VOIDmode, 4));
-  rtx cx = gen_rtx_REG (HImode, C_REG);
-  rtx list2 = gen_rtx_EXPR_LIST (VOIDmode, cx,
-				 gen_rtx_CONST_INT (VOIDmode, 6));
-  return gen_rtx_PARALLEL (mode, gen_rtvec (3, list0, list1, list2));
-}
-
 static rtx
 ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
 		   const_tree type ATTRIBUTE_UNUSED,
@@ -541,16 +519,6 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
 	  rtx list1 = gen_rtx_EXPR_LIST (VOIDmode, cx, const2_rtx);
 	  return gen_rtx_PARALLEL (mode, gen_rtvec (2, list0, list1));
 	}
-      default:
-	return NULL;
-      }
-
-    case DImode:
-    case DFmode:
-      switch (*cum)
-      {
-      case 0:
-	return ia16_quad_reg_value_rtx (mode);
       default:
 	return NULL;
       }
@@ -662,25 +630,6 @@ static rtx
 ia16_function_value (const_tree ret_type, const_tree fn_decl_or_type,
 		     bool outgoing ATTRIBUTE_UNUSED)
 {
-  machine_mode mode = TYPE_MODE (ret_type);
-
-  if (mode == DImode || mode == DFmode)
-    {
-      /* Allow 64-bit values to go into %cx:%bx:%dx:%ax, but only if the
-	 function is a `regparmcall' function.  For backward compatibility,
-	 `cdecl' and `stdcall' functions will (continue to) return 64-bit
-	 values in memory.  */
-      const_tree fntype = fn_decl_or_type;
-
-      if (fntype && DECL_P (fntype))
-	fntype = TREE_TYPE (fntype);
-
-      if (ia16_regparmcall_function_type_p (fntype))
-	return ia16_quad_reg_value_rtx (mode);
-
-      return NULL;
-    }
-
   return gen_rtx_REG (TYPE_MODE (ret_type), A_REG);
 }
 
@@ -690,15 +639,6 @@ ia16_function_value (const_tree ret_type, const_tree fn_decl_or_type,
 static rtx
 ia16_libcall_value (machine_mode mode, const_rtx fun ATTRIBUTE_UNUSED)
 {
-  if (mode == DImode || mode == DFmode)
-    {
-      /* See above.  */
-      if (target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL)
-	return ia16_quad_reg_value_rtx (mode);
-
-      return NULL;
-    }
-
   if (! HARD_REGNO_MODE_OK (A_REG, mode))
     return NULL;
 
@@ -711,7 +651,7 @@ ia16_libcall_value (machine_mode mode, const_rtx fun ATTRIBUTE_UNUSED)
 static bool
 ia16_function_value_regno_p (unsigned regno)
 {
-  return regno == A_REG || regno == B_REG || regno == C_REG;
+  return regno == A_REG;
 }
 
 /* How Large Values Are Returned */
@@ -722,24 +662,11 @@ ia16_function_value_regno_p (unsigned regno)
 static bool
 ia16_return_in_memory (const_tree type, const_tree fntype)
 {
-  /* Return in memory if it is larger than 8 bytes or BLKmode.  If this is
-     not a `regparmcall' function, also return in memory if it is larger
-     than 4 bytes.  */
-  if (TYPE_MODE (type) == BLKmode)
-    return true;
-
-  if (ia16_regparmcall_function_type_p (fntype))
-    {
-      if (int_size_in_bytes (type) > 8)
-	return true;
-    }
-  else
-    {
-      if (int_size_in_bytes (type) > 4)
-	return true;
-    }
-
-  return false;
+  /* Return in memory if it's larger than 4 bytes or BLKmode.
+   * TODO: Increase this to 8 bytes or so.  Doing so requires more call
+   * used registers or requires the prologue and epilogue patterns to not
+   * touch the return value registers.  */
+  return (TYPE_MODE (type) == BLKmode || int_size_in_bytes (type) > 4);
 }
 
 /* Permitting tail calls */
