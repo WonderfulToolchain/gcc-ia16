@@ -386,18 +386,17 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 /* Passing Arguments in Registers */
 /* TODO: Allow arguments to be passed in registers.  */
 #define CUMULATIVE_ARGS				int
-#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
-  ((CUM) = 0)
+#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, FNDECL, N_NAMED_ARGS) \
+	ia16_init_cumulative_args (&(CUM), (FNTYPE), (LIBNAME), (FNDECL), \
+				   (N_NAMED_ARGS))
 /* If %ds is an allocatable register, pretend that it "might" be used to
    pass arguments to functions, so that when GCC sees a %ds <- %ss just
    before a subroutine call, it does not try to separate the two.  */
 #define FUNCTION_ARG_REGNO_P(regno) \
-	(TARGET_ALLOCABLE_DS_REG ? (regno) == DS_REG : false)
-
-/* How Scalar Function Values Are Returned */
-#define LIBCALL_VALUE(mode)	\
-  (HARD_REGNO_MODE_OK (A_REG, mode) ? gen_rtx_REG (mode, A_REG) : NULL_RTX)
-#define FUNCTION_VALUE_REGNO_P(N)	((N) == A_REG)
+	((regno) == A_REG \
+	 || (regno) == B_REG \
+	 || (regno) == C_REG \
+	 || (TARGET_ALLOCABLE_DS_REG && (regno) == DS_REG))
 
 /* How Large Values Are Returned */
 #define DEFAULT_PCC_STRUCT_RETURN 0
@@ -663,9 +662,9 @@ enum cmodel_type
 };
 
 /* General calling convention for this compilation unit --- specifically, how
-   function parameters are passed and cleaned up, for functions which do not
-   have attributes.  Some of these may not actually be implemented and
-   available through the front-end.  */
+   function parameters are passed and cleaned up, and how values are
+   returned, for functions which do not have attributes.  Some of these may
+   not actually be implemented and available through the front-end.  */
 
 enum call_parm_cvt_type
 {
