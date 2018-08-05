@@ -396,6 +396,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 	((regno) == A_REG \
 	 || (regno) == B_REG \
 	 || (regno) == C_REG \
+	 || (regno) == D_REG \
 	 || (TARGET_ALLOCABLE_DS_REG && (regno) == DS_REG))
 
 /* How Large Values Are Returned */
