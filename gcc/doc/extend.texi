@@ -4237,6 +4237,11 @@ An exception is that, if the number of arguments is variable, all arguments
 are pushed on the stack, and the calling function pops the arguments off the
 stack.
 
+If the function returns a 64-bit integer value (e.g., a @code{long long})
+or a 64-bit floating point value (a @code{double}), this attribute also causes
+the function to return its value in registers---as @code{cx:bx:dx:ax}---rather
+than in memory.
+
 The @code{regparmcall} calling convention is similar---but not
 identical---to Open Watcom C/C++'s default @code{__watcall} calling
 convention.
