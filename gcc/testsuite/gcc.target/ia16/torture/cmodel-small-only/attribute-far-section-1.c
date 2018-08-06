@@ -6,8 +6,8 @@
 
 int puts (const char *);
 
-__attribute__ ((far_section))
-void hello (void)
+__attribute__ ((far_section)) void __far
+hello (void)
 {
   puts ("Hello world!");  /* { dg-warning "calling near function from" } */
 }
