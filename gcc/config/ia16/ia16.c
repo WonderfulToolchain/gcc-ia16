@@ -4408,8 +4408,8 @@ ia16_expand_reset_ds_for_call (rtx addr)
     ia16_expand_reset_ds_internal ();
 }
 
-static void
-ia16_expand_reset_ds_for_epilogue (void)
+void
+ia16_expand_reset_ds_for_return (void)
 {
   if (ia16_in_default_ds_abi_function_p ())
     ia16_expand_reset_ds_internal ();
@@ -4468,7 +4468,6 @@ ia16_expand_epilogue (bool sibcall)
   unsigned int i;
   HOST_WIDE_INT size = get_frame_size ();
 
-  ia16_expand_reset_ds_for_epilogue ();
   if (ia16_save_reg_p (BP_REG))
     {
       /* We need to restore the stack pointer. We have two options:
