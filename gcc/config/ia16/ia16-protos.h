@@ -66,9 +66,9 @@ extern void	ia16_expand_reset_ds_for_call (rtx addr);
 extern void	ia16_expand_reset_ds_for_return (void);
 extern void	ia16_expand_epilogue (bool sibcall);
 extern const char *
-		ia16_get_call_expansion (rtx, machine_mode, bool);
+		ia16_get_call_expansion (rtx, machine_mode, unsigned);
 extern const char *
-		ia16_get_sibcall_expansion (rtx, machine_mode, bool);
+		ia16_get_sibcall_expansion (rtx, machine_mode, unsigned);
 extern void	ia16_asm_output_addr_diff_elt (FILE *, rtx, int, int);
 extern void	ia16_asm_output_addr_vec_elt (FILE *, int);
 

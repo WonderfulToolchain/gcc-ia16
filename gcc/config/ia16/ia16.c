@@ -4506,9 +4506,9 @@ ia16_expand_epilogue (bool sibcall)
 }
 
 /* Return the insn template for a normal call to a subroutine at address
-   ADDR and with machine mode MODE.  ADDR should correspond to operand 0
-   (%0) in the (define_insn ...) if CALL_VALUE_P is false, or operand 1
-   otherwise.
+   ADDR and with machine mode MODE.  ADDR should correspond to "%0", "%1",
+   or "%3" in the (define_insn ...), depending on whether WHICH_IS_ADDR is
+   0, 1, or 3.
 
    There are 4 cases we need to handle:
      * we are calling a near function (with a 16-bit address)
@@ -4519,12 +4519,15 @@ ia16_expand_epilogue (bool sibcall)
        away with a `pushw %cs' plus a near call
      * none of the above --- use `lcall' and do not assume that the function
        resides in the default text section.  */
-#define P(part)	(call_value_p ? part "1" : part "0")
+#define P(part)	(which_is_addr == 0 ? part "0" : \
+		 which_is_addr == 1 ? part "1" : \
+				      part "3")
 #define P2(part_a, part_b) \
-			(call_value_p ? part_a "1" part_b "1" : \
-					part_a "0" part_b "0")
+			(which_is_addr == 0 ? part_a "0" part_b "0" : \
+			 which_is_addr == 1 ? part_a "1" part_b "1" : \
+					      part_a "3" part_b "3")
 const char *
-ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
+ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 {
   tree fndecl, fntype = NULL_TREE;
 
@@ -4574,11 +4577,12 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, bool call_value_p)
 }
 
 /* Return the insn template for a sibling call to a subroutine at address
-   ADDR and with machine mode MODE.  ADDR should correspond to operand 0
-   (%0) in the (define_insn ...) if CALL_VALUE_P is false, or operand 1
-   otherwise.  */
+   ADDR and with machine mode MODE.  ADDR should correspond to "%0", "%1",
+   or "%3" in the (define_insn ...), depending on whether WHICH_IS_ADDR is
+   0, 1, or 3.  */
 const char *
-ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
+ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
+			    unsigned which_is_addr)
 {
   tree fndecl, fntype = NULL_TREE;
 
@@ -4625,7 +4629,6 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode, bool call_value_p)
 
 #undef P
 #undef P2
-#undef P3
 
 void
 ia16_asm_output_addr_diff_elt (FILE *stream, rtx body ATTRIBUTE_UNUSED,
