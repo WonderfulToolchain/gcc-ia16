@@ -473,7 +473,7 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
 #undef  TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG ia16_function_arg
 
-/* Return an rtx for a 64-bit return value or `regparmcall' value.
+/* Return an rtx for a 64-bit `regparmcall' return value or argument value.
 
    (Open Watcom has this really weird thing of passing (and returning)
    64-bit integer values in %ax:%bx:%cx:%dx, with the registers in an
