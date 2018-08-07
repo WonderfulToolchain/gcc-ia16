@@ -6130,6 +6130,17 @@ grokdeclarator (const struct c_declarator *declarator,
 	       qualify the return type, not the function type.  */
 	    if (type_quals)
 	      {
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+# ifdef TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
+		if (CLEAR_QUAL_ADDR_SPACE (type_quals) == 0
+		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+			(DECODE_QUAL_ADDR_SPACE (type_quals))
+		    && TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
+			(DECODE_QUAL_ADDR_SPACE (type_quals)))
+		  ;
+		else
+# endif
+#endif
 		/* Type qualifiers on a function return type are
 		   normally permitted by the standard but have no
 		   effect, so give a warning at -Wreturn-type.
