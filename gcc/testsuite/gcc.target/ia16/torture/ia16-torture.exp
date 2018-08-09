@@ -38,56 +38,67 @@ dg-init
 	{ -O0 } \
 	{ -O0 -mprotected-mode } \
 	{ -O0 -mrtd } \
+	{ -O0 -mregparmcall } \
 	{ -O0 -mcmodel=small } \
 	{ -O0 -mcmodel=small -mprotected-mode } \
 	{ -O0 -mcmodel=small -mrtd } \
+	{ -O0 -mcmodel=small -mregparmcall } \
 	{ -O1 } \
 	{ -O1 -funroll-loops } \
 	{ -O1 -frename-registers } \
 	{ -O1 -funroll-loops -fno-rename-registers } \
 	{ -O1 -mrtd } \
+	{ -O1 -mregparmcall } \
 	{ -O1 -mprotected-mode } \
 	{ -O1 -mprotected-mode -funroll-loops } \
 	{ -O1 -mprotected-mode -frename-registers } \
 	{ -O1 -mprotected-mode -funroll-loops -fno-rename-registers } \
 	{ -O1 -mprotected-mode -mrtd } \
+	{ -O1 -mprotected-mode -mregparmcall } \
 	{ -O1 -mcmodel=small } \
 	{ -O1 -mcmodel=small -funroll-loops } \
 	{ -O1 -mcmodel=small -frename-registers } \
 	{ -O1 -mcmodel=small -funroll-loops -fno-rename-registers } \
 	{ -O1 -mcmodel=small -mrtd } \
+	{ -O1 -mcmodel=small -mregparmcall } \
 	{ -O1 -mcmodel=small -mprotected-mode } \
 	{ -O1 -mcmodel=small -mprotected-mode -funroll-loops } \
 	{ -O1 -mcmodel=small -mprotected-mode -frename-registers } \
 	{ -O1 -mcmodel=small -mprotected-mode -funroll-loops \
 	  -fno-rename-registers } \
 	{ -O1 -mcmodel=small -mprotected-mode -mrtd } \
+	{ -O1 -mcmodel=small -mprotected-mode -mregparmcall } \
 	{ -O2 } \
 	{ -O2 -funroll-loops } \
 	{ -O2 -frename-registers } \
 	{ -O2 -funroll-loops -fno-rename-registers } \
 	{ -O2 -mrtd } \
+	{ -O2 -mregparmcall } \
 	{ -O2 -mprotected-mode } \
 	{ -O2 -mprotected-mode -funroll-loops } \
 	{ -O2 -mprotected-mode -frename-registers } \
 	{ -O2 -mprotected-mode -funroll-loops -fno-rename-registers } \
 	{ -O2 -mprotected-mode -mrtd } \
+	{ -O2 -mprotected-mode -mregparmcall } \
 	{ -O2 -mcmodel=small } \
 	{ -O2 -mcmodel=small -funroll-loops } \
 	{ -O2 -mcmodel=small -frename-registers } \
 	{ -O2 -mcmodel=small -funroll-loops -fno-rename-registers } \
 	{ -O2 -mcmodel=small -mrtd } \
+	{ -O2 -mcmodel=small -mregparmcall } \
 	{ -O2 -mcmodel=small -mprotected-mode } \
 	{ -O2 -mcmodel=small -mprotected-mode -funroll-loops } \
 	{ -O2 -mcmodel=small -mprotected-mode -frename-registers } \
 	{ -O2 -mcmodel=small -mprotected-mode -funroll-loops \
 	  -fno-rename-registers } \
 	{ -O2 -mcmodel=small -mprotected-mode -mrtd } \
+	{ -O2 -mcmodel=small -mprotected-mode -mregparmcall } \
 	{ -Os } \
 	{ -Os -funroll-loops } \
 	{ -Os -frename-registers } \
 	{ -Os -funroll-loops -fno-rename-registers } \
 	{ -Os -mrtd } \
+	{ -Os -mregparmcall } \
 	{ -Os -flto } \
 	{ -Os -finline-functions } \
 	{ -Os -mprotected-mode } \
@@ -95,6 +106,7 @@ dg-init
 	{ -Os -mprotected-mode -frename-registers } \
 	{ -Os -mprotected-mode -funroll-loops -fno-rename-registers } \
 	{ -Os -mprotected-mode -mrtd } \
+	{ -Os -mprotected-mode -mregparmcall } \
 	{ -Os -mprotected-mode -flto } \
 	{ -Os -mprotected-mode -finline-functions } \
 	{ -Os -mcmodel=small } \
@@ -102,6 +114,7 @@ dg-init
 	{ -Os -mcmodel=small -frename-registers } \
 	{ -Os -mcmodel=small -funroll-loops -fno-rename-registers } \
 	{ -Os -mcmodel=small -mrtd } \
+	{ -Os -mcmodel=small -mregparmcall } \
 	{ -Os -mcmodel=small -flto } \
 	{ -Os -mcmodel=small -finline-functions } \
 	{ -Os -mcmodel=small -mprotected-mode } \
@@ -110,6 +123,7 @@ dg-init
 	{ -Os -mcmodel=small -mprotected-mode -funroll-loops \
 	  -fno-rename-registers } \
 	{ -Os -mcmodel=small -mprotected-mode -mrtd } \
+	{ -Os -mcmodel=small -mprotected-mode -mregparmcall } \
 	{ -Os -mcmodel=small -mprotected-mode -flto } \
 	{ -Os -mcmodel=small -mprotected-mode -finline-functions } \
 	{ -O3 } \
@@ -117,22 +131,26 @@ dg-init
 	{ -O3 -frename-registers } \
 	{ -O3 -funroll-loops -fno-rename-registers } \
 	{ -O3 -mrtd } \
+	{ -O3 -mregparmcall } \
 	{ -O3 -mprotected-mode } \
 	{ -O3 -mprotected-mode -funroll-loops } \
 	{ -O3 -mprotected-mode -frename-registers } \
 	{ -O3 -mprotected-mode -funroll-loops -fno-rename-registers } \
 	{ -O3 -mprotected-mode -mrtd } \
+	{ -O3 -mprotected-mode -mregparmcall } \
 	{ -O3 -mcmodel=small } \
 	{ -O3 -mcmodel=small -funroll-loops } \
 	{ -O3 -mcmodel=small -frename-registers } \
 	{ -O3 -mcmodel=small -funroll-loops -fno-rename-registers } \
 	{ -O3 -mcmodel=small -mrtd } \
+	{ -O3 -mcmodel=small -mregparmcall } \
 	{ -O3 -mcmodel=small -mprotected-mode } \
 	{ -O3 -mcmodel=small -mprotected-mode -funroll-loops } \
 	{ -O3 -mcmodel=small -mprotected-mode -frename-registers } \
 	{ -O3 -mcmodel=small -mprotected-mode -funroll-loops \
 	  -fno-rename-registers } \
-	{ -O3 -mcmodel=small -mprotected-mode -mrtd } ]
+	{ -O3 -mcmodel=small -mprotected-mode -mrtd } \
+	{ -O3 -mcmodel=small -mprotected-mode -mregparmcall } ]
 
 #Initialize use of torture lists. 
 torture-init
