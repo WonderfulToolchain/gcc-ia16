@@ -587,6 +587,15 @@ ia16_regparmcall_function_type_p (const_tree fntype)
   return ia16_get_call_parm_cvt (fntype) == CALL_PARM_CVT_REGPARMCALL;
 }
 
+static bool
+ia16_in_regparmcall_function_p (void)
+{
+  const_tree fntype = NULL_TREE;
+  if (cfun && cfun->decl)
+    fntype = TREE_TYPE (cfun->decl);
+  return ia16_regparmcall_function_type_p (fntype);
+}
+
 void
 ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, tree fntype,
 			   rtx libname ATTRIBUTE_UNUSED,
@@ -1174,8 +1183,23 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
             return false;
         }
     }
+
   if (r2 == NULL_RTX)
     return REGNO_MODE_OK_FOR_BASE_P (r1no, mode) || r1ok;
+
+  /* FIXME: This is a messy hack to get Newlib's k_rem_pio2.c to build with
+     `-mregparmcall -O2' and `-mregparmcall -Os', instead of crashing with a
+     "unable to find a register to spill" message (well, at least until
+     someone finds a better way).
+
+     This disallows (base, index) addressing for `-mregparmcall' functions
+     with lots of arguments, under `-O0', `-O1', `-O2', and `-Os'.
+	-- tkchia 20180810  */
+  if (optimize < 3
+      && ia16_in_regparmcall_function_p ()
+      && crtl->args.pops_args > 2)
+    return false;
+
   int r2no = REGNO (r2);
   bool r2ok = true;
   if (strict)
