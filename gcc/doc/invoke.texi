@@ -16659,6 +16659,10 @@ function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
 
 @code{-mregparmcall} support is still experimental.
+@c
+@c In particular, GCC with `-mregparmcall -Os' does not currently size-optimize
+@c very well, and may sometimes even run out of registers and crash ("unable to
+@c find a register to spill").  -- tkchia 20180811
 
 @item -mno-callee-assume-ds-data-segment
 @itemx -mcallee-assume-ds-data-segment

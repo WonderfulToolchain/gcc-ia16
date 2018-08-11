@@ -10502,8 +10502,8 @@ return true, if GCC should treat a function as belonging to the address
 space @var{as}, whenever the function's return type is marked as belonging
 to @var{as} (and the function itself has no address space qualifier).
 
-This macro is defined in the IA-16 backend to implement the experimental
-option @option{-mfar-function-if-far-return-type}.
+This macro is defined in the IA-16 backend to implement the option
+@option{-mno-far-function-if-far-return-type}.
 @end defmac
 
 @node Misc
