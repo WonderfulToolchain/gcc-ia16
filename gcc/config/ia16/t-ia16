@@ -38,13 +38,20 @@ MULTILIB_MATCHES=march?any_186=march?i80186 march?any_186=march?i80188 \
 # To save build times, avoid building separate multilibs for `-mrtd
 # -fno-omit-frame-pointer', `-mregparmcall -fno-omit-frame-pointer', and
 # `-march=any_186 -fno-omit-frame-pointer'.
+#
+# For now, also avoid building separate multilibs for `-mregparmcall -Os',
+# as it does not produce generate good-quality code (yet), and still sometimes
+# crashes the compiler.  -- tkchia
 MULTILIB_EXCEPTIONS=\
 	*mrtd*/*fno-omit-frame-pointer* \
 	*mregparmcall*/*fno-omit-frame-pointer* \
-	*march?any_186*/*fno-omit-frame-pointer*
+	*march?any_186*/*fno-omit-frame-pointer* \
+	*mregparmcall*/*Os*
 MULTILIB_REUSE=\
 	mrtd=mrtd/fno-omit-frame-pointer \
 	mrtd/march.any_186=mrtd/march.any_186/fno-omit-frame-pointer \
 	mregparmcall=mregparmcall/fno-omit-frame-pointer \
 	mregparmcall/march.any_186=mregparmcall/march.any_186/fno-omit-frame-pointer \
-	march.any_186=march.any_186/fno-omit-frame-pointer
+	march.any_186=march.any_186/fno-omit-frame-pointer \
+	mregparmcall=mregparmcall/Os \
+	mregparmcall/march.any_186=mregparmcall/march.any_186/Os
