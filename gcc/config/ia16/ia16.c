@@ -587,19 +587,10 @@ ia16_regparmcall_function_type_p (const_tree fntype)
   return ia16_get_call_parm_cvt (fntype) == CALL_PARM_CVT_REGPARMCALL;
 }
 
-static bool
-ia16_in_regparmcall_function_p (void)
-{
-  const_tree fntype = NULL_TREE;
-  if (cfun && cfun->decl)
-    fntype = TREE_TYPE (cfun->decl);
-  return ia16_regparmcall_function_type_p (fntype);
-}
-
 void
-ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, tree fntype,
+ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 			   rtx libname ATTRIBUTE_UNUSED,
-			   tree fndecl ATTRIBUTE_UNUSED,
+			   const_tree fndecl ATTRIBUTE_UNUSED,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
   if (! ia16_regparmcall_function_type_p (fntype) || stdarg_p (fntype))
@@ -612,8 +603,7 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, tree fntype,
 #define TARGET_FUNCTION_ARG_ADVANCE ia16_function_arg_advance
 
 static void
-ia16_function_arg_advance (cumulative_args_t cum_v,
-			   machine_mode mode ATTRIBUTE_UNUSED,
+ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
                            const_tree type ATTRIBUTE_UNUSED,
 			   bool named ATTRIBUTE_UNUSED)
 {
@@ -1142,6 +1132,33 @@ ia16_have_seg_override_p (rtx x)
 #define REGNO_OK_FOR_SEGMENT_P(num) \
 	ia16_regno_in_class_p ((num), SEGMENT_REGS)
 
+/* Return the number of halfword registers used as parameters to the function
+   type FNTYPE, bounded by UPPER_BOUND.  */
+static int
+ia16_function_num_reg_parms_used (const_tree fntype, int upper_bound)
+{
+  CUMULATIVE_ARGS cum;
+  cumulative_args_t cum_v;
+  tree argtype;
+  function_args_iterator iter;
+
+  if (! ia16_regparmcall_function_type_p (fntype)
+      || stdarg_p (fntype))
+    return 0;
+
+  cum_v = pack_cumulative_args (&cum);
+  ia16_init_cumulative_args (&cum, fntype, NULL_RTX, NULL_TREE, -1);
+
+  FOREACH_FUNCTION_ARGS (fntype, argtype, iter)
+    {
+      ia16_function_arg_advance (cum_v, TYPE_MODE (argtype), argtype, true);
+      if (cum >= upper_bound)
+	return upper_bound;
+    }
+
+  return cum;
+}
+
 #undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
 
@@ -1193,12 +1210,13 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
      someone finds a better way).
 
      This disallows (base, index) addressing for `-mregparmcall' functions
-     with lots of arguments, under `-O0', `-O1', `-O2', and `-Os'.
-	-- tkchia 20180810  */
-  if (optimize < 3
-      && ia16_in_regparmcall_function_p ()
-      && crtl->args.pops_args > 2)
-    return false;
+     that accept arguments in %bx.  -- tkchia 20180812  */
+  if (cfun && cfun->decl)
+    {
+      const_tree fntype = TREE_TYPE (cfun->decl);
+      if (ia16_function_num_reg_parms_used (fntype, 3) > 2)
+	return false;
+    }
 
   int r2no = REGNO (r2);
   bool r2ok = true;
