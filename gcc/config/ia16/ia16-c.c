@@ -84,7 +84,10 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_CDECL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_STDCALL");
-  def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
+  /* Since the `regparmcall' convention is still in a state of flux, I am
+     adding a crude versioning mechanism so that users can ask the compiler
+     which convention it is actually implementing...  */
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL=20180813L");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");

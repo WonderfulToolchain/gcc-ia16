@@ -473,28 +473,6 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
 #undef  TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG ia16_function_arg
 
-/* Return an rtx for a 64-bit `regparmcall' return value or argument value.
-
-   (Open Watcom has this really weird thing of passing (and returning)
-   64-bit integer values in %ax:%bx:%cx:%dx, with the registers in an
-   unexpected order.  I do not do that here.
-
-   Also, the protocol for passing and returning floating values is completely
-   different in Open Watcom.  -- tkchia)  */
-static rtx
-ia16_quad_reg_value_rtx (machine_mode mode)
-{
-  rtx dxax = gen_rtx_REG (SImode, A_REG);
-  rtx list0 = gen_rtx_EXPR_LIST (VOIDmode, dxax, const0_rtx);
-  rtx bx = gen_rtx_REG (HImode, B_REG);
-  rtx list1 = gen_rtx_EXPR_LIST (VOIDmode, bx,
-				 gen_rtx_CONST_INT (VOIDmode, 4));
-  rtx cx = gen_rtx_REG (HImode, C_REG);
-  rtx list2 = gen_rtx_EXPR_LIST (VOIDmode, cx,
-				 gen_rtx_CONST_INT (VOIDmode, 6));
-  return gen_rtx_PARALLEL (mode, gen_rtvec (3, list0, list1, list2));
-}
-
 static rtx
 ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
 		   const_tree type ATTRIBUTE_UNUSED,
@@ -519,8 +497,6 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
 	case 1:
 	  return gen_rtx_REG (mode, D_REG);
 	case 2:
-	  return gen_rtx_REG (mode, B_REG);
-	case 3:
 	  return gen_rtx_REG (mode, C_REG);
 	default:
 	  return NULL;
@@ -532,25 +508,6 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
       {
       case 0:
 	return gen_rtx_REG (mode, A_REG);	/* %dx:%ax */
-      case 1:
-      case 2:
-	{
-	  rtx bx = gen_rtx_REG (HImode, B_REG);
-	  rtx list0 = gen_rtx_EXPR_LIST (VOIDmode, bx, const0_rtx);
-	  rtx cx = gen_rtx_REG (HImode, C_REG);
-	  rtx list1 = gen_rtx_EXPR_LIST (VOIDmode, cx, const2_rtx);
-	  return gen_rtx_PARALLEL (mode, gen_rtvec (2, list0, list1));
-	}
-      default:
-	return NULL;
-      }
-
-    case DImode:
-    case DFmode:
-      switch (*cum)
-      {
-      case 0:
-	return ia16_quad_reg_value_rtx (mode);
       default:
 	return NULL;
       }
@@ -594,7 +551,7 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
   if (! ia16_regparmcall_function_type_p (fntype) || stdarg_p (fntype))
-    *cum = 4;
+    *cum = 3;
   else
     *cum = 0;
 }
@@ -609,12 +566,12 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  if (*cum >= 4)
+  if (*cum >= 3)
     return;
 
   if (! named)
     {
-      *cum = 4;
+      *cum = 3;
       return;
     }
 
@@ -623,7 +580,7 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     case QImode:
     case HImode:
     case V2QImode:
-      if (*cum < 4)
+      if (*cum < 3)
 	++*cum;
       return;
 
@@ -635,12 +592,12 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 	  *cum = 2;
 	  return;
 	default:
-	  *cum = 4;
+	  *cum = 3;
 	  return;
 	}
 
     default:
-      *cum = 4;
+      *cum = 3;
       return;
     }
 }
@@ -658,28 +615,10 @@ ia16_vector_mode_supported_p (enum machine_mode mode)
 #define TARGET_FUNCTION_VALUE ia16_function_value
 
 static rtx
-ia16_function_value (const_tree ret_type, const_tree fn_decl_or_type,
+ia16_function_value (const_tree ret_type,
+		     const_tree fn_decl_or_type ATTRIBUTE_UNUSED,
 		     bool outgoing ATTRIBUTE_UNUSED)
 {
-  machine_mode mode = TYPE_MODE (ret_type);
-
-  if (mode == DImode || mode == DFmode)
-    {
-      /* Allow 64-bit values to go into %cx:%bx:%dx:%ax, but only if the
-	 function is a `regparmcall' function.  For backward compatibility,
-	 `cdecl' and `stdcall' functions will (continue to) return 64-bit
-	 values in memory.  */
-      const_tree fntype = fn_decl_or_type;
-
-      if (fntype && DECL_P (fntype))
-	fntype = TREE_TYPE (fntype);
-
-      if (ia16_regparmcall_function_type_p (fntype))
-	return ia16_quad_reg_value_rtx (mode);
-
-      return NULL;
-    }
-
   return gen_rtx_REG (TYPE_MODE (ret_type), A_REG);
 }
 
@@ -689,15 +628,6 @@ ia16_function_value (const_tree ret_type, const_tree fn_decl_or_type,
 static rtx
 ia16_libcall_value (machine_mode mode, const_rtx fun ATTRIBUTE_UNUSED)
 {
-  if (mode == DImode || mode == DFmode)
-    {
-      /* See above.  */
-      if (target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL)
-	return ia16_quad_reg_value_rtx (mode);
-
-      return NULL;
-    }
-
   if (! HARD_REGNO_MODE_OK (A_REG, mode))
     return NULL;
 
@@ -710,12 +640,7 @@ ia16_libcall_value (machine_mode mode, const_rtx fun ATTRIBUTE_UNUSED)
 static bool
 ia16_function_value_regno_p (unsigned regno)
 {
-  /* To correctly realize __builtin_apply and __builtin_return, recognize
-     the 64-bit register combination starting from %cx --- i.e. %bx:%dx:%ax:
-     %cx --- as possibly holding a return value.  The correct order of
-     registers should be %cx:%bx:%dx:%ax, but __builtin_{apply, return} do
-     not need to know that.  */
-  return regno == A_REG || regno == C_REG;
+  return regno == A_REG;
 }
 
 /* How Large Values Are Returned */
@@ -724,26 +649,13 @@ ia16_function_value_regno_p (unsigned regno)
 #define TARGET_RETURN_IN_MEMORY ia16_return_in_memory
 
 static bool
-ia16_return_in_memory (const_tree type, const_tree fntype)
+ia16_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 {
-  /* Return in memory if it is larger than 8 bytes or BLKmode.  If this is
-     not a `regparmcall' function, also return in memory if it is larger
-     than 4 bytes.  */
-  if (TYPE_MODE (type) == BLKmode)
-    return true;
-
-  if (ia16_regparmcall_function_type_p (fntype))
-    {
-      if (int_size_in_bytes (type) > 8)
-	return true;
-    }
-  else
-    {
-      if (int_size_in_bytes (type) > 4)
-	return true;
-    }
-
-  return false;
+  /* Return in memory if it's larger than 4 bytes or BLKmode.
+   * TODO: Increase this to 8 bytes or so.  Doing so requires more call
+   * used registers or requires the prologue and epilogue patterns to not
+   * touch the return value registers.  */
+   return (TYPE_MODE (type) == BLKmode || int_size_in_bytes (type) > 4);
 }
 
 #undef	TARGET_GET_RAW_RESULT_MODE
@@ -752,19 +664,10 @@ ia16_return_in_memory (const_tree type, const_tree fntype)
 static machine_mode
 ia16_get_raw_result_mode (int regno)
 {
-  /* Of course we do actually use %ax (and %dx:%ax) to return values, but
-     this hook is only used to implement __builtin_apply and __builtin_return,
-     which only needs to know that that there is a return value in the DImode
-     starting at %cx, i.e. %bx:%dx:%ax:%cx.
-
-     This saves me from having to implement the `untyped_call' and
-     `untyped_return' insn patterns.  -- tkchia  */
   switch (regno)
     {
-    case C_REG:
-      return DImode;
     case A_REG:
-      return VOIDmode;
+      return SImode;
     default:
       gcc_unreachable ();
     }
@@ -779,9 +682,8 @@ ia16_get_raw_arg_mode (int regno)
   switch (regno)
     {
     case A_REG:
-    case B_REG:
-    case C_REG:
     case D_REG:
+    case C_REG:
       return HImode;
     case DS_REG:
       return VOIDmode;
@@ -1132,33 +1034,6 @@ ia16_have_seg_override_p (rtx x)
 #define REGNO_OK_FOR_SEGMENT_P(num) \
 	ia16_regno_in_class_p ((num), SEGMENT_REGS)
 
-/* Return the number of halfword registers used as parameters to the function
-   type FNTYPE, bounded by UPPER_BOUND.  */
-static int
-ia16_function_num_reg_parms_used (const_tree fntype, int upper_bound)
-{
-  CUMULATIVE_ARGS cum;
-  cumulative_args_t cum_v;
-  tree argtype;
-  function_args_iterator iter;
-
-  if (! ia16_regparmcall_function_type_p (fntype)
-      || stdarg_p (fntype))
-    return 0;
-
-  cum_v = pack_cumulative_args (&cum);
-  ia16_init_cumulative_args (&cum, fntype, NULL_RTX, NULL_TREE, -1);
-
-  FOREACH_FUNCTION_ARGS (fntype, argtype, iter)
-    {
-      ia16_function_arg_advance (cum_v, TYPE_MODE (argtype), argtype, true);
-      if (cum >= upper_bound)
-	return upper_bound;
-    }
-
-  return cum;
-}
-
 #undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P ia16_as_legitimate_address_p
 
@@ -1200,24 +1075,8 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
             return false;
         }
     }
-
   if (r2 == NULL_RTX)
     return REGNO_MODE_OK_FOR_BASE_P (r1no, mode) || r1ok;
-
-  /* FIXME: This is a messy hack to get Newlib's k_rem_pio2.c to build with
-     `-mregparmcall -O2' and `-mregparmcall -Os', instead of crashing with a
-     "unable to find a register to spill" message (well, at least until
-     someone finds a better way).
-
-     This disallows (base, index) addressing for `-mregparmcall' functions
-     that accept arguments in %bx.  -- tkchia 20180812  */
-  if (cfun && cfun->decl)
-    {
-      const_tree fntype = TREE_TYPE (cfun->decl);
-      if (ia16_function_num_reg_parms_used (fntype, 3) > 2)
-	return false;
-    }
-
   int r2no = REGNO (r2);
   bool r2ok = true;
   if (strict)
