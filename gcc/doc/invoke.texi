@@ -16637,9 +16637,9 @@ harmlessly ignored.)
 @opindex mregparmcall
 Use a different function-calling convention, in which functions that take a
 fixed number of arguments receive their first few arguments in registers,
-pop their remaining arguments off the stack, and return 64-bit scalar values
-in registers.  This calling convention is similar---but not identical---to
-Open Watcom C/C++'s default @code{__watcall} calling convention.
+and pop their remaining arguments off the stack.  This calling convention is
+similar---but not identical---to Open Watcom C/C++'s default
+@code{__watcall} calling convention.
 
 At the linking stage, this option will also make GCC link your code against
 the appropriate @option{-mregparmcall} multilib.
@@ -16659,10 +16659,6 @@ function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
 
 @code{-mregparmcall} support is still experimental.
-@c
-@c In particular, GCC with `-mregparmcall -Os' does not currently size-optimize
-@c very well, and may sometimes even run out of registers and crash ("unable to
-@c find a register to spill").  -- tkchia 20180811
 
 @item -mno-callee-assume-ds-data-segment
 @itemx -mcallee-assume-ds-data-segment
