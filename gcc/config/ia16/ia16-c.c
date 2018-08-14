@@ -84,10 +84,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_CDECL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_STDCALL");
-  /* Since the `regparmcall' convention is still in a state of flux, I am
-     adding a crude versioning mechanism so that users can ask the compiler
-     which convention it is actually implementing...  */
-  def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL=20180813L");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
@@ -106,6 +103,11 @@ ia16_cpu_cpp_builtins (void)
 		      target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL);
   def_or_undef_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE",
 		      TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
+
+  /* Since the `regparmcall' convention is still in a state of flux, I am
+     adding a crude versioning mechanism so that users can ask the compiler
+     which convention it is actually implementing...  */
+  def_macro ("__IA16_REGPARMCALL_ABI=20180814L");
 
   /* Define macros corresponding to the chosen memory model.  I define both
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL | ...}__, and a

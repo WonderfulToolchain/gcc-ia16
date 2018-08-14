@@ -506,8 +506,16 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
     case SFmode:
       switch (*cum)
       {
-      case 0:
-	return gen_rtx_REG (mode, A_REG);	/* %dx:%ax */
+      case 0:				/* %dx:%ax */
+	return gen_rtx_REG (mode, A_REG);
+      case 1:				/* %cx:%dx */
+	{
+	  rtx dx = gen_rtx_REG (HImode, D_REG);
+	  rtx list0 = gen_rtx_EXPR_LIST (VOIDmode, dx, const0_rtx);
+	  rtx cx = gen_rtx_REG (HImode, C_REG);
+	  rtx list1 = gen_rtx_EXPR_LIST (VOIDmode, cx, const2_rtx);
+	  return gen_rtx_PARALLEL (mode, gen_rtvec (2, list0, list1));
+	}
       default:
 	return NULL;
       }
