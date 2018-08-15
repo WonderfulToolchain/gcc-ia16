@@ -16637,9 +16637,7 @@ harmlessly ignored.)
 @opindex mregparmcall
 Use a different function-calling convention, in which functions that take a
 fixed number of arguments receive their first few arguments in registers,
-and pop their remaining arguments off the stack.  This calling convention is
-similar---but not identical---to Open Watcom C/C++'s default
-@code{__watcall} calling convention.
+and pop their remaining arguments off the stack.
 
 At the linking stage, this option will also make GCC link your code against
 the appropriate @option{-mregparmcall} multilib.
