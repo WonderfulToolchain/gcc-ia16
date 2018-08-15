@@ -4237,10 +4237,6 @@ An exception is that, if the number of arguments is variable, all arguments
 are pushed on the stack, and the calling function pops the arguments off the
 stack.
 
-The @code{regparmcall} calling convention is similar---but not
-identical---to Open Watcom C/C++'s default @code{__watcall} calling
-convention.
-
 @code{regparmcall} support is still experimental.
 
 @item assume_ds_data
