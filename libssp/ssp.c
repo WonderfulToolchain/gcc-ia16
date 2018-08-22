@@ -58,6 +58,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include <windows.h>
 #include <wincrypt.h>
 # define _PATH_TTY "CONOUT$"
+#elif defined (__MSDOS__)
+# define _PATH_TTY "CON"
 #else
 # define _PATH_TTY "/dev/tty"
 #endif
