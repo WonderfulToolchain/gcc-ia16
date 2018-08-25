@@ -506,8 +506,9 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
                          "si", "di", "bp", "es", "ds", "sp", "cc", \
                          "ss", "cs", "argp" }
 #define ADDITIONAL_REGISTER_NAMES \
-	{ { "cl", 0 }, {"al", 2 }, { "dl", 4 }, { "bl", 6 }, \
-	  { "cx", 0 }, {"ax", 2 }, { "dx", 4 }, { "bx", 6 } }
+	{ { "cl", 0 }, {"al", 2 }, { "dl", 4 }, { "bl", 6 } }
+#define OVERLAPPING_REGISTER_NAMES \
+	{ { "cx", 0, 2 }, {"ax", 2, 2 }, { "dx", 4, 2 }, { "bx", 6, 2 } }
 #define PRINT_OPERAND(stream, x, code)	ia16_print_operand (stream, x, code)
 #define PRINT_OPERAND_ADDRESS(stream, x) ia16_print_operand_address (stream, x)
 #define REGISTER_PREFIX "%"
