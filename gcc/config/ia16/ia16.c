@@ -215,7 +215,7 @@ static int
 ia16_save_reg_p (unsigned int r)
 {
   if (r == BP_REG)
-    return get_frame_size() > 0 || crtl->args.info > 0
+    return get_frame_size() > 0 || crtl->args.info >= 4
       || crtl->accesses_prior_frames || cfun->calls_alloca;
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
@@ -574,12 +574,9 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  if (*cum >= 3)
-    return;
-
-  if (! named)
+  if (*cum >= 3 || ! named)
     {
-      *cum = 3;
+      *cum = 4;
       return;
     }
 
@@ -605,7 +602,7 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 	}
 
     default:
-      *cum = 3;
+      *cum = 4;
       return;
     }
 }
