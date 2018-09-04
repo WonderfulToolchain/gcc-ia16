@@ -585,8 +585,7 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     case QImode:
     case HImode:
     case V2QImode:
-      if (*cum < 3)
-	++*cum;
+      ++*cum;
       return;
 
     case SImode:
@@ -596,8 +595,11 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 	case 0:
 	  *cum = 2;
 	  return;
-	default:
+	case 1:
 	  *cum = 3;
+	  return;
+	default:
+	  *cum = 4;
 	  return;
 	}
 
@@ -2166,6 +2168,8 @@ int ia16_features = 0;
 #define I_RTX(x)	(MEM_P (x) ? I_MEM : I_REG)
 #define M_MOD(x)	(QImode == (x) ? M_QI : M_HI)
 #define M_RTX(x)	(QImode == GET_MODE (x) ? M_QI : M_HI)
+#define H_MOD(x)	ia16_mode_hwords (x)
+#define H_RTX(x)	ia16_mode_hwords (GET_MODE (x))
 
 static unsigned
 ia16_mode_hwords (machine_mode mode)
@@ -2347,9 +2351,9 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	if (memory_operand (op0, GET_MODE (op0)))
 	  {
 	    if (register_operand (op1, GET_MODE (op1)))
-	      *total = IA16_COST (int_store[M_RTX (op0)]);
+	      *total = IA16_COST (int_store[M_RTX (op0)]) * H_RTX (op0);
 	    else if (immediate_operand (op1, GET_MODE (op1)))
-	      *total = IA16_COST (imm_store[M_RTX (op0)]);
+	      *total = IA16_COST (imm_store[M_RTX (op0)]) * H_RTX (op0);
 	    else
 	      {
 #if 0
@@ -2372,6 +2376,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 		  *total = IA16_COST (int_load[M_RTX (op1)]);
 		else if (immediate_operand (op1, GET_MODE (op1)))
 		  *total = IA16_COST (imm_load[M_RTX (op0)]);
+		*total *= H_RTX (op0);
 	      }
 	    /* Try to get constructs involving "xlat" right.  */
 	    else
@@ -2398,6 +2403,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       else
 	*total += IA16_COST (add[O_MEMREG]) - IA16_COST (add[O_REGREG]);
 #endif
+      *total *= H_MOD (mode);
       return (true);
 
     case CONST:
