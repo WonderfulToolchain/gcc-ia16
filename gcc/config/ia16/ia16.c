@@ -197,9 +197,6 @@ ia16_cannot_substitute_mem_equiv_p (rtx subst)
   return GET_CODE (x) == REG && GET_CODE (y) == REG;
 }
 
-#undef TARGET_FRAME_POINTER_REQUIRED
-#define TARGET_FRAME_POINTER_REQUIRED hook_bool_void_true
-
 /* Convenience function --- say whether register r belongs to class c.  */
 int
 ia16_regno_in_class_p (unsigned r, unsigned c)
@@ -215,8 +212,7 @@ static int
 ia16_save_reg_p (unsigned int r)
 {
   if (r == BP_REG)
-    return get_frame_size() > 0 || crtl->args.info >= 4
-      || crtl->accesses_prior_frames || cfun->calls_alloca;
+    return frame_pointer_needed;
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (ia16_regno_in_class_p (r, UP_QI_REGS))
@@ -4399,7 +4395,7 @@ ia16_expand_epilogue (bool sibcall)
 	}
       else
 	{
-	  if (size > 0 || cfun->calls_alloca || crtl->outgoing_args_size > 0)
+	  if (EXIT_IGNORE_STACK)
 	    {
 	      emit_move_insn (gen_rtx_REG (Pmode, SP_REG),
 			      gen_rtx_REG (Pmode, BP_REG));
