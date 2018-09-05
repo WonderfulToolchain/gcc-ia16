@@ -406,9 +406,13 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* Function Entry and Exit */
 /* Thunks support is missing.  */
-/* Stack adjustment at function exit isn't needed with a frame pointer.  */
-#define EXIT_IGNORE_STACK \
-  (get_frame_size() > 0 || crtl->args.info > 0 || cfun->calls_alloca)
+/* Stack adjustment at function exit isn't needed if we need to tear down the
+   stack frame with `leave' or `movw %bp, %sp'.  */
+#define EXIT_IGNORE_STACK	(frame_pointer_needed \
+				 && (HAVE__leave \
+				     || get_frame_size () > 0 \
+				     || cfun->calls_alloca \
+				     || crtl->outgoing_args_size > 0))
 
 /* Generating Code for Profiling */
 /* It isn't there yet.  */
