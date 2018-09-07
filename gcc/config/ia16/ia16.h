@@ -372,9 +372,8 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
    STACK_GROWS_UPWARD.  */
 
 #define ELIMINABLE_REGS \
-	{	{ ARG_POINTER_REGNUM, STACK_POINTER_REGNUM },	\
-		{ ARG_POINTER_REGNUM, FRAME_POINTER_REGNUM },	\
-		{ FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM }	}
+	{ { ARG_POINTER_REGNUM, FRAME_POINTER_REGNUM }, \
+	  { STACK_POINTER_REGNUM, FRAME_POINTER_REGNUM } }
 #define INITIAL_ELIMINATION_OFFSET(from_reg, to_reg, offset_var) \
 	offset_var = ia16_initial_elimination_offset (from_reg, to_reg)
 

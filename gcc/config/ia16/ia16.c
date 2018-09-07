@@ -416,6 +416,19 @@ ia16_first_parm_offset (tree fundecl)
 }
 
 /* Eliminating Frame Pointer and Arg Pointer */
+
+#undef	TARGET_FRAME_POINTER_REQUIRED
+#define TARGET_FRAME_POINTER_REQUIRED	ia16_frame_pointer_required
+
+static bool
+ia16_frame_pointer_required (void)
+{
+  /* We absolutely need a frame pointer to refer to arguments passed on the
+     stack.  The GCC middle-end does not know about this IA-16 peculiarity,
+     so we need to inform it.  -- tkchia  */
+  return crtl->args.info >= 4;
+}
+
 /* Calculates the difference between the argument pointer and the frame
  * pointer immediately after the function prologue.  This should be kept int
  * sync with the prologue pattern.
@@ -455,12 +468,8 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
   if (ARG_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
     return (ia16_initial_arg_pointer_offset ());
 
-  if (FRAME_POINTER_REGNUM == from && STACK_POINTER_REGNUM == to)
-    return (ia16_initial_frame_pointer_offset ());
-
-  if (ARG_POINTER_REGNUM == from && STACK_POINTER_REGNUM == to)
-    return (ia16_initial_arg_pointer_offset ()
-	  + ia16_initial_frame_pointer_offset ());
+  if (STACK_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
+    return (-ia16_initial_frame_pointer_offset ());
 
   gcc_unreachable ();
 }
@@ -2990,6 +2999,7 @@ ia16_asm_unique_section (tree decl, int reloc)
 /* Continued: Run-time Target Specification */
 #undef  TARGET_OPTION_OVERRIDE
 #define TARGET_OPTION_OVERRIDE	ia16_option_override
+
 static void
 ia16_option_override (void)
 {
@@ -3003,6 +3013,12 @@ ia16_option_override (void)
     }
   if (optimize_size)
     ia16_costs = &ia16_size_costs;
+
+  /* If -f(no-)omit-frame-pointer is not specified, try to omit the frame
+     pointer if optimization is on (even when optimizing for size).  This is
+     similar to the override in gcc/config/i386/i386.c .  -- tkchia */
+  if (optimize && ! global_options_set.x_flag_omit_frame_pointer)
+    global_options.x_flag_omit_frame_pointer = 1;
 }
 
 /* The Overall Framework of an Assembler File */
