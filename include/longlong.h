@@ -451,6 +451,40 @@ extern UDItype __umulsidi3 (USItype, USItype);
 #endif /* __zarch__ */
 #endif
 
+#if defined (__ia16__) && W_TYPE_SIZE == 16
+#define add_ssaaaa(sh, sl, ah, al, bh, bl) \
+  __asm__ ("addw %5,%1\n\tadcw %3,%0"		\
+	   : "=r" ((UHItype) (sh)),					\
+	     "=&r" ((UHItype) (sl))					\
+	   : "%0" ((UHItype) (ah)),					\
+	     "g" ((UHItype) (bh)),					\
+	     "%1" ((UHItype) (al)),					\
+	     "g" ((UHItype) (bl)))
+#define sub_ddmmss(sh, sl, ah, al, bh, bl) \
+  __asm__ ("subw %5,%1\n\tsbbw %3,%0"		\
+	   : "=r" ((UHItype) (sh)),					\
+	     "=&r" ((UHItype) (sl))					\
+	   : "0" ((UHItype) (ah)),					\
+	     "g" ((UHItype) (bh)),					\
+	     "1" ((UHItype) (al)),					\
+	     "g" ((UHItype) (bl)))
+#define umul_ppmm(w1, w0, u, v) \
+  __asm__ ("mulw %3"							\
+	   : "=a" ((UHItype) (w0)),					\
+	     "=d" ((UHItype) (w1))					\
+	   : "%0" ((UHItype) (u)),					\
+	     "rm" ((UHItype) (v)))
+#define udiv_qrnnd(q, r, n1, n0, dv) \
+  __asm__ ("divw %4"							\
+	   : "=a" ((UHItype) (q)),					\
+	     "=d" ((UHItype) (r))					\
+	   : "0" ((UHItype) (n0)),					\
+	     "1" ((UHItype) (n1)),					\
+	     "rm" ((UHItype) (dv)))
+#define UMUL_TIME 40
+#define UDIV_TIME 40
+#endif /* ia16 */
+
 #if (defined (__i386__) || defined (__i486__)) && W_TYPE_SIZE == 32
 #define add_ssaaaa(sh, sl, ah, al, bh, bl) \
   __asm__ ("add{l} {%5,%1|%1,%5}\n\tadc{l} {%3,%0|%0,%3}"		\
