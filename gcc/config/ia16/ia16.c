@@ -435,6 +435,32 @@ ia16_frame_pointer_required (void)
   return crtl->args.info >= 4 || get_frame_size () != 0;
 }
 
+#undef	TARGET_CAN_ELIMINATE
+#define	TARGET_CAN_ELIMINATE	ia16_can_eliminate
+
+static bool
+ia16_can_eliminate (const int from, const int to)
+{
+  if (ARG_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
+    return true;
+
+  /* There seems to be some wackiness in GCC's register elimination logic.
+
+     So yes, for some reason I need to specify a %sp -> %bp elimination in
+     ELIMINABLE_REGS, and do something for INITIAL_ELIMINATION_OFFSET
+     (STACK_POINTER_REGNUM, FRAME_POINTER_REGNUM, ) --- and then say here
+     that GCC should not actually perform the elimination anyway.
+
+     If I omit the %sp -> %bp elimination, GCC will hang while compiling
+     libgcc.  If I specify a %bp -> %sp elimination instead, GCC will crash.
+     And actually _enabling_ a %sp -> %bp elimination results in incorrect
+     code.  Argh.  -- tkchia  */
+  if (STACK_POINTER_REGNUM == from)
+    return false;
+
+  gcc_unreachable ();
+}
+
 /* Calculates the difference between the argument pointer and the frame
  * pointer immediately after the function prologue.  This should be kept int
  * sync with the prologue pattern.
@@ -474,8 +500,6 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
   if (ARG_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
     return (ia16_initial_arg_pointer_offset ());
 
-  /* This %sp -> %bp elimination is apparently needed: without it, GCC hangs
-     while compiling libgcc (e.g. emutls.c).  -- tkchia  */
   if (STACK_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
     return (-ia16_initial_frame_pointer_offset ());
 
