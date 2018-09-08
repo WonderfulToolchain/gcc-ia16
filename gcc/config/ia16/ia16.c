@@ -1954,13 +1954,7 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 static struct processor_costs ia16_i8086_costs = {
   /* byte_fetch	*/	2,
   /* ea_calc */		ia16_i808x_address_cost,
-			/* Nasty hack to prevent spurious reloads and spills
-			   when compiling with -O3 --- see the description at
-			   https://github.com/tkchia/gcc-ia16/issues/15 .
-			   The value here is currently the maximum of
-			   .int_load[1] and .int_store[1].  A more proper
-			   patch is needed.  -- tkchia 20171224  */
-  /* move */		C (9) /* C (2) */,
+  /* move */		C (2),
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (10), C (10) },
   /* int_load */	{ C (8), C (8) },
@@ -1992,7 +1986,7 @@ static struct processor_costs ia16_i8086_costs = {
 static struct processor_costs ia16_i8088_costs = {
   /* byte_fetch */	4,
   /* ea_calc */		ia16_i808x_address_cost,
-  /* move */		C (13) /* C (2) */,
+  /* move */		C (2),
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (10), C (14) },
   /* int_load */	{ C (8), C (12) },
@@ -2025,7 +2019,7 @@ static struct processor_costs ia16_i8088_costs = {
 static struct processor_costs ia16_i80186_costs = {
   /* byte_fetch	*/	2,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (12) /* C (2) */,
+  /* move */		C (2),
   /* imm_load */	{ C (3), C (4) },
   /* imm_store */	{ C (12), C (13) },
   /* int_load */	{ C (9), C (9) },
@@ -2091,7 +2085,7 @@ static struct processor_costs ia16_i80286_costs = {
 static struct processor_costs ia16_nec_v30_costs = {
   /* byte_fetch */	2,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (11) /* C (2) */,
+  /* move */		C (2),
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (11), C (11) },
   /* int_load */	{ C (11), C (11) },
@@ -2123,7 +2117,7 @@ static struct processor_costs ia16_nec_v30_costs = {
 static struct processor_costs ia16_nec_v20_costs = {
   /* byte_fetch */	4,
   /* ea_calc */		ia16_default_address_cost,
-  /* move */		C (15) /* C (2) */,
+  /* move */		C (2),
   /* imm_load */	{ C (4), C (4) },
   /* imm_store */	{ C (11), C (15) },
   /* int_load */	{ C (11), C (15) },
@@ -2558,7 +2552,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	    }
 	  else
 	    /* This is arbitrary.  */
-	    nbits = 7;
+	    nbits = 7 * H_MOD (mode);
 
 	  /* Compute costs correctly for widening multiplication.  */
 	  if ((GET_CODE (op0) == SIGN_EXTEND || GET_CODE (op1) == ZERO_EXTEND)
@@ -2587,7 +2581,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
   	  *total = MAX (ia16_costs->s_mult_init[M_MOD (mode)][I_RTX (op1)]
 			+ nbits * ia16_costs->mult_bit,
 			ia16_size_costs.s_mult_init[M_MOD (mode)][I_RTX (op1)]
-			* ia16_costs->byte_fetch)
+			* ia16_costs->byte_fetch * H_MOD (mode))
 	    + rtx_cost (op0, mode, outer_code, 0, speed)
 	    + rtx_cost (op1, mode, outer_code, 1, speed);
 
@@ -2600,7 +2594,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       if (FLOAT_MODE_P (mode))
 	*total = IA16_COST (fdiv);
       else
-	*total = IA16_COST (u_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))]);
+	*total = IA16_COST (u_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))])
+		 * H_MOD (mode);
       return false;
 
     case DIV:
@@ -2608,7 +2603,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       if (FLOAT_MODE_P (mode))
 	*total = IA16_COST (fdiv);
       else
-	*total = IA16_COST (s_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))]);
+	*total = IA16_COST (s_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))])
+		 * H_MOD (mode);
       return false;
 
     /* FIXME: This might be too pessimistic when rtx_equal_p (op0, op1).  */
@@ -2778,6 +2774,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	/* This is expanded to cwtd, xorw and subw.  */
 	*total = IA16_COST (sign_extend[M_MOD (mode)])
 	       + IA16_COST (add[I_REG]) * 2;
+	*total *= H_MOD (mode);
       return false;
 
     case SQRT:
