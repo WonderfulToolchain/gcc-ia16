@@ -424,14 +424,15 @@ static bool
 ia16_frame_pointer_required (void)
 {
   /* We absolutely need a frame pointer to refer to arguments passed on the
-     stack.  The GCC middle-end does not know about this IA-16 peculiarity,
-     so we need to inform it.
+     stack and local variables placed on the stack frame.  The GCC
+     middle-end does not know about this IA-16 peculiarity, so we need to
+     inform it.
 
      TODO: This still forces a frame pointer as long as the function _has_
      stack arguments, even if it does not actually read them.  We should fix
      this, as an optimization.  The fix may involve scanning the insn stream.
 	-- tkchia  */
-  return crtl->args.info >= 4;
+  return crtl->args.info >= 4 || get_frame_size () != 0;
 }
 
 /* Calculates the difference between the argument pointer and the frame
