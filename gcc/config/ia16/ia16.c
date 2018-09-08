@@ -425,7 +425,12 @@ ia16_frame_pointer_required (void)
 {
   /* We absolutely need a frame pointer to refer to arguments passed on the
      stack.  The GCC middle-end does not know about this IA-16 peculiarity,
-     so we need to inform it.  -- tkchia  */
+     so we need to inform it.
+
+     TODO: This still forces a frame pointer as long as the function _has_
+     stack arguments, even if it does not actually read them.  We should fix
+     this, as an optimization.  The fix may involve scanning the insn stream.
+	-- tkchia  */
   return crtl->args.info >= 4;
 }
 
@@ -468,6 +473,8 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
   if (ARG_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
     return (ia16_initial_arg_pointer_offset ());
 
+  /* This %sp -> %bp elimination is apparently needed: without it, GCC hangs
+     while compiling libgcc (e.g. emutls.c).  -- tkchia  */
   if (STACK_POINTER_REGNUM == from && FRAME_POINTER_REGNUM == to)
     return (-ia16_initial_frame_pointer_offset ());
 
