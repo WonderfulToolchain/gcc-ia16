@@ -212,7 +212,12 @@ static int
 ia16_save_reg_p (unsigned int r)
 {
   if (r == BP_REG)
-    return frame_pointer_needed;
+    {
+      if (! frame_pointer_needed && get_frame_size () != 0)  /* FIXME */
+	frame_pointer_needed = 1;
+
+      return frame_pointer_needed;
+    }
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (ia16_regno_in_class_p (r, UP_QI_REGS))
@@ -2354,7 +2359,6 @@ ia16_xlat_cost (rtx x, int *total)
 /* Compute a (partial) cost for rtx X.  Return true if the complete
    cost has been computed, and false if subexpressions should be
    scanned.  In either case, *TOTAL contains the cost result.
-   FIXME: Most costs are too low for modes larger than HImode.
    FIXME: When called from combine, we only ever see the source of SET
    expressions. We don't want to return a higher cost for
 	(set (mem) (and (mem) (reg1))
