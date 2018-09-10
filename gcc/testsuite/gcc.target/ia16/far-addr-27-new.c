@@ -27,18 +27,16 @@ int main (void)
     }
   /*
 	incfar:
-		pushw	%es
 		pushw	%bp
 		movw	%sp,	%bp
-		subw	$2,	%sp
-		lesw	6(%bp),	%bx
-		addw	$2,	%es:(%bx)
-		movw	%bp,	%sp
+		ldsw	4(%bp),	%bx
+		addw	$2,	(%bx)
 		popw	%bp
-		popw	%es
+		pushw	%ss
+		popw	%ds
 		ret
    */
-  if (incfar_size > 0xe)
+  if (incfar_size > 0xd)
     {
       printf ("incfar (.) is too large: %#x bytes\n", incfar_size);
       abort ();
