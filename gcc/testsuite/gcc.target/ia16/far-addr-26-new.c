@@ -53,23 +53,24 @@ main (void)
 		pushw	%ds
 		pushw	%ds
 		movw	$128,	%si
-		movw	$0,	-4(%bp)
-		xorw	%cx,	%cx
-		movw	%cx,	%bx
-		movw	$-16,	%ax
+		xorw	%ax,	%ax
 		movw	%ax,	%es
+		movw	%ax,	%cx
+		movw	%ax,	%bx
+		movw	$-16,	%ax
+		movw	%ax,	%ds
 		movw	$5,	%di
 	.L2:
 		movw	$5,	%ax
 		mulw	%cx
 		movw	%ax,	%cx
-		movw	-4(%bp),	%ax
+		movw	%es,	%ax
 		mulw	%di
 		movw	%ax,	-4(%bp)
 		movw	%dx,	-2(%bp)
 		addw	%dx,	%cx
-		xorw	%es:(%bx),	%ax
-		movw	%ax,	-4(%bp)
+		xorw	(%bx),	%ax
+		movw	%ax,	%es
 		addw	$2,	%bx
 		decw	%si
 		jne	.L2
@@ -79,9 +80,11 @@ main (void)
 		popw	%es
 		popw	%di
 		popw	%si
+		pushw	%ss
+		popw	%ds
 		ret
    */
-  if (hash1_size > 0x45)
+  if (hash1_size > 0x43)
     {
       printf ("hash1 () is too large: %#x bytes\n", hash1_size);
       abort ();
