@@ -1881,6 +1881,50 @@ ia16_default_address_cost (rtx r1, rtx r2, rtx c, rtx r9 ATTRIBUTE_UNUSED)
   return (total);
 }
 
+static bool
+ia16_seg_override_cost_likely_p (rtx r9, rtx r1, rtx r2)
+{
+  /* Map our RTL semantics to the x86 instruction set's segment override
+     weirdness.
+
+     On the RTL side:
+       * A null segment override (R9) means we are accessing an operand in
+	 the generic address space.  We currently assume that %ss points to
+	 this space.  %ds _might_ point to this space --- if the function
+	 assumes that %ds == .data on startup, and if the function we are
+	 compiling does not use %ds for anything.
+       * If R9 is not null, then we are accessing an operand at an offset
+	 from the specified segment.
+
+     On the machine code side, no segment override is needed if
+       * our operand is an offset from %ss, and the offset involves the
+	 register %bp (or the virtual "register" %argp); or
+       * our operand is an offset from %ds, and %bp is not involved.  */
+  unsigned seg_regno = SS_REG;
+
+  if (r9 && REG_P (r9))
+    seg_regno = REGNO (r9);
+
+  if (r1 && REG_P (r1)
+      && (REGNO (r1) == BP_REG || REGNO (r1) == ARGP_REG))
+    {
+      if (seg_regno == SS_REG)
+	return false;
+    }
+  else if (r2 && REG_P (r2)
+      && (REGNO (r2) == BP_REG || REGNO (r2) == ARGP_REG))
+    {
+      if (seg_regno == SS_REG)
+	return false;
+    }
+  else
+    {
+      if (seg_regno == DS_REG)
+	return false;
+    }
+  return true;
+}
+
 /* Calculate address cost for Intel i8086/i8088.  Note that %bp + %si or
  * %bx + %di costs one more cycle than %bp + %di or %bx + %si.
  * The %bp addressing mode is really 0 + %bp but we ignore that.
@@ -1912,7 +1956,7 @@ ia16_i808x_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 	cost = C (6) + ia16_constant_cost (c, Pmode, MEM);
     }
 
-  if (r9)
+  if (ia16_seg_override_cost_likely_p (r9, r1, r2))
     cost += C (2);
 
   return (cost);
@@ -1923,7 +1967,7 @@ static int
 ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 {
   /* Treat the r/m portion of a mod-r/m encoding as taking up half a byte.  */
-  int cost = (C (0) + C (1)) / 2;
+  int cost = C (1) / 2;
 
   if (r1)
     {
@@ -1938,7 +1982,7 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
   if (c)
     cost += ia16_constant_cost (c, Pmode, MEM);
 
-  if (r9)
+  if (ia16_seg_override_cost_likely_p (r9, r1, r2))
     cost += C (1);
 
   return (cost);
@@ -2610,7 +2654,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
   	  *total = MAX (ia16_costs->s_mult_init[M_MOD (mode)][I_RTX (op1)]
 			+ nbits * ia16_costs->mult_bit,
 			ia16_size_costs.s_mult_init[M_MOD (mode)][I_RTX (op1)]
-			* ia16_costs->byte_fetch * H_MOD (mode))
+			* ia16_costs->byte_fetch * H_RTX (op1))
 	    + rtx_cost (op0, mode, outer_code, 0, speed)
 	    + rtx_cost (op1, mode, outer_code, 1, speed);
 
@@ -2624,7 +2668,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	*total = IA16_COST (fdiv);
       else
 	*total = IA16_COST (u_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))])
-		 * H_MOD (mode);
+		 * H_RTX (XEXP (x, 0));
       return false;
 
     case DIV:
@@ -2633,7 +2677,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 	*total = IA16_COST (fdiv);
       else
 	*total = IA16_COST (s_divide[M_MOD (mode)][I_RTX (XEXP (x, 0))])
-		 * H_MOD (mode);
+		 * H_RTX (XEXP (x, 0));
       return false;
 
     /* FIXME: This might be too pessimistic when rtx_equal_p (op0, op1).  */
@@ -3356,6 +3400,8 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 	return (0 == 0);
 }
 
+/* Say whether a segment override term for SEG_REGNO should be printed in the
+   assembly output, given that the base register term is RB.  */
 static bool
 ia16_to_print_seg_override_p (unsigned seg_regno, rtx rb)
 {
@@ -3394,23 +3440,7 @@ ia16_print_operand_address (FILE *file, rtx e)
       return;
     }
 
-  /* Map our RTL semantics to the x86 instruction set's segment override
-     weirdness.
-
-     On the RTL side:
-       * A null segment override (RS) means we are accessing an operand in
-	 the generic address space.  We currently assume that %ss points to
-	 this space.  %ds _might_ point to this space --- if the function
-	 assumes that %ds == .data on startup, and if we are compiling does
-	 not use %ds for anything (liveness information for %ds is available
-	 to us at this stage).
-       * If RS is not null, then we are accessing an operand at an offset
-	 from the specified segment.
-
-     On the machine code side, no segment override is needed if
-       * our operand is an offset from %ss, and the offset involves the
-	 register %bp; or
-       * our operand is an offset from %ds, and %bp is not involved.  */
+  /* See ia16_seg_override_cost_likely_p (...) above.  */
   if (rs)
     {
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
