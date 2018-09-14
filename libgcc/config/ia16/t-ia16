@@ -38,7 +38,8 @@ endif
 
 # These might cause a divide overflow trap and so are compiled with
 # unwinder info.
-lib2_divmodsi_funcs = _divXX3 _modXX3 _udivXX3 _umodXX3 _udivmodXX4
+#lib2_divmodsi_funcs = _divXX3 _modXX3 _udivXX3 _umodXX3 _udivmodXX4
+lib2_divmodsi_funcs = _divXX3 _modXX3 _udivmodXX4
 
 lib2-divmodsi-o = $(patsubst %,%$(objext),$(subst XX,si,$(lib2_divmodsi_funcs)))
 $(lib2-divmodsi-o): %$(objext): $(srcdir)/libgcc2.c
@@ -46,3 +47,10 @@ $(lib2-divmodsi-o): %$(objext): $(srcdir)/libgcc2.c
 	  $(LIB2_DIVMOD_EXCEPTION_FLAGS) $(vis_hide) \
 	-DLIBGCC2_UNITS_PER_WORD=2
 libgcc-objects += $(lib2-divmodsi-o)
+
+# Assembly language implementations of some routines.
+# 
+# TODO: redo this whole fragment to define $(LIB2ADD), etc., rather than mess
+# with Makefile.in internals.  -- tkchia 20180914
+LIB1ASMFUNCS = _udivsi3 _umodsi3 _ia16_ldivmodu
+LIB1ASMSRC = ia16/udivmodsi3.S
