@@ -1113,7 +1113,7 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
   if (r1 == NULL_RTX)
     return true;
   int r1no = REGNO (r1);
-  bool r1ok = true;
+  bool r1ok = (r1no > LAST_HARD_REG);
   if (strict)
     {
       r1ok = false;
@@ -1127,7 +1127,7 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
   if (r2 == NULL_RTX)
     return REGNO_MODE_OK_FOR_BASE_P (r1no, mode) || r1ok;
   int r2no = REGNO (r2);
-  bool r2ok = true;
+  bool r2ok = (r2no > LAST_HARD_REG);
   if (strict)
     {
       r2ok = false;
