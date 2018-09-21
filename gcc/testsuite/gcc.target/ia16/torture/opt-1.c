@@ -1,5 +1,5 @@
 /* { dg-do assemble } */
-/* { dg-options "-Os --save-temps" } */
+/* { dg-options "-std=gnu11 --save-temps" } */
 
 /* Test whether the addition below is compiled into something like
 	addw	$2,	(%bx)
