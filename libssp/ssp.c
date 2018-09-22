@@ -96,30 +96,43 @@ __guard_setup (void)
     }
 #elif defined (__MSDOS__) && defined (__ia16__)
   {
-    clock_t start;
-    uintptr_t foo, bar, baz;
+# ifdef __IA16_FEATURE_PROTECTED_MODE
+#   define LOOP_P()	1
+#   define TIME()	((uintptr_t) time (NULL))
+# else
+    /* Skip this timer wait loop if interrupts are disabled (or "disabled",
+       e.g. when running under 86sim).  */
+#   define LOOP_P()	({ \
+			  unsigned flags; \
+			  __asm volatile ("pushfw; popw %0" : "=r" (flags)); \
+			  (flags & 0x0200u) != 0; \
+			})
+#   define TIME()	(*(volatile uintptr_t __far *) 0x0000046cul)
+# endif
+    uintptr_t foo, bar, baz, qux;
 
     __asm volatile ("" : "=r" (foo));
-    start = (uintptr_t) clock ();
-    do
-      ++foo;
-    while ((uintptr_t) clock () == start);
+    if (LOOP_P ())
+      {
+	qux = TIME ();
+	do
+	  ++foo;
+	while (TIME () == qux);
+      }
     foo *= 0xa2edu;
 
     __asm volatile ("movw %%ss, %0" : "=r" (bar));
     bar *= 0xe335u;
 
-# ifdef __IA16_FEATURE_PROTECTED_MODE
-    baz = (uintptr_t) time (NULL);
-# else
-    baz = *(volatile uintptr_t __far *) 0x0040006cul;
-# endif
+    baz = TIME ();
     baz *= 0x3757u;
 
     __stack_chk_guard = (void *) (foo ^ bar ^ baz);
     if (__stack_chk_guard != 0)
       return;
   }
+# undef LOOP_P
+# undef TIME
 #else
   fd = open ("/dev/urandom", O_RDONLY);
   if (fd != -1)
