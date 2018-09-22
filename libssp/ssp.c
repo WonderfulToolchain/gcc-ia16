@@ -59,6 +59,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include <wincrypt.h>
 # define _PATH_TTY "CONOUT$"
 #elif defined (__MSDOS__)
+#include <time.h>
+#include <inttypes.h>
 # define _PATH_TTY "CON"
 #else
 # define _PATH_TTY "/dev/tty"
@@ -92,6 +94,32 @@ __guard_setup (void)
         }
       CryptReleaseContext(hprovider, 0);
     }
+#elif defined (__MSDOS__) && defined (__ia16__)
+  {
+    clock_t start;
+    uintptr_t foo, bar, baz;
+
+    __asm volatile ("" : "=r" (foo));
+    start = (uintptr_t) clock ();
+    do
+      ++foo;
+    while ((uintptr_t) clock () == start);
+    foo *= 0xa2edu;
+
+    __asm volatile ("movw %%ss, %0" : "=r" (bar));
+    bar *= 0xe335u;
+
+# ifdef __IA16_FEATURE_PROTECTED_MODE
+    baz = (uintptr_t) time (NULL);
+# else
+    baz = *(volatile uintptr_t __far *) 0x0040006cul;
+# endif
+    baz *= 0x3757u;
+
+    __stack_chk_guard = (void *) (foo ^ bar ^ baz);
+    if (__stack_chk_guard != 0)
+      return;
+  }
 #else
   fd = open ("/dev/urandom", O_RDONLY);
   if (fd != -1)
