@@ -2379,7 +2379,8 @@ A register indirect memory operand
 @item Intel IA-16---@file{config/ia16/constraints.md}
 @table @code
 @item a
-The @code{ax} register.
+The @code{ax} register.  Note that for a byte operand, this constraint means
+that the operand can go into either @code{al} or @code{ah}.
 
 @item b
 The @code{bx} register.
