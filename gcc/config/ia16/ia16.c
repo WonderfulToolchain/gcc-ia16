@@ -4541,9 +4541,10 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
       else
 	return P ("call\t%c");
     }
-  else if ((DECL_INITIAL (fndecl)
-	    && ! ia16_far_section_function_type_p (fntype))
-	   || ia16_near_section_function_type_p (fntype))
+  else if (! ia16_in_far_section_function_p ()
+	   && ((DECL_INITIAL (fndecl)
+		&& ! ia16_far_section_function_type_p (fntype))
+	       || ia16_near_section_function_type_p (fntype)))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("pushw\t%%cs\n\tcall\t*%");
@@ -4596,8 +4597,10 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
       else
 	return P ("jmp\t%c");
     }
-  else if (DECL_INITIAL (fndecl)
-	   || ia16_near_section_function_type_p (fntype))
+  else if (! ia16_in_far_section_function_p ()
+	   && ((DECL_INITIAL (fndecl)
+		&& ! ia16_far_section_function_type_p (fntype))
+	       || ia16_near_section_function_type_p (fntype)))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("jmp\t*%");
