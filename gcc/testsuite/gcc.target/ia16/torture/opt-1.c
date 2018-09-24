@@ -1,4 +1,5 @@
 /* { dg-do assemble } */
+/* { dg-skip-if "" { *-*-* }  { "-O0" "-O1" } { "" } } */
 /* { dg-options "-std=gnu11 --save-temps" } */
 
 /* Test whether the addition below is compiled into something like
