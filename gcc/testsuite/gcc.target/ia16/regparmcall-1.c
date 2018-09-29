@@ -56,10 +56,6 @@ main (int argc, char **argv)
 /* inc (.) should not pop one shortword: */
 /* { dg-final { scan-assembler-not "ret\[ \\t\]\\\$2" } } */
 
-/* main (...) should adjust the stack after calling open (...), a variadic
-   function: */
-/* { dg-final { scan-assembler "addw\[ \\t\]\\\$4,\[ \\t\]%sp" } } */
-
 /* main (...) should not adjust the stack after calling __umoddi3 (...) or
    lseek (...): */
 /* { dg-final { scan-assembler-not "addw\[ \\t\]\\\$\[\^4\].*,\[ \\t\]%sp" } } */
