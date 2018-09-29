@@ -440,7 +440,7 @@ ia16_frame_pointer_required (void)
      stack arguments, even if it does not actually read them.  We should fix
      this, as an optimization.  The fix may involve scanning the insn stream.
 	-- tkchia  */
-  return crtl->args.info >= 4 || get_frame_size () != 0;
+  return crtl->args.info >= 4 || cfun->stdarg || get_frame_size () != 0;
 }
 
 #undef	TARGET_CAN_ELIMINATE
@@ -603,7 +603,7 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 			   const_tree fndecl ATTRIBUTE_UNUSED,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
-  if (! ia16_regparmcall_function_type_p (fntype) || stdarg_p (fntype))
+  if (! ia16_regparmcall_function_type_p (fntype))
     *cum = 3;
   else
     *cum = 0;
@@ -850,6 +850,16 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
     default:
       gcc_unreachable ();
     }
+}
+
+/* Implementing the Varargs Macros */
+#undef	TARGET_STRICT_ARGUMENT_NAMING
+#define TARGET_STRICT_ARGUMENT_NAMING ia16_strict_argument_naming
+
+static bool
+ia16_strict_argument_naming (cumulative_args_t cum_v ATTRIBUTE_UNUSED)
+{
+  return true;
 }
 
 /* Defining target-specific uses of __attribute__ */
