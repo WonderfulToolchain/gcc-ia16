@@ -16637,7 +16637,8 @@ harmlessly ignored.)
 @opindex mregparmcall
 Use a different function-calling convention, in which functions that take a
 fixed number of arguments receive their first few arguments in registers,
-and pop their remaining arguments off the stack.
+and pop their remaining arguments off the stack (except for arguments to
+variadic functions).
 
 At the linking stage, this option will also make GCC link your code against
 the appropriate @option{-mregparmcall} multilib.

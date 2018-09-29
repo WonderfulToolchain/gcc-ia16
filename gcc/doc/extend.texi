@@ -4233,9 +4233,9 @@ pass its first few arguments to the function in the registers @code{ax},
 @code{dx}, and @code{cx}, instead of on the stack.  The called function pops
 the arguments off the stack.
 
-An exception is that, if the number of arguments is variable, all arguments
-are pushed on the stack, and the calling function pops the arguments off the
-stack.
+An exception is that, if the number of arguments is variable, the @code{...}
+variable arguments will always go on the stack, and the calling function
+pops all pushed arguments.
 
 @code{regparmcall} support is still experimental.
 
