@@ -1,5 +1,4 @@
 /* { dg-do assemble } */
-/* { dg-skip-if "" { *-*-* }  { "-O0" } { "" } } */
 /* { dg-options "-std=gnu11 --save-temps" } */
 
 /* Test for a bogus register spill just before sign-extending a value in %al
