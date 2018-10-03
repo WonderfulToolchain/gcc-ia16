@@ -55,6 +55,9 @@
 #include "hashtab.h"
 #include "print-tree.h"
 #include "langhooks.h"
+#include "stringpool.h"
+#include "attribs.h"
+#include "cgraph.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -4109,9 +4112,8 @@ static tree
 ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 		   bool ignore ATTRIBUTE_UNUSED)
 {
-  static tree ptrtype = NULL_TREE;
   unsigned fcode = DECL_FUNCTION_CODE (fndecl);
-  tree op, fake;
+  tree op, fake, faketype, ptrtype;
 
   switch (fcode)
     {
@@ -4125,9 +4127,6 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       return args[0];
 
     case IA16_BUILTIN_FP_OFF:
-      if (flag_lto)
-	return NULL_TREE;
-
       gcc_assert (n_args == 1);
       /* Do a hack to handle the special case of using a far pointer's
 	 offset in a static initializer, like so:
@@ -4140,12 +4139,11 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       if (! TREE_CONSTANT (op))
 	return NULL_TREE;
 
-      /* Check if we are taking the address of a public or external near/far
-	 function or near/far variable; if not, again hand over to
+      /* Check if we are taking the address of a public, external, or static
+	 near/far function or near/far variable; if not, again hand over to
 	 ia16_expand_builtin (...).  First strip away layers of NOP_EXPR.
 
-	 TODO: generalize this to handle other types of far addresses.  And,
-	 get this feature to work with LTO.  */
+	 TODO: generalize this to handle other types of far addresses.  */
       while (TREE_CODE (op) == NOP_EXPR
 	     && POINTER_TYPE_P (TREE_TYPE (op))
 	     && ia16_fp_off_foldable_for_as (TYPE_ADDR_SPACE
@@ -4161,26 +4159,49 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       op = TREE_OPERAND (op, 0);
       if (! VAR_OR_FUNCTION_DECL_P (op))
 	return NULL_TREE;
-      if (! DECL_EXTERNAL (op) && ! TREE_PUBLIC (op))
+      if (! DECL_EXTERNAL (op) && ! TREE_PUBLIC (op) && ! TREE_STATIC (op))
+	return NULL_TREE;
+      if (DECL_EXTERNAL (op) && flag_lto)
 	return NULL_TREE;
 
       /* Mark the original declaration as addressable.  */
       mark_addressable (op);
 
-      /* Create a fake external "declaration" which has the same assembler
+      /* Create a fake "declaration" which aliases to the same assembler
 	 name, but which is placed in the generic address space.  Then take
-	 the address of that.  Mark the pointer as artificial, and as being
-	 able to alias anything.  */
-      fake = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 create_tmp_var_name (NULL), char_type_node);
-      SET_DECL_ASSEMBLER_NAME (fake, DECL_ASSEMBLER_NAME (op));
-      DECL_EXTERNAL (fake) = 1;
-      DECL_ARTIFICIAL (fake) = 1;
+	 the address of that.  */
+      faketype = build_qualified_type (TREE_TYPE (op), TYPE_UNQUALIFIED);
+      fake = build_decl (UNKNOWN_LOCATION,
+			 VAR_P (op) ? VAR_DECL : FUNCTION_DECL,
+			 create_tmp_var_name (NULL), faketype);
+      if (! DECL_EXTERNAL (op))
+	{
+	  DECL_ATTRIBUTES (fake) = tree_cons (get_identifier ("weakref"), NULL,
+					      DECL_ATTRIBUTES (fake));
+	  DECL_ATTRIBUTES (fake)
+	    = tree_cons (get_identifier ("alias"),
+			 tree_cons (NULL, DECL_ASSEMBLER_NAME (op), NULL),
+			 DECL_ATTRIBUTES (fake));
+	  DECL_EXTERNAL (fake) = 1;
+	  DECL_ARTIFICIAL (fake) = 1;
+	  if (VAR_P (op))
+	    varpool_node::create_alias (fake, op);
+	  else
+	    cgraph_node::create_alias (fake, op);
+	}
+      else
+	{
 
-      if (! ptrtype)
-	ptrtype = build_pointer_type_for_mode (char_type_node, HImode, true);
+	  /* FIXME: If `op' is defined externally, the above alias
+	     definition method will crash GCC for some reason.  On the other
+	     hand, doing a SET_DECL_ASSEMBLER_NAME (...) causes a type
+	     conflict under LTO.  -- tkchia 20181003  */
+	  SET_DECL_ASSEMBLER_NAME (fake, DECL_ASSEMBLER_NAME (op));
+	  DECL_EXTERNAL (fake) = 1;
+	  DECL_ARTIFICIAL (fake) = 1;
+	}
 
-      mark_addressable (fake);
+      ptrtype = build_pointer_type_for_mode (faketype, HImode, true);
       op = build_fold_addr_expr_with_type_loc (UNKNOWN_LOCATION, fake,
 					       ptrtype);
       op = fold_build1 (NOP_EXPR, unsigned_intHI_type_node, op);
