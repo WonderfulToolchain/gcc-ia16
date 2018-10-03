@@ -13113,8 +13113,8 @@ simply return @var{sel}.
 Extract the offset portion of the far pointer @var{fp}.  This function can
 be used within a static initializer, under certain
 conditions@footnote{Currently, this is allowed if @var{fp} is a pointer to
-an externally defined or externally visible variable or function, and if LTO
-is not in effect.}.
+a locally defined variable or function, or if @var{fp} points to an external
+variable or function and LTO is not in effect.}.
 
 @end table
 

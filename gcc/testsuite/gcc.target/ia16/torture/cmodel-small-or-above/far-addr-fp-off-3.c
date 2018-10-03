@@ -2,8 +2,7 @@
 /* { dg-do run } */
 
 /* Test that we can use __builtin_ia16_FP_OFF (.) in a static initializer,
-   on a pointer to an externally visible function defined in the same
-   translation unit.
+   on a pointer to a locally visible function.
 
    This test case is partly taken from the FreeDOS kernel code (in
    kernel/main.c).  -- tkchia */
@@ -12,7 +11,7 @@
 # error
 #endif
 
-__attribute__ ((stdcall, far_section)) void
+__attribute__ ((stdcall, far_section)) static void
 int0_handler (void) __far
 {
 }
