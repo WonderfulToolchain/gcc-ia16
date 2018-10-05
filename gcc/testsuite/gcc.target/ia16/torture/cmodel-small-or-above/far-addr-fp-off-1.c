@@ -18,4 +18,5 @@ struct vec {
   unsigned handleroff __attribute__ ((packed));
 } vectors[] = { 0, __builtin_ia16_FP_OFF (int0_handler) };
 
-/* { dg-final { scan-assembler "\.hword\[ \\t\]int0_handler" } } */
+/* { dg-final { scan-assembler "\.hword\[ \\t\]__ia16_alias" { target { ! lto } } } } */
+/* { dg-final { scan-assembler "\.(weakref|set)\[ \\t\]__ia16_alias.*,int0_handler" { target { ! lto } } } } */
