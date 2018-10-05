@@ -57,7 +57,7 @@
 #include "langhooks.h"
 #include "stringpool.h"
 #include "attribs.h"
-#include "cgraph.h"
+#include "varasm.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -4113,7 +4113,7 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 		   bool ignore ATTRIBUTE_UNUSED)
 {
   unsigned fcode = DECL_FUNCTION_CODE (fndecl);
-  tree op, fake, faketype, ptrtype;
+  tree op, name, fake, faketype, ptrtype;
 
   switch (fcode)
     {
@@ -4170,36 +4170,20 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       /* Create a fake "declaration" which aliases to the same assembler
 	 name, but which is placed in the generic address space.  Then take
 	 the address of that.  */
+      name = DECL_ASSEMBLER_NAME (op);
       faketype = build_qualified_type (TREE_TYPE (op), TYPE_UNQUALIFIED);
       fake = build_decl (UNKNOWN_LOCATION,
 			 VAR_P (op) ? VAR_DECL : FUNCTION_DECL,
-			 create_tmp_var_name (NULL), faketype);
-      if (! DECL_EXTERNAL (op))
-	{
-	  DECL_ATTRIBUTES (fake) = tree_cons (get_identifier ("weakref"), NULL,
-					      DECL_ATTRIBUTES (fake));
-	  DECL_ATTRIBUTES (fake)
-	    = tree_cons (get_identifier ("alias"),
-			 tree_cons (NULL, DECL_ASSEMBLER_NAME (op), NULL),
-			 DECL_ATTRIBUTES (fake));
-	  DECL_EXTERNAL (fake) = 1;
-	  DECL_ARTIFICIAL (fake) = 1;
-	  if (VAR_P (op))
-	    varpool_node::create_alias (fake, op);
-	  else
-	    cgraph_node::create_alias (fake, op);
-	}
-      else
-	{
-
-	  /* FIXME: If `op' is defined externally, the above alias
-	     definition method will crash GCC for some reason.  On the other
-	     hand, doing a SET_DECL_ASSEMBLER_NAME (...) causes a type
-	     conflict under LTO.  -- tkchia 20181003  */
-	  SET_DECL_ASSEMBLER_NAME (fake, DECL_ASSEMBLER_NAME (op));
-	  DECL_EXTERNAL (fake) = 1;
-	  DECL_ARTIFICIAL (fake) = 1;
-	}
+			 create_tmp_var_name ("__ia16_alias"), faketype);
+      DECL_ATTRIBUTES (fake) = tree_cons (get_identifier ("weakref"), NULL,
+					  DECL_ATTRIBUTES (fake));
+      DECL_ATTRIBUTES (fake)
+	= tree_cons (get_identifier ("alias"), tree_cons (NULL, name, NULL),
+		     DECL_ATTRIBUTES (fake));
+      TREE_STATIC (fake) = 1;
+      DECL_ARTIFICIAL (fake) = 1;
+      TREE_USED (fake) = 1;
+      assemble_alias (fake, name);
 
       ptrtype = build_pointer_type_for_mode (faketype, HImode, true);
       op = build_fold_addr_expr_with_type_loc (UNKNOWN_LOCATION, fake,
