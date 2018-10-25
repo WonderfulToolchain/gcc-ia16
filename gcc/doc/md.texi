@@ -2496,6 +2496,10 @@ A constant usable with the @code{imul} instruction except 257.
 
 @item I11
 The constant 257.
+
+@item N
+Unsigned 8-bit integer constant (for @code{in} and @code{out}
+instructions).
 @end table
 
 @item Intel IA-64---@file{config/ia64/ia64.h}
