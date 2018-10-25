@@ -24,7 +24,7 @@
 
 ; Machine specific integer constant constraints:
 ; Available:
-;                   J K     N O
+;                   J K       O
 
 ; Machine specific floating point constant constraints:
 ; Available:
@@ -161,3 +161,8 @@
 (define_constraint	"I11"	"The constant 257."
    (and (match_code "const_int")
 	(match_test "ival == 257")))
+
+; Supported immediate operands for "in" and "out".
+(define_constraint	"N"	"Unsigned 8-bit integer constant (for @code{in} and @code{out} instructions."
+   (and (match_code "const_int")
+	(match_test "ival >= 0 && ival <= 255")))
