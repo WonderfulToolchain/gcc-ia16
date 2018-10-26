@@ -34,7 +34,7 @@
 ; Used register constraints:
 ; aAbBc dDe    h   j k l         qQ R S Tu   w x
 ; Used constant constraints (IJKLMNOP integers only):
-;                 I     L M     P         U         Z
+;                 I     L MN    P         U         Z
 ; Available:
 ;      C    f                          t   v  W  yYz
 
