@@ -3492,13 +3492,10 @@ ia16_push_reg (unsigned int regno)
 rtx
 ia16_pop_reg (unsigned int regno)
 {
-  machine_mode mode = HImode;
   if (TARGET_PROTECTED_MODE && REGNO_OK_FOR_SEGMENT_P (regno))
-    mode = PHImode;
-  return gen_rtx_SET (gen_rtx_REG (mode, regno),
-		      gen_frame_mem (mode,
-				     gen_rtx_POST_INC (Pmode,
-						       stack_pointer_rtx)));
+    return gen__popphi1 (gen_rtx_REG (PHImode, regno));
+  else
+    return gen__pophi1 (gen_rtx_REG (HImode, regno));
 }
 
 /* Trampolines for Nested Functions */
