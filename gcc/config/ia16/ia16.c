@@ -4357,6 +4357,107 @@ ia16_elide_unneeded_ss_stuff (void)
   free (stack);
 }
 
+/* If optimizing for size, try to rewrite each 2-byte `movw %reg, %ax' or
+   `movw %ax, %reg' into a 1-byte `xchgw %ax, %reg', wherever possible.
+
+   This optimization needs to be done as late as possible --- if it is in,
+   say, the peephole2 pass, the resulting insn patterns for `xchgw' may
+   interfere with subsequent passes.  */
+static void
+ia16_rewrite_movw_as_xchgw (void)
+{
+  bool reg_now_clobbered_p[LAST_ALLOCABLE_REG + 1];
+  rtx_insn *insn;
+  rtx pat, dest, src;
+  unsigned rd, rs;
+
+  df_note_add_problem ();
+  df_analyze ();
+
+  for (rs = 0; rs <= LAST_ALLOCABLE_REG; ++rs)
+    reg_now_clobbered_p[rs] = false;
+
+  for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
+    {
+
+      if (! INSN_P (insn))
+	continue;
+
+      pat = PATTERN (insn);
+      if (GET_CODE (pat) != SET)
+	continue;
+
+      dest = SET_DEST (pat);
+      src = SET_SRC (pat);
+      if ((! REG_P (dest) && ! SUBREG_P (dest))
+	  || (! REG_P (src) && ! SUBREG_P (src))
+	  || GET_MODE_SIZE (GET_MODE (dest)) != 2
+	  || GET_MODE_SIZE (GET_MODE (src)) != 2)
+	continue;
+
+      while (SUBREG_P (dest))
+	dest = SUBREG_REG (dest);
+      while (SUBREG_P (src))
+	src = SUBREG_REG (src);
+
+      if (! REG_P (dest)
+	  || ! REG_P (src)
+	  || GET_MODE_SIZE (GET_MODE (dest)) != 2
+	  || GET_MODE_SIZE (GET_MODE (src)) != 2)
+	continue;
+
+      rd = REGNO (dest);
+      rs = REGNO (src);
+
+      if (rd == A_REG)
+	{
+	  if (! ia16_regno_in_class_p (rs, GENERAL_REGS)
+	      || ! find_regno_note (insn, REG_DEAD, rs))
+	    continue;
+	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rs),
+					 gen_rtx_REG (HImode, A_REG));
+	  INSN_CODE (insn) = CODE_FOR__xchghi2;
+	  reg_now_clobbered_p[rs] = true;
+	}
+      else if (rs == A_REG)
+	{
+	  if (! ia16_regno_in_class_p (rd, GENERAL_REGS)
+	      || ! find_regno_note (insn, REG_DEAD, A_REG))
+	    continue;
+	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rd),
+					 gen_rtx_REG (HImode, A_REG));
+	  INSN_CODE (insn) = CODE_FOR__xchghi2;
+	  reg_now_clobbered_p[A_REG] = true;
+	}
+    }
+
+  /* If e.g. `movw %bx, %ax' was rewritten into `xchgw %bx, %ax', then any
+     REG_EQUAL or REG_EQUIV notes involving %bx may no longer be correct.
+     Remove such notes.  */
+  for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
+    {
+      if (! INSN_P (insn))
+	continue;
+
+      pat = single_set (insn);
+      if (! pat)
+	continue;
+
+      dest = SET_DEST (pat);
+      while (SUBREG_P (dest))
+	dest = SUBREG_REG (dest);
+
+      if (! REG_P (dest))
+	continue;
+
+      rd = REGNO (dest);
+      if (rd <= LAST_ALLOCABLE_REG
+	  && (reg_now_clobbered_p[rd]
+	      || (rd < FIRST_NOQI_REG && reg_now_clobbered_p[rd / 2 * 2])))
+	remove_note (insn, find_reg_equal_equiv_note (insn));
+    }
+}
+
 #undef	TARGET_MACHINE_DEPENDENT_REORG
 #define	TARGET_MACHINE_DEPENDENT_REORG	ia16_machine_dependent_reorg
 
@@ -4366,12 +4467,18 @@ ia16_machine_dependent_reorg (void)
   ia16_verify_calls_from_no_assume_ds ();
   ia16_verify_calls_from_far_section ();
 
-  if (optimize && TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
+  if (optimize)
     {
-      compute_bb_for_insn ();
-      ia16_rewrite_bp_as_bx ();
-      ia16_elide_unneeded_ss_stuff ();
-      free_bb_for_insn ();
+      if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
+	{
+	  compute_bb_for_insn ();
+	  ia16_rewrite_bp_as_bx ();
+	  ia16_elide_unneeded_ss_stuff ();
+	  free_bb_for_insn ();
+	}
+
+      if (optimize_size)
+	ia16_rewrite_movw_as_xchgw ();
     }
 }
 
@@ -4872,9 +4979,8 @@ ia16_expand_epilogue (bool sibcall)
 }
 
 /* Return the insn template for a normal call to a subroutine at address
-   ADDR and with machine mode MODE.  ADDR should correspond to "%0", "%1",
-   or "%3" in the (define_insn ...), depending on whether WHICH_IS_ADDR is
-   0, 1, or 3.
+   ADDR and with machine mode MODE.  ADDR should correspond to "%0" or "%1"
+   in the (define_insn ...), depending on whether WHICH_IS_ADDR is 0 or 1.
 
    There are 4 cases we need to handle:
      * we are calling a near function (with a 16-bit address)
@@ -4885,13 +4991,10 @@ ia16_expand_epilogue (bool sibcall)
        away with a `pushw %cs' plus a near call
      * none of the above --- use `lcall' and do not assume that the function
        resides in the default text section.  */
-#define P(part)	(which_is_addr == 0 ? part "0" : \
-		 which_is_addr == 1 ? part "1" : \
-				      part "3")
+#define P(part)	(which_is_addr == 0 ? part "0" : part "1")
 #define P2(part_a, part_b) \
 			(which_is_addr == 0 ? part_a "0" part_b "0" : \
-			 which_is_addr == 1 ? part_a "1" part_b "1" : \
-					      part_a "3" part_b "3")
+					      part_a "1" part_b "1")
 const char *
 ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 {
