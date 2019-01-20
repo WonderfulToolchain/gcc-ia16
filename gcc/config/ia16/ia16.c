@@ -4371,15 +4371,11 @@ ia16_rewrite_movw_as_xchgw (void)
   rtx pat, dest, src;
   unsigned rd, rs;
 
-  df_note_add_problem ();
-  df_analyze ();
-
   for (rs = 0; rs <= LAST_ALLOCABLE_REG; ++rs)
     reg_now_clobbered_p[rs] = false;
 
   for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
     {
-
       if (! INSN_P (insn))
 	continue;
 
@@ -4476,12 +4472,20 @@ ia16_machine_dependent_reorg (void)
 	{
 	  compute_bb_for_insn ();
 	  ia16_rewrite_bp_as_bx ();
-	  ia16_elide_unneeded_ss_stuff ();
-	  free_bb_for_insn ();
 	}
 
       if (optimize_size)
-	ia16_rewrite_movw_as_xchgw ();
+	{
+	  df_note_add_problem ();
+	  df_analyze ();
+	  ia16_rewrite_movw_as_xchgw ();
+	}
+
+      if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
+	{
+	  ia16_elide_unneeded_ss_stuff ();
+	  free_bb_for_insn ();
+	}
     }
 }
 
