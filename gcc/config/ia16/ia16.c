@@ -4412,7 +4412,9 @@ ia16_rewrite_movw_as_xchgw (void)
       if (rd == A_REG)
 	{
 	  if (! ia16_regno_in_class_p (rs, GENERAL_REGS)
-	      || ! find_regno_note (insn, REG_DEAD, rs))
+	      || ! find_regno_note (insn, REG_DEAD, rs)
+	      || (rs < FIRST_NOQI_REG - 1
+		  && ! find_regno_note (insn, REG_DEAD, rs + 1)))
 	    continue;
 	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rs),
 					 gen_rtx_REG (HImode, A_REG));
@@ -4422,7 +4424,8 @@ ia16_rewrite_movw_as_xchgw (void)
       else if (rs == A_REG)
 	{
 	  if (! ia16_regno_in_class_p (rd, GENERAL_REGS)
-	      || ! find_regno_note (insn, REG_DEAD, A_REG))
+	      || ! find_regno_note (insn, REG_DEAD, A_REG)
+	      || ! find_regno_note (insn, REG_DEAD, AH_REG))
 	    continue;
 	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rd),
 					 gen_rtx_REG (HImode, A_REG));
