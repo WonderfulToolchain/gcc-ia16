@@ -4474,11 +4474,19 @@ ia16_machine_dependent_reorg (void)
 	  ia16_rewrite_bp_as_bx ();
 	}
 
+      /* The insn notes are only needed by the `movw' -> `xchgw' rewriting
+	 subpass (ia16_rewrite_movw_as_xchg ()), but I put the df_analyze ()
+	 before the %ss elimination subpass (ia16_elide_unneeded_ss_stuff
+	 ()).
+
+	 This is because df_analyze () might overwrite the %ss subpass's
+	 judgement on whether %ds is live.  (This caused a minor regression
+	 in gcc.target/ia16/torture/optimize/opt-1.c, as an extraneous %ss
+	 was sticking out.)  -- tkchia  */
       if (optimize_size)
 	{
 	  df_note_add_problem ();
 	  df_analyze ();
-	  ia16_rewrite_movw_as_xchgw ();
 	}
 
       if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
@@ -4486,6 +4494,9 @@ ia16_machine_dependent_reorg (void)
 	  ia16_elide_unneeded_ss_stuff ();
 	  free_bb_for_insn ();
 	}
+
+      if (optimize_size)
+	ia16_rewrite_movw_as_xchgw ();
     }
 }
 
