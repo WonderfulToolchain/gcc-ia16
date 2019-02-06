@@ -45,6 +45,7 @@
    during -r.)  -- tkchia  */
 #define LINK_SPEC	\
   "%{!T*:"		\
+    "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
     "%{!r:"		\
       "%{nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \

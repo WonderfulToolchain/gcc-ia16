@@ -139,6 +139,10 @@ mmsdos
 Target Report RejectNegative InverseMask(SYS_ELKS)
 Generate executables for MS-DOS (default).
 
+mmsdos-handle-v1
+Target Report RejectNegative InverseMask(SYS_ELKS)
+Generate MS-DOS executables which fail gracefully on DOS v1.x (experimental).
+
 ; This is currently a no-op option.  It may come in useful if and when ELKS
 ; supports more than one executable format.
 maout

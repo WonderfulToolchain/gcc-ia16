@@ -36,22 +36,32 @@ dg-init
 
     set IA16_TORTURE_OPTIONS [list \
 	{ -O0 -mcmodel=small } \
+	{ -O0 -mcmodel=small -mmsdos-handle-v1 } \
 	{ -O0 -mcmodel=small -mprotected-mode } \
 	{ -O0 -mcmodel=small -mrtd } \
+	{ -O0 -mcmodel=small -mrtd -mmsdos-handle-v1 } \
 	{ -O0 -mcmodel=small -mregparmcall } \
+	{ -O0 -mcmodel=small -mregparmcall -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small } \
+	{ -O1 -mcmodel=small -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small -funroll-loops } \
 	{ -O1 -mcmodel=small -frename-registers } \
 	{ -O1 -mcmodel=small -funroll-loops -fno-rename-registers } \
 	{ -O1 -mcmodel=small -mrtd } \
+	{ -O1 -mcmodel=small -mrtd -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small -mregparmcall } \
+	{ -O1 -mcmodel=small -mregparmcall -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small -mprotected-mode } \
+	{ -O1 -mcmodel=small -mprotected-mode -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small -mprotected-mode -funroll-loops } \
 	{ -O1 -mcmodel=small -mprotected-mode -frename-registers } \
 	{ -O1 -mcmodel=small -mprotected-mode -funroll-loops \
 	  -fno-rename-registers } \
 	{ -O1 -mcmodel=small -mprotected-mode -mrtd } \
+	{ -O1 -mcmodel=small -mprotected-mode -mrtd -mmsdos-handle-v1 } \
 	{ -O1 -mcmodel=small -mprotected-mode -mregparmcall } \
+	{ -O1 -mcmodel=small -mprotected-mode -mregparmcall \
+	  -mmsdos-handle-v1 } \
 	{ -O2 -mcmodel=small } \
 	{ -O2 -mcmodel=small -funroll-loops } \
 	{ -O2 -mcmodel=small -frename-registers } \
