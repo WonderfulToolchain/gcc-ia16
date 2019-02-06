@@ -757,9 +757,9 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mmsdos -melks -mcmodel=tiny -mcmodel=small -mseparate-code-segment @gol
--mno-segment-relocation-stuff -mrtd -mno-callee-assume-ds-data-segment @gol
--mprotected-mode}
+-mmsdos -mmsdos-handle-v1 -melks -mcmodel=tiny -mcmodel=small @gol
+-mseparate-code-segment -mno-segment-relocation-stuff -mrtd @gol
+-mno-callee-assume-ds-data-segment -mprotected-mode}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16555,6 +16555,12 @@ specifying @option{-march=@var{cpu-type}} implies
 @item -mmsdos
 @opindex mmsdos
 Produce executables for MS-DOS.  This is the default.
+
+@item -mmsdos-handle-v1
+@opindex mmsdos-handle-v1
+Produce executables for MS-DOS, in such a way that the executables will fail
+gracefully under MS-DOS version 1.x, rather than crash the system.  This
+option implies @option{-mmsdos}, and is still experimental.
 
 @item -melks
 @opindex melks
