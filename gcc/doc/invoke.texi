@@ -16517,9 +16517,11 @@ The Intel 8086.
 The Intel 8088.
 
 @item i80186
+@itemx i186
 The Intel 80186.
 
 @item i80286
+@itemx i286
 The Intel 80286.
 
 @item v20
