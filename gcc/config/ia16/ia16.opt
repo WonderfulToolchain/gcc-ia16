@@ -26,12 +26,24 @@ march=i80186
 Target RejectNegative Var(target_arch,PROCESSOR_I80186)
 Use features of and optimize code for the Intel 80186.
 
+march=i186
+Target RejectNegative Alias(march=i80186)
+Use features of and optimize code for the Intel 80186.
+
 march=i80188
 Target RejectNegative Var(target_arch,PROCESSOR_I80188)
 Use features of and optimize code for the Intel 80188.
 
+march=i188
+Target RejectNegative Alias(march=i80188)
+Use features of and optimize code for the Intel 80188.
+
 march=i80286
 Target RejectNegative Var(target_arch,PROCESSOR_I80286)
+Use features of and optimize code for the Intel 80286.
+
+march=i286
+Target RejectNegative Alias(march=i80286)
 Use features of and optimize code for the Intel 80286.
 
 mtune=i8086
@@ -54,12 +66,24 @@ mtune=i80186
 Target RejectNegative Var(target_tune,PROCESSOR_I80186)
 Optimize code for the Intel 80186.
 
+mtune=i186
+Target RejectNegative Alias(mtune=i80186)
+Optimize code for the Intel 80186.
+
 mtune=i80188
 Target RejectNegative Var(target_tune,PROCESSOR_I80188)
 Optimize code for the Intel 80188.
 
+mtune=i188
+Target RejectNegative Alias(mtune=i80188)
+Optimize code for the Intel 80188.
+
 mtune=i80286
 Target RejectNegative Var(target_tune,PROCESSOR_I80286)
+Optimize code for the Intel 80286.
+
+mtune=i286
+Target RejectNegative Alias(mtune=i80286)
 Optimize code for the Intel 80286.
 
 mshort-jumps
@@ -68,7 +92,7 @@ Do (not - this is the default) use jump instructions which can only jump -128/+1
 
 ; This is now unified with -mcmodel=small (below).
 mseparate-code-segment
-Target Alias(mcmodel=small) Undocumented
+Target RejectNegative Alias(mcmodel=small) Undocumented
 
 mcmodel=tiny
 Target RejectNegative Var(target_cmodel,CMODEL_TINY) Init(CMODEL_TINY)
@@ -98,7 +122,7 @@ Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_STDCALL)
 Alternate calling convention (callee pops arguments).
 
 mstdcall
-Target Alias(mrtd) Undocumented
+Target RejectNegative Alias(mrtd) Undocumented
 
 mregparmcall
 Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_REGPARMCALL)
