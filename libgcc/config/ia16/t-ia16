@@ -54,3 +54,6 @@ libgcc-objects += $(lib2-divmodsi-o)
 # with Makefile.in internals.  -- tkchia 20180914
 LIB1ASMFUNCS = _udivsi3 _umodsi3 _ia16_ldivmodu
 LIB1ASMSRC = ia16/udivmodsi3.S
+
+# Extra C language routines.  -- tkchia 20190307
+LIB2ADD = $(srcdir)/config/ia16/far-apply-thunk.c
