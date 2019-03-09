@@ -1643,6 +1643,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	    case CCSCmode:
 	    case CCCmode:
 	      return (CCSCmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1655,6 +1660,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	    case CCSZmode:
 	    case CCZmode:
 	      return (CCSOZmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1667,6 +1677,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	      return (mode2);
 	    case CCSmode:
 	      return (CCSOmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1678,6 +1693,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	    case CCSOmode:
 	    case CCSOZmode:
 	      return (mode2);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1691,6 +1711,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	    case CCZmode:
 	    case CCCmode:
 	      return (CCCZmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1708,6 +1733,11 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	      return (CCSOZmode);
 	    case CCCmode:
 	      return (CCCZmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
@@ -1722,13 +1752,69 @@ ia16_cc_modes_compatible (enum machine_mode mode1, enum machine_mode mode2)
 	      return (mode2);
 	    case CCZmode:
 	      return (CCCZmode);
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
 	    default:
 	      return (CCmode);
 	  }
 
+      case CCZ_Cmode:
+	switch (mode2)
+	  {
+	    case CCZ_Cmode:
+	    case CCCZ_Cmode:
+	      return (mode2);
+	    default:
+	      return (VOIDmode);
+	  }
+
+      case CCZ_NCmode:
+	switch (mode2)
+	  {
+	    case CCZ_NCmode:
+	    case CCCZ_NCmode:
+	      return (mode2);
+	    default:
+	      return (VOIDmode);
+	  }
+
+      case CCCZ_Cmode:
+	switch (mode2)
+	  {
+	    case CCZ_Cmode:
+	    case CCCZ_Cmode:
+	      return (mode1);
+	    default:
+	      return (VOIDmode);
+	  }
+
+      case CCCZ_NCmode:
+	switch (mode2)
+	  {
+	    case CCZ_NCmode:
+	    case CCCZ_NCmode:
+	      return (mode1);
+	    default:
+	      return (VOIDmode);
+	  }
+
       case CCmode:
+	switch (mode2)
+	  {
+	    case CCZ_Cmode:
+	    case CCZ_NCmode:
+	    case CCCZ_Cmode:
+	    case CCCZ_NCmode:
+	      return (VOIDmode);
+	    default:
+	      return (CCmode);
+	  }
+
       default:
-	return (CCmode);
+	return (VOIDmode);
     }
     gcc_unreachable ();
 }
