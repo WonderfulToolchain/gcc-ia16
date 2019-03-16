@@ -442,12 +442,8 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define SELECT_CC_MODE(op, x, y)        ia16_select_cc_mode (op, x, y, false)
 #define REVERSIBLE_CC_MODE(mode)	1
 
-/* A taken branch costs 13 cycles and a not taken branch costs 4 cycles.
- * Add to that 4 (or 8) cycles to fetch the branch instruction (two bytes)
- * itself.
- */
-#define BRANCH_COST(speed_p, predictable_p) (TARGET_TUNE_8BIT ? \
-   COSTS_N_INSNS (8) : COSTS_N_INSNS (4) + COSTS_N_INSNS (8))
+#define BRANCH_COST(speed_p, predictable_p) \
+	ia16_branch_cost (!! (speed_p), !! (predictable_p))
 #define SLOW_BYTE_ACCESS	(TARGET_TUNE_8BIT ? 0 : 1)
 
 /* These probably need some tweaking.  Leave the defaults for now.

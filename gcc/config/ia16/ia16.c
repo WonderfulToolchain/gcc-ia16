@@ -2117,7 +2117,9 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
   /* sign_extend */	{ C (1), C (1) },
   /* xlat */		C (1),
   /* call */		{ C (1), C (1), C (1) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	3,
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for Intel i8086 CPUs.  EA calculation time is not included.
@@ -2151,7 +2153,9 @@ static struct processor_costs ia16_i8086_costs = {
   /* sign_extend */	{ C (2), C (5) },
   /* xlat */		C (11),
   /* call */		{ C (19), C (16), C (21) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	16,
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for Intel 8088 CPUs.  EA calculation time is not included.  */
@@ -2183,7 +2187,9 @@ static struct processor_costs ia16_i8088_costs = {
   /* sign_extend */	{ C (2), C (5) },
   /* xlat */		C (11),
   /* call */		{ C (23), C (20), C (29) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	16,
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for Intel 80186 CPUs.  EA calculation time (4 cycles for all modes)
@@ -2216,7 +2222,9 @@ static struct processor_costs ia16_i80186_costs = {
   /* sign_extend */	{ C (2), C (4) },
   /* xlat */		C (11),
   /* call */		{ C (15), C (13), C (19) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	13,
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for Intel 80286 CPUs.  EA calculation time (? cycles for all modes)
@@ -2249,7 +2257,9 @@ static struct processor_costs ia16_i80286_costs = {
   /* sign_extend */	{ C (2), C (2) },
   /* xlat */		C (5),
   /* call */		{ C (7), C (7), C (11) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	7, /* FIXME: should really be 7 + m */
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for NEC V30 CPUs.  EA calculation time (2 cycles for all modes)
@@ -2282,7 +2292,9 @@ static struct processor_costs ia16_nec_v30_costs = {
   /* sign_extend */	{ C (2), C (4) },
   /* xlat */		C (9),
   /* call */		{ C (16), C (14), C (23) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	14,
+  0, 0, 0, 0, 0, 0,
 };
 
 /* Costs for NEC V20 CPUs.  EA calculation time (2 cycles for all modes)
@@ -2314,7 +2326,9 @@ static struct processor_costs ia16_nec_v20_costs = {
   /* sign_extend */	{ C (2), C (4) },
   /* xlat */		C (9),
   /* call */		{ C (20), C (18), C (31) },
-  0, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, 0, 0, 0, 0, 0,
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	14,
+  0, 0, 0, 0, 0, 0,
 };
 
 #undef C
@@ -2354,6 +2368,16 @@ static unsigned
 ia16_mode_hwords (machine_mode mode)
 {
   return (GET_MODE_SIZE (mode) + 1) / 2;
+}
+
+/* Estimate the cost of a branch instruction.  */
+int
+ia16_branch_cost (bool speed_p, bool predictable_p ATTRIBUTE_UNUSED)
+{
+  if (speed_p)
+    return IA16_COST (branch_cost);
+  else
+    return ia16_size_costs.branch_cost;
 }
 
 #undef	TARGET_REGISTER_MOVE_COST
