@@ -53,6 +53,7 @@ extern rtx	ia16_pop_reg (unsigned int regno);
 #ifdef RTX_CODE
 extern enum machine_mode
 		ia16_select_cc_mode (enum rtx_code op, rtx x, rtx y, bool branch);
+extern int	ia16_branch_cost (bool speed_p, bool predictable_p);
 extern rtx	ia16_gen_compare_reg (enum rtx_code op, rtx x, rtx y, bool branch);
 extern bool	ia16_arith_operands_p (enum rtx_code code, rtx *operands);
 extern rtx	ia16_prepare_operands (enum rtx_code, rtx *operands);
