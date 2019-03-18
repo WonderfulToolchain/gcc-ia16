@@ -555,34 +555,25 @@
   operands[6] = plus_constant (HImode, operands[4], INTVAL (operands[1]));
 })
 
-
-;	movw	%ax,	%bx	->	xchgw	%ax,	%bx
-; if %ax dies here and size matters.
-;(define_peephole2
-;  [(set (match_operand:EQ16 0 "xchgw_ax_register_operand")
-;	(match_operand:EQ16 1 "accumulator_register_operand"))]
-;  "optimize_size && reload_completed
-;   && peep2_reg_dead_p (1, operands[1])"
-;  [(parallel
-;    [(set (match_dup 0) (match_dup 1))
-;     (set (match_dup 1) (match_dup 0))]
-;  )]
-;  ""
-;)
-
-;	movw	%bx,	%ax	->	xchgw	%ax,	%bx
-; if %bx dies here and size matters.
-;(define_peephole2
-;  [(set (match_operand:EQ16 0 "accumulator_register_operand")
-;	(match_operand:EQ16 1 "xchgw_ax_register_operand"))]
-;  "optimize_size && reload_completed
-;   && peep2_reg_dead_p (1, operands[1])"
-;  [(parallel
-;    [(set (match_dup 1) (match_dup 0))
-;     (set (match_dup 0) (match_dup 1))]
-;  )]
-;  ""
-;)
+; For some oddball reason GCC sometimes outputs something like
+;	movw	$-28,	%dx
+;	addw	%bp,	%dx
+; when a
+;	leaw	-28(%bp), %dx
+; will do just fine.
+;
+; I am not sure what causes this, but it seems to tend to happen when the
+; user code needs to pass a parameter in a register (-mregparmcall).
+;
+; Anyway, rewrite such things here.
+(define_peephole2
+  [(set (match_operand:HI 0 "register_operand")
+	(match_operand:HI 1 "const_int_operand"))
+   (parallel [(set (match_dup 0) (plus:HI (match_dup 0) (reg:HI BP_REG)))
+	      (clobber (reg CC_REG))])]
+  "REGNO (operands[0]) != BP_REG"
+  [(set (match_dup 0) (plus:HI (reg:HI BP_REG) (match_dup 1)))]
+)
 
 ; Try to rewrite
 ;	movw	mem,	%ax
