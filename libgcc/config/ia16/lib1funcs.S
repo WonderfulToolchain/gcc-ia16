@@ -107,4 +107,36 @@ __ia16_ldivmodu:
 	popw	%di
 	popw	%si
 	ret
+#elif defined L_ne_sf
+	/* Cheat a bit here: define __nesf2, __ltsf2, and __lesf2 in the
+	   same module, since we can collapse all of them to the same jump
+	   anyway.  The modules for __ltsf2 and __lesf2 do not need to
+	   define anything then.  Ditto for __*df2.
+
+	   It would be better if ELF supports aliases to external symbols
+	   (blog.omega-prime.co.uk/2011/07/06/the-sad-state-of-symbol-aliases/)
+	   --- then we can get rid of even the jump.  -- tkchia 20190322 */
+	.global	__nesf2
+	.global	__ltsf2
+	.global	__lesf2
+__nesf2:
+__ltsf2:
+__lesf2:
+	jmp	__eqsf2
+#elif defined L_gt_sf
+	.global	__gtsf2
+__gtsf2:
+	jmp	__gesf2
+#elif defined L_ne_df
+	.global	__nedf2
+	.global	__ltdf2
+	.global	__ledf2
+__nedf2:
+__ltdf2:
+__ledf2:
+	jmp	__eqdf2
+#elif defined L_gt_df
+	.global	__gtdf2
+__gtdf2:
+	jmp	__gedf2
 #endif

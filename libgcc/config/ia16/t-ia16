@@ -55,5 +55,7 @@ libgcc-objects += $(lib2-divmodsi-o)
 # 
 # TODO: redo this whole fragment to define $(LIB2ADD), etc., rather than mess
 # with Makefile.in internals.  -- tkchia 20180914
-LIB1ASMFUNCS = _udivsi3 _umodsi3 _ia16_ldivmodu
-LIB1ASMSRC = ia16/udivmodsi3.S
+LIB1ASMFUNCS = _udivsi3 _umodsi3 _ia16_ldivmodu \
+	       _ne_sf _gt_sf _le_sf _lt_sf _ne_df _gt_df _le_df _lt_df
+LIB2FUNCS_EXCLUDE += $(LIB1ASMFUNCS)
+LIB1ASMSRC = ia16/lib1funcs.S
