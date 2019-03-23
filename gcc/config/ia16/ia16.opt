@@ -167,6 +167,10 @@ mmsdos-handle-v1
 Target Report RejectNegative InverseMask(SYS_ELKS)
 Generate MS-DOS executables which fail gracefully on DOS v1.x (experimental).
 
+mnewlib-nano-stdio
+Target Undocumented
+Link with Newlib's limited formatted I/O routines (experimental).
+
 ; This is currently a no-op option.  It may come in useful if and when ELKS
 ; supports more than one executable format.
 maout
