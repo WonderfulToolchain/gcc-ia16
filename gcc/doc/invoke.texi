@@ -759,7 +759,7 @@ Objective-C and Objective-C++ Dialects}.
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mmsdos -mmsdos-handle-v1 -melks -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd @gol
--mno-callee-assume-ds-data-segment -mprotected-mode}
+-mno-callee-assume-ds-data-segment -mprotected-mode -mnewlib-nano-stdio}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16665,8 +16665,6 @@ In addition, seriously incorrect code results if you call a
 function with too many arguments.  (Normally, extra arguments are
 harmlessly ignored.)
 
-@code{-mregparmcall} support is still experimental.
-
 @item -mno-callee-assume-ds-data-segment
 @itemx -mcallee-assume-ds-data-segment
 @opindex mno-callee-assume-ds-data-segment
@@ -16717,6 +16715,13 @@ void foo (unsigned selector)
   __asm volatile ("nop" : : "e" (__builtin_ia16_selector (selector)));
 @}
 @end smallexample
+
+@item -mnewlib-nano-stdio
+@opindex mnewlib-nano-stdio
+If using the Newlib C library, link against a limited version of the
+formatted I/O routines (@code{stdio}) which supports only C89 functionality
+and by default excludes floating-point support.  This option is
+experimental.
 @end table
 
 @anchor{IA-16 Built-in Macros}

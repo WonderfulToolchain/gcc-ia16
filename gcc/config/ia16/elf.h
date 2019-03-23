@@ -69,6 +69,7 @@
     "%{!r:"		\
       "%{!nostdlib:"	\
 	"%{!nodefaultlibs:" \
+	  "%{mnewlib-nano-stdio:-lnstdio} " \
 	  "%{mcmodel=small:" \
 	    "%{melks:%Telks-separate.ld;" \
 	      "nostartfiles:%Tdos-msl.ld;:%Tdos-mssl.ld};" \
