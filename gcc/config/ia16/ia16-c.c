@@ -41,6 +41,15 @@ def_or_undef_macro (const char *name, bool def_p)
     cpp_undef (parse_in, name);
 }
 
+static void
+assert_or_unassert (const char *predicate, bool assert_p)
+{
+  if (assert_p)
+    cpp_assert (parse_in, predicate);
+  else
+    cpp_unassert (parse_in, predicate);
+}
+
 /* Implements TARGET_CPU_CPP_BUILTINS.  */
 void
 ia16_cpu_cpp_builtins (void)
@@ -166,18 +175,20 @@ ia16_cpu_cpp_builtins (void)
   /* Define macros corresponding to the chosen target operating system.
      Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
      either __MSDOS__ or __ELKS__.  */
-  if (TARGET_SYS_ELKS)
-    {
-      def_macro ("__ELKS__");
-      def_macro ("__IA16_SYS_ELKS");
-      cpp_assert (parse_in, "system=elks");
-    }
-  else
-    {
-      def_macro ("__MSDOS__");
-      def_macro ("__IA16_SYS_MSDOS");
-      cpp_assert (parse_in, "system=msdos");
-    }
+  def_or_undef_macro ("__ELKS__", TARGET_SYS_ELKS);
+  def_or_undef_macro ("__IA16_SYS_ELKS", TARGET_SYS_ELKS);
+  assert_or_unassert ("system=elks", TARGET_SYS_ELKS);
+  def_or_undef_macro ("__MSDOS__", TARGET_SYS_MSDOS);
+  def_or_undef_macro ("__IA16_SYS_MSDOS", TARGET_SYS_MSDOS);
+  assert_or_unassert ("system=msdos", TARGET_SYS_MSDOS);
+
+  /* If the user says -mnewlib-nano-stdio, try to pretend that <newlib.h>
+     defines _NANO_FORMATTED_IO (actually this just defines the macro whether
+     or not <newlib.h> is used).
+
+     Do not undefine _NANO_FORMATTED_IO if it is explicitly defined.  */
+  if (TARGET_NEWLIB_NANO_STDIO)
+    def_macro ("_NANO_FORMATTED_IO");
 }
 
 /* Implements REGISTER_TARGET_PRAGMAS.  */
