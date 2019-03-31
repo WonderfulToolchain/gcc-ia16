@@ -515,18 +515,50 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
 }
 
 /* Passing Arguments in Registers */
+
+static bool may_need_printf_nofloat = false, may_need_printf_float = false,
+	    may_need_scanf_nofloat = false, may_need_scanf_float = false;
+
+static void
+ia16_handle_unnamed_function_arg (const_tree type)
+{
+  /* If the user's code passes a floating-point operand as a variadic
+     argument, assume that it might need the floating-point version of the
+     ...printf (...) functions.  Similarly, if there is a variadic argument
+     which is a pointer to a non-const floating-point operand, assume a need
+     for floating-point ...scanf (...).
+
+     FIXME: this does not detect the case of code doing something like scanf
+     ("%*f...", ...), where the program needs floating-point support but there
+     is no pointer argument.  -- tkchia 20190331  */
+  if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
+    {
+      if (type)
+	{
+	  if (SCALAR_FLOAT_TYPE_P (type))
+	    may_need_printf_float = true;
+	  else if (POINTER_TYPE_P (type)
+		   && ! TYPE_READONLY (TREE_TYPE (type))
+		   && SCALAR_FLOAT_TYPE_P (TREE_TYPE (type)))
+	    may_need_scanf_float = true;
+	}
+    }
+}
+
 #undef  TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG ia16_function_arg
 
 static rtx
 ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
-		   const_tree type ATTRIBUTE_UNUSED,
-		   bool named)
+		   const_tree type, bool named)
 {
   CUMULATIVE_ARGS *cum;
 
   if (! named)
-    return NULL;
+    {
+      ia16_handle_unnamed_function_arg (type);
+      return NULL;
+    }
 
   cum = get_cumulative_args (cum_v);
 
@@ -603,6 +635,29 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 			   const_tree fndecl ATTRIBUTE_UNUSED,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
+  if (TARGET_NEWLIB_AUTOFLOAT_STDIO && fntype != NULL_TREE)
+    {
+      tree attrs = TYPE_ATTRIBUTES (fntype);
+      if (attrs != NULL_TREE)
+	{
+	  tree attr = lookup_attribute ("format", attrs);
+	  if (attr)
+	    {
+	      tree args = TREE_VALUE (attr);
+	      tree format_type_id = TREE_VALUE (args);
+	      if (TREE_CODE (format_type_id) == IDENTIFIER_NODE)
+		{
+		  const char *format_type_str
+		    = IDENTIFIER_POINTER (format_type_id);
+		  if (strstr ("printf", format_type_str))
+		    may_need_printf_nofloat = true;
+		  else if (strstr ("scanf", format_type_str))
+		    may_need_scanf_nofloat = true;
+		}
+	    }
+	}
+    }
+
   if (! ia16_regparmcall_function_type_p (fntype))
     *cum = 3;
   else
@@ -3250,6 +3305,29 @@ ia16_asm_file_start (void)
 				"\t.code%s\n"
 				"\t.att_syntax prefix\n", arch, code);
 	default_file_start ();
+}
+
+#undef	TARGET_ASM_FILE_END
+#define	TARGET_ASM_FILE_END		ia16_asm_file_end
+
+static void
+ia16_asm_file_end (void)
+{
+  if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
+    {
+      if (may_need_printf_nofloat)
+	fputs (	"\t.weak\t__ia16_use_printf_nofloat.v1\n"
+		"\t.set\t__ia16_use_printf_nofloat.v1,1\n", asm_out_file);
+      if (may_need_printf_float)
+	fputs (	"\t.weak\t__ia16_use_printf_float.v1\n"
+		"\t.set\t__ia16_use_printf_float.v1,1\n", asm_out_file);
+      if (may_need_scanf_nofloat)
+	fputs (	"\t.weak\t__ia16_use_scanf_nofloat.v1\n"
+		"\t.set\t__ia16_use_scanf_nofloat.v1,1\n", asm_out_file);
+      if (may_need_scanf_float)
+	fputs (	"\t.weak\t__ia16_use_scanf_float.v1\n"
+		"\t.set\t__ia16_use_scanf_float.v1,1\n", asm_out_file);
+    }
 }
 
 #undef	TARGET_ASM_FUNCTION_SECTION
