@@ -171,6 +171,9 @@ mnewlib-nano-stdio
 Target Mask(NEWLIB_NANO_STDIO)
 Link with Newlib's limited formatted I/O routines (experimental).
 
+mnewlib-autofloat-stdio
+Target Mask(NEWLIB_AUTOFLOAT_STDIO) Undocumented
+
 ; This is currently a no-op option.  It may come in useful if and when ELKS
 ; supports more than one executable format.
 maout
