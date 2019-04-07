@@ -759,7 +759,8 @@ Objective-C and Objective-C++ Dialects}.
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mmsdos -mmsdos-handle-v1 -melks -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd @gol
--mno-callee-assume-ds-data-segment -mprotected-mode -mnewlib-nano-stdio}
+-mno-callee-assume-ds-data-segment -mprotected-mode -mnewlib-nano-stdio @gol
+-mnewlib-autofloat-stdio}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16722,6 +16723,15 @@ If using the Newlib C library, link against a limited version of the
 formatted I/O routines (@code{stdio}) which supports only C89 functionality
 and by default excludes floating-point support.  This option is
 experimental.
+
+@item -mnewlib-autofloat-stdio
+@opindex mnewlib-autofloat-stdio
+If using the Newlib C library, try to detect whether the program needs
+floating-point support in the formatted I/O routines (@code{stdio}), and
+link against the appropriate version of the @code{stdio} code.
+
+This option is experimental.  If you use it, specify it at compile time and
+during the final link.
 @end table
 
 @anchor{IA-16 Built-in Macros}
