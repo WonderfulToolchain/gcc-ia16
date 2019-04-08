@@ -139,4 +139,86 @@ __ledf2:
 	.global	__gtdf2
 __gtdf2:
 	jmp	__gedf2
+#elif defined L_ia16_far_call_thunk_bx_xx
+	.global	__ia16_far_call_thunk.bx.si
+	.type	__ia16_far_call_thunk.bx.si, @function
+	.global	__ia16_far_call_thunk.bx.di
+	.type	__ia16_far_call_thunk.bx.di, @function
+__ia16_far_call_thunk.bx.si:
+	pushw	%bp			/* set up stack frame */
+	movw	%sp,	%bp
+	pushw	%bx			/* preserve %bx and %cx */
+	pushw	%cx
+	movw	%si,	%cx		/* move stack args. size to %cx */
+	jmp	0f
+__ia16_far_call_thunk.bx.di:
+	pushw	%bp
+	movw	%sp,	%bp
+	pushw	%bx
+	pushw	%cx
+	movw	%di,	%cx
+0:					/* re-push stack arguments */
+	jcxz	2f
+	leaw	4(%bp),	%bx
+	addw	%cx,	%bx
+	shrw	%cx
+1:
+	pushw	%ss:(%bx)
+	decw	%bx
+	decw	%bx
+	loop	1b
+2:
+	movw	-4(%bp), %cx		/* reload %cx for callee */
+	callw	*-2(%bp)		/* call function */
+	movw	%bp,	%sp		/* tear down stack frame and return */
+	popw	%bp
+	lretw
+#elif defined L_ia16_far_call_pop_thunk_bx_xx_xx
+	.global	__ia16_far_call_pop_thunk.bx.si.si
+	.type	__ia16_far_call_pop_thunk.bx.si.si, @function
+	.global	__ia16_far_call_pop_thunk.bx.di.di
+	.type	__ia16_far_call_pop_thunk.bx.di.di, @function
+__ia16_far_call_pop_thunk.bx.si.si:
+	pushw	%si			/* remember stack arguments size */
+	pushw	%bp
+	movw	%sp,	%bp
+	pushw	%bx			/* preserve %bx, %cx, and %ax */
+	pushw	%cx
+	pushw	%ax
+	movw	%si,	%cx		/* move stack args. size to %cx */
+	jmp	0f
+__ia16_far_call_pop_thunk.bx.di.di:
+	pushw	%di
+	pushw	%bp
+	movw	%sp,	%bp
+	pushw	%bx
+	pushw	%cx
+	pushw	%ax
+	movw	%di,	%cx
+0:					/* re-push stack arguments */
+	jcxz	2f
+	leaw	6(%bp),	%bx
+	addw	%cx,	%bx
+	movw	%bx,	%ax
+	shrw	%cx
+1:
+	pushw	%ss:(%bx)
+	decw	%bx
+	decw	%bx
+	loop	1b
+2:
+	xchgw	%ax,	%bx		/* overwrite original stack */
+	movw	6(%bp),	%ax		/*   arguments with return address */
+	movw	%ax,	%ss:(%bx)
+	movw	4(%bp),	%ax
+	movw	%ax,	%ss:-2(%bx)
+	movw	-6(%bp), %ax		/* reload %ax and %cx for callee */
+	movw	-4(%bp), %cx
+	callw	*-2(%bp)		/* call function */
+	movw	%bp,	%sp		/* tear down stack frame */
+	popw	%bp
+	popw	%bx
+	addw	%bx,	%sp		/* pop stack arguments --- except
+					   for the return address we wrote */
+	lretw				/* return! */
 #endif

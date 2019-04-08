@@ -1554,12 +1554,14 @@ Conversely, if you would like to place a locally defined far function
 
 @smallexample
 __attribute__ ((far_section))
-static int qux (long x)
+__far int qux (long x)
 @{ ... @}
 @end smallexample
 
-@code{far_section} functions are not allowed to call non-far functions---not
-even compiler support routines---so they must be written carefully.
+It is now (April 2019) possible for @code{far_section} functions to call
+non-far functions in the normal text segment---including standard C library
+functions and compiler support routines.  However, the internal
+implementation for such calls is still rather inefficient.
 
 @noindent
 @b{Preprocessor symbols}

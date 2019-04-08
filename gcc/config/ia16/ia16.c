@@ -254,12 +254,12 @@ ia16_get_function_decl_for_addr (rtx addr)
     }
 }
 
-/* Given the address ADDR of a function, return its type node, or NULL_TREE
-   if no type node can be found.  */
+/* Given the declaration node DECL of a function --- or NULL_TREE --- return
+   its type node, or NULL_TREE if no type node can be found.  */
 static tree
-ia16_get_function_type_for_addr (rtx addr)
+ia16_get_function_type_for_decl (tree decl)
 {
-  tree decl = ia16_get_function_decl_for_addr (addr), type;
+  tree type;
 
   if (! decl)
     return NULL_TREE;
@@ -269,6 +269,15 @@ ia16_get_function_type_for_addr (rtx addr)
     type = TREE_TYPE (type);
 
   return type;
+}
+
+/* Given the address ADDR of a function, return its type node, or NULL_TREE
+   if no type node can be found.  */
+static tree
+ia16_get_function_type_for_addr (rtx addr)
+{
+  tree decl = ia16_get_function_decl_for_addr (addr);
+  return ia16_get_function_type_for_decl (decl);
 }
 
 /* Return true iff TYPE is a type for a far function (which returns with
@@ -3900,41 +3909,6 @@ ia16_verify_calls_from_no_assume_ds (void)
     }
 }
 
-/* If we are in an __attribute__ ((far_section)) function, check whether it
-   calls any near functions.  Flag warnings if it does.  */
-static void
-ia16_verify_calls_from_far_section (void)
-{
-  rtx_insn *insn;
-
-  if (! ia16_in_far_section_function_p ())
-    return;
-
-  for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
-    {
-      if (CALL_P (insn))
-	{
-	  rtx call = get_call_rtx_from (insn);
-	  rtx callee = XEXP (XEXP (call, 0), 0);
-
-	  tree fndecl = ia16_get_function_decl_for_addr (callee);
-	  tree fntype = NULL_TREE;
-	  if (fndecl)
-	    {
-	      fntype = TREE_TYPE (fndecl);
-	      while (POINTER_TYPE_P (fntype))
-		fntype = TREE_TYPE (fntype);
-	    }
-
-	  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
-	      warning_at (LOCATION_LOCUS (INSN_LOCATION (insn)),
-			  OPT_Waddress,
-			  "calling near function from outside near text "
-			  "segment");
-	}
-    }
-}
-
 /* Say whether an RTX operand is the %bp register.  */
 static bool
 ia16_operand_is_bp_reg_p (rtx op)
@@ -4652,7 +4626,6 @@ static void
 ia16_machine_dependent_reorg (void)
 {
   ia16_verify_calls_from_no_assume_ds ();
-  ia16_verify_calls_from_far_section ();
 
   if (optimize)
     {
@@ -5184,27 +5157,32 @@ ia16_expand_epilogue (bool sibcall)
     emit_jump_insn (gen_simple_return ());
 }
 
+#define P(part)	(which_is_addr == 0 ? part "0" : part "1")
+#define P2(part_a, part_b) \
+			(which_is_addr == 0 ? part_a "0" part_b "0" : \
+					      part_a "1" part_b "1")
+
 /* Return the insn template for a normal call to a subroutine at address
    ADDR and with machine mode MODE.  ADDR should correspond to "%0" or "%1"
    in the (define_insn ...), depending on whether WHICH_IS_ADDR is 0 or 1.
 
    There are 4 cases we need to handle:
-     * we are calling a near function (with a 16-bit address)
+     * we are calling a near function (with a 16-bit address), and the current
+       function is not marked __attribute__ ((far_section))
      * we are calling a far function through a 32-bit pointer
      * we are calling a far function --- which returns with `lret' --- but
        the function is defined (in the default text section) in the current
        module, and is not marked __attribute__ ((far_section)), so we can get
        away with a `pushw %cs' plus a near call
      * none of the above --- use `lcall' and do not assume that the function
-       resides in the default text section.  */
-#define P(part)	(which_is_addr == 0 ? part "0" : part "1")
-#define P2(part_a, part_b) \
-			(which_is_addr == 0 ? part_a "0" part_b "0" : \
-					      part_a "1" part_b "1")
+       resides in the default text section.
+
+   The case where a far_section function tries to call a near function is
+   handled by ia16_get_far_thunked_call_expansion (...) below.  */
 const char *
 ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 {
-  tree fndecl, fntype = NULL_TREE;
+  tree fndecl, fntype;
 
   if (mode == SImode)
     {
@@ -5215,15 +5193,12 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
     }
 
   fndecl = ia16_get_function_decl_for_addr (addr);
-  if (fndecl)
-    {
-      fntype = TREE_TYPE (fndecl);
-      while (POINTER_TYPE_P (fntype))
-	fntype = TREE_TYPE (fntype);
-    }
+  fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
     {
+      gcc_assert (! ia16_in_far_section_function_p ());
+
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("call\t*%");
       else
@@ -5252,6 +5227,56 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
     }
 }
 
+/* Say whether we need to use a far thunk to call a function from the current
+   function, i.e. the current function is __attribute__ ((far_section)) and
+   trying to call a near function.  */
+bool
+ia16_use_far_thunked_call_p (rtx addr, machine_mode mode)
+{
+  tree fntype;
+
+  if (mode != HImode || ! ia16_in_far_section_function_p ())
+    return false;
+
+  fntype = ia16_get_function_type_for_addr (addr);
+  return ! fntype || ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (fntype));
+}
+
+/* Return the insn template for a call from a far_section function to a near
+   subroutine at the address given by the operand "%0" or "%1" --- depending on
+   whether WHICH_IS_ADDR is 0 or 1 --- with "%1" or "%2" bytes of stack
+   arguments.  The caller should pop the stack arguments if POP_P is true.  */
+const char *
+ia16_get_far_thunked_call_expansion (unsigned which_is_addr, bool pop_p)
+{
+  if (! TARGET_SEG_RELOC_STUFF)
+    ia16_error_seg_reloc (input_location, "cannot create relocatable call "
+					  "to far -> near thunk");
+
+  if (! pop_p)
+    {
+      if (which_is_addr == 0)
+	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+			  "__ia16_far_call_thunk.%R0.%R1\n"
+		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R0.%R1";
+      else
+	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+			  "__ia16_far_call_thunk.%R1.%R2\n"
+		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R1.%R2";
+    }
+  else
+    {
+      if (which_is_addr == 0)
+	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+			  "__ia16_far_call_pop_thunk.%R0.%R1.%R2\n"
+		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R0.%R1.%R2";
+      else
+	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+			  "__ia16_far_call_pop_thunk.%R1.%R2.%R3\n"
+		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R1.%R2.%R3";
+    }
+}
+
 /* Return the insn template for a sibling call to a subroutine at address
    ADDR and with machine mode MODE.  ADDR should correspond to "%0", "%1",
    or "%3" in the (define_insn ...), depending on whether WHICH_IS_ADDR is
@@ -5271,12 +5296,7 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
     }
 
   fndecl = ia16_get_function_decl_for_addr (addr);
-  if (fndecl)
-    {
-      fntype = TREE_TYPE (fndecl);
-      while (POINTER_TYPE_P (fntype))
-	fntype = TREE_TYPE (fntype);
-    }
+  fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
     {
