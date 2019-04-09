@@ -206,12 +206,12 @@ __ia16_far_call_pop_thunk.bx.di.di:
 	decw	%bx
 	decw	%bx
 	loop	1b
-2:
 	xchgw	%ax,	%bx		/* overwrite original stack */
 	movw	6(%bp),	%ax		/*   arguments with return address */
 	movw	%ax,	%ss:(%bx)
 	movw	4(%bp),	%ax
 	movw	%ax,	%ss:-2(%bx)
+2:
 	movw	-6(%bp), %ax		/* reload %ax and %cx for callee */
 	movw	-4(%bp), %cx
 	callw	*-2(%bp)		/* call function */
