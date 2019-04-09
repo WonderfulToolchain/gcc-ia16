@@ -1,13 +1,24 @@
-/* { dg-do assemble } */
+/* { dg-do run } */
 /* { dg-options "--std=gnu11 -Wall --save-temps" } */
 
-/* A far_section function should not call a near function.  GCC should flag
-   a warning if a program tries to do this.  */
+/* Check that far_section -> near function calls work correctly.  */
 
+int printf (const char *, ...);
 int puts (const char *);
+int rand (void);
 
-__attribute__ ((far_section)) void __far
-hello (void)
+__attribute__ ((noinline, far_section))
+__far int hello (const char *thang1, const char *thang2)
 {
-  puts ("Hello world!");  /* { dg-warning "calling near function from" } */
+  printf ("Hello %s%s %d\n", thang1, thang2, rand ());
+  puts ("w00t!");
+  return 0;
+}
+
+char world[] = "world";
+char mark[] = "!";
+
+int main (void)
+{
+  return hello (world, mark);
 }
