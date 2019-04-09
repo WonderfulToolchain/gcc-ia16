@@ -88,7 +88,8 @@ ia16_cpu_cpp_builtins (void)
        * far functions of the form `int foo (void) __far;'
        * function calling conventions available through __attribute__ ((.))
        * calling near functions from __attribute__ ((far_section)) functions
-       * __builtin_ia16_... (.) functions.  */
+       * __builtin_ia16_... (.) functions
+       * etc.  */
   def_or_undef_macro ("__IA16_FEATURE_FAR_STATIC_STORAGE",
 		      ! TARGET_CMODEL_IS_TINY);
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
@@ -101,6 +102,8 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_FAR_SECTION_TO_NEAR_CALLS");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
+  def_or_undef_macro ("__IA16_FEATURE_NEWLIB_AUTOFLOAT_STDIO",
+		      TARGET_NEWLIB_AUTOFLOAT_STDIO);
   def_macro ("__BUILTIN_IA16_SELECTOR");
   def_macro ("__BUILTIN_IA16_FP_OFF");
 
