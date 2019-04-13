@@ -19,6 +19,9 @@
    with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* This file is no longer used now.  The ELKS specs are now in elf.h.
+	-- tkchia 20190413  */
+
 /* Controlling the Compilation Driver, gcc.  */
 
 #define LINK_SPEC	\

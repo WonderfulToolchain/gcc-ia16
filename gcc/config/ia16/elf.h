@@ -49,9 +49,11 @@
     "%{!r:"		\
       "%{nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \
-	  "%{melks:%Telks-separate.ld;" \
+	  "%{melks:"	\
+	    "%{nostdlib|nostartfiles:%Telk-ms.ld;:%Telk-mss.ld};" \
 	    "nostdlib|nostartfiles:%Tdos-ms.ld;:%Tdos-mss.ld};" \
-	  "melks:%Telks-combined.ld;" \
+	  "melks:"	\
+	    "%{nostdlib|nostartfiles:%Telk-mt.ld;:%Telk-mts.ld};" \
 	  "nostdlib|nostartfiles:%Tdos-mt.ld;:%Tdos-mts.ld" \
 	"}"		\
       "}"		\
@@ -73,9 +75,11 @@
 	    "%{mnewlib-autofloat-stdio:-lanstdio} -lnstdio;" \
 	    "mnewlib-autofloat-stdio:-lastdio} " \
 	  "%{mcmodel=small:" \
-	    "%{melks:%Telks-separate.ld;" \
+	    "%{melks:"	\
+	      "%{nostartfiles:%Telk-msl.ld;:%Telk-mssl.ld};" \
 	      "nostartfiles:%Tdos-msl.ld;:%Tdos-mssl.ld};" \
-	    "melks:%Telks-combined.ld;" \
+	    "melks:"	\
+	      "%{nostartfiles:%Telk-mtl.ld;:%Telk-mtsl.ld};" \
 	    "nostartfiles:%Tdos-mtl.ld;:%Tdos-mtsl.ld" \
 	  "}"		\
 	"}"		\
