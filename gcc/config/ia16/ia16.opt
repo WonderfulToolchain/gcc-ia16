@@ -159,6 +159,11 @@ melks
 Target Report RejectNegative Mask(SYS_ELKS)
 Generate executables for ELKS OS (experimental).
 
+; With the help of elf.h, this also enables -melks (and -mprotected-mode).
+melks-libc
+Target Report RejectNegative Mask(SYS_ELKS)
+Generate executables for ELKS OS, and link with elks-libc (experimental).
+
 mmsdos
 Target Report RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
 Generate executables for MS-DOS (default).

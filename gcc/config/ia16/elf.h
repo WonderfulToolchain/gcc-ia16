@@ -22,10 +22,11 @@
 
 /* Controlling the Compilation Driver, gcc.  */
 
-#define CC1_SPEC	\
-  "%{!mno-protected-mode:%{melks:-mprotected-mode}} " \
-  "%{!mno-segment-relocation-stuff:" \
-    "%{mcmodel=small|mcmodel=medium:-msegment-relocation-stuff}}"
+#define DRIVER_SELF_SPECS \
+  "%{melks-libc:-melks}", \
+  "%{melks:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{mcmodel=small|mcmodel=medium:" \
+    "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}"
 
 /* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
    script specification (%T...) to appear in LIB_SPEC if we are linking in
@@ -47,7 +48,9 @@
   "%{!T*:"		\
     "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
     "%{!r:"		\
-      "%{nostdlib|nodefaultlibs:" \
+      "%{melks-libc:" \
+	"%{mcmodel=small:%Telkslibc/elks-small.ld;:%Telkslibc/elks-tiny.ld};" \
+	"nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \
 	  "%{melks:"	\
 	    "%{nostdlib|nostartfiles:%Telk-ms.ld;:%Telk-mss.ld};" \
@@ -61,13 +64,14 @@
   "}"
 
 #define STARTFILE_SPEC	\
-  ""
+  "%{melks-libc:-l:elkslibc/crt0.o}"
 
 #define ENDFILE_SPEC	\
   ""
 
 #define LIB_SPEC	\
-  "%{!T*:"		\
+  "%{melks-libc:-l:elkslibc/libc.a;" \
+    "!T*:"		\
     "%{!r:"		\
       "%{!nostdlib:"	\
 	"%{!nodefaultlibs:" \
