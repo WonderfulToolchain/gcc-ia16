@@ -107,6 +107,74 @@ __ia16_ldivmodu:
 	popw	%di
 	popw	%si
 	ret
+#elif defined L_ashlsi3
+	.global	__ashlsi3
+	.type	__ashlsi3, @function
+__ashlsi3:
+# ifdef __IA16_CALLCVT_CDECL
+	movw	%sp,	%bx
+	movw	2(%bx),	%ax
+	movw	4(%bx),	%dx
+	movb	6(%bx),	%cl
+# elif defined __IA16_CALLCVT_STDCALL
+	popw	%bx
+	popw	%ax
+	popw	%dx
+	popw	%cx
+	pushw	%bx
+# endif
+	andb	$0x1f,	%cl
+	testb	$0x10,	%cl
+	jz	0f
+	movw	%ax,	%dx
+	xorw	%ax,	%ax
+	subb	$0x10,	%cl
+	shlw	%cl,	%dx
+	ret
+0:
+	movw	%ax,	%bx
+	shlw	%cl,	%ax
+	/* Quickly figure out the bits we want to shift from the low
+	   shortword into the high shortword.  We can do this by taking the
+	   "difference" between the `shlw' and `rolw' results.  */
+	rolw	%cl,	%bx
+	xorw	%ax,	%bx
+	/* Then combine them with the bits from the high shortword.  */
+	shlw	%cl,	%dx
+	orw	%bx,	%dx
+	ret
+#elif defined L_lshrsi3
+	.global	__lshrsi3
+	.type	__lshrsi3, @function
+__lshrsi3:
+# ifdef __IA16_CALLCVT_CDECL
+	movw	%sp,	%bx
+	movw	2(%bx),	%ax
+	movw	4(%bx),	%dx
+	movb	6(%bx),	%cl
+# elif defined __IA16_CALLCVT_STDCALL
+	popw	%bx
+	popw	%ax
+	popw	%dx
+	popw	%cx
+	pushw	%bx
+# endif
+	andb	$0x1f,	%cl
+	testb	$0x10,	%cl
+	jz	0f
+	movw	%dx,	%ax
+	xorw	%dx,	%dx
+	subb	$0x10,	%cl
+	shrw	%cl,	%ax
+	ret
+0:
+	movw	%dx,	%bx
+	shrw	%cl,	%dx
+	rorw	%cl,	%bx
+	xorw	%dx,	%bx
+	shrw	%cl,	%ax
+	orw	%bx,	%ax
+	ret
 #elif defined L_ne_sf
 	/* Cheat a bit here: define __nesf2, __ltsf2, and __lesf2 in the
 	   same module, since we can collapse all of them to the same jump
