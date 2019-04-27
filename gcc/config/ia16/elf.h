@@ -49,7 +49,7 @@
     "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
     "%{!r:"		\
       "%{melks-libc:" \
-	"%{mcmodel=small:%Telkslibc/elks-small.ld;:%Telkslibc/elks-tiny.ld};" \
+	"%{mcmodel=small:%Telks-small.ld;:%Telks-tiny.ld};" \
 	"nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \
 	  "%{melks:"	\
@@ -64,13 +64,13 @@
   "}"
 
 #define STARTFILE_SPEC	\
-  "%{melks-libc:-l:elkslibc/crt0.o}"
+  "%{melks-libc:-l:crt0.o}"
 
 #define ENDFILE_SPEC	\
   ""
 
 #define LIB_SPEC	\
-  "%{melks-libc:-l:elkslibc/libc.a;" \
+  "%{melks-libc:-lc -lgcc;" \
     "!T*:"		\
     "%{!r:"		\
       "%{!nostdlib:"	\
