@@ -1,16 +1,29 @@
 # 16.1 Target Makefile Fragments
 
 # Build ia16-c.o.  Also take the opportunity to check for any previously
-# installed `i80286' multilibs (which I included from 8 Oct to 9 Dec 2017)
-# or `wide-types' multilibs (which I included up to 11 Apr 2018), which
-# should really be cleaned away.  -- tkchia
+# installed obsolete multilibs, which should really be cleaned away.
+#	-- tkchia
 #
 ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
-	@if test -e "$(prefix)"/ia16-elf/lib/i80286 -o \
-		 -e "$(prefix)"/ia16-elf/lib/wide-types -o \
-		 -e "$(prefix)"/ia16-elf/lib/rtd/frame-pointer -o \
-		 -e "$(prefix)"/ia16-elf/lib/any_186/frame-pointer; then \
-	  exec >&2; \
+	@if test \
+	     -e "$(prefix)"/ia16-elf/lib/i80286 \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/i80286 \
+	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/i80286 \
+	  -o -e "$(prefix)"/ia16-elf/lib/any_186 \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/any_186 \
+	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/any_186\
+	  -o -e "$(prefix)"/ia16-elf/lib/wide-types \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/wide-types \
+	  -o -e \
+	     "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/wide-types\
+	  -o -e "$(prefix)"/ia16-elf/lib/frame-pointer \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/frame-pointer \
+	  -o -e \
+	  "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/frame-pointer\
+	  -o -e "$(prefix)"/ia16-elf/lib/rtd/elkslibc \
+	  -o -e "$(prefix)"/ia16-elf/lib/regparmcall/elkslibc; \
+	then \
+	  exec >&2 2>/dev/null; \
 	  echo; \
 	  echo '*** multilib settings have changed, please rebuild! ***'; \
 	  echo 'Please clean up the installation directory, and rebuild'; \
@@ -20,31 +33,67 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
 	  echo '  $$ git pull'; \
 	  echo '  $$ ./build.sh gcc1 newlib gcc2'; \
 	  echo 'Alternatively, manually remove the following directories:'; \
-	  find "$(prefix)" -name i80286 -ls; \
-	  find "$(prefix)" -name wide-types -ls; \
-	  find "$(prefix)" -name frame-pointer -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name i80286 -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name i80286 -ls; \
+	  find "$(prefix)"/ia16-elf/include -name i80286 -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name any_186 -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name any_186 -ls; \
+	  find "$(prefix)"/ia16-elf/include -name any_186 -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name wide-types -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name wide-types -ls; \
+	  find "$(prefix)"/ia16-elf/include -name wide-types -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name frame-pointer -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name frame-pointer -ls; \
+	  find "$(prefix)"/ia16-elf/include -name frame-pointer -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name elkslibc -ls; \
 	  echo 'and arrange to rebuild GCC.'; \
 	  echo; \
 	  exit 1; \
 	fi
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-MULTILIB_OPTIONS=mrtd/mregparmcall march=any_186 \
-	Os/fno-omit-frame-pointer
-MULTILIB_DIRNAMES=rtd regparmcall any_186 size frame-pointer
-MULTILIB_MATCHES=march?any_186=march?i80186 march?any_186=march?i80188 \
+MULTILIB_OPTIONS=mprotected-mode melks-libc mrtd/mregparmcall march=any_186 Os
+MULTILIB_DIRNAMES=pmode elkslibc rtd regparmcall any_186 size
+MULTILIB_MATCHES=mprotected-mode=melks \
+	march?any_186=march?i80186 march?any_186=march?i80188 \
 	march?any_186=march?v20 march?any_186=march?v30 \
 	march?any_186=march?i80286
-# To save build times, avoid building separate multilibs for `-mrtd
-# -fno-omit-frame-pointer', `-mregparmcall -fno-omit-frame-pointer', and
-# `-march=any_186 -fno-omit-frame-pointer'.  -- tkchia
-MULTILIB_EXCEPTIONS=\
-	*mrtd*/*fno-omit-frame-pointer* \
-	*mregparmcall*/*fno-omit-frame-pointer* \
-	*march?any_186*/*fno-omit-frame-pointer*
-MULTILIB_REUSE=\
-	mrtd=mrtd/fno-omit-frame-pointer \
-	mrtd/march.any_186=mrtd/march.any_186/fno-omit-frame-pointer \
-	mregparmcall=mregparmcall/fno-omit-frame-pointer \
-	mregparmcall/march.any_186=mregparmcall/march.any_186/fno-omit-frame-pointer \
-	march.any_186=march.any_186/fno-omit-frame-pointer
+ia16_all_multilibs=$(strip \
+  $(filter-out -, \
+    $(subst -/,,\
+      $(subst /-,,\
+	$(foreach pm,- mprotected-mode,\
+	  $(foreach el,- melks-libc,\
+	    $(foreach cc,- mrtd mregparmcall,\
+	      $(foreach ar,- march=any_186,$(pm)/$(el)/$(cc)/$(ar) \
+					   $(pm)/$(el)/$(cc)/$(ar)/Os))))))))
+#
+# (1) `-mprotected-mode -melks-libc' is the same as just `-melks-libc'.
+# (2) Build 80186+ multilibs only for the `regparmcall' convention.
+# (3) For now, do not build 186+-specific multilibs at all for -melks-libc
+#     or -mprotected-mode.
+# (4) Assume that -melks-libc and -mprotected-mode multilibs are always size-
+#     -optimized.
+#	-- tkchia
+#
+ia16_multilib_map=$(strip \
+  $(filter-out march=any_186,\
+    $(patsubst march=any_186/%,%,\
+      $(subst mrtd/march=any_186,mrtd,\
+	$(subst mprotected-mode/march=any_186,mprotected-mode,\
+	  $(subst melks-libc/march=any_186,melks-libc,\
+	    $(subst /mregparmcall/march=any_186,/mregparmcall,\
+	      $(patsubst mprotected-mode%/Os,mprotected-mode%,\
+		$(patsubst melks-libc%/Os,melks-libc%,\
+		  $(subst mprotected-mode/melks-libc,melks-libc,$1))))))))))
+MULTILIB_REQUIRED=$(strip \
+	$(foreach ml,$(ia16_all_multilibs),\
+	  $(filter $(call ia16_multilib_map,$(ml)),$(ml))))
+#
+# Some multilibs variants simply map to the default multilib, hence the $(if).
+#
+MULTILIB_REUSE=$(strip \
+  $(foreach ml,\
+    $(filter-out $(MULTILIB_REQUIRED),$(ia16_all_multilibs)),\
+      $(if $(call ia16_multilib_map,$(ml)),\
+	$(subst =,.,$(call ia16_multilib_map,$(ml)))=$(subst =,.,$(ml)))))
