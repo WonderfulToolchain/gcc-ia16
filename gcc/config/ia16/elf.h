@@ -23,10 +23,23 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 #define DRIVER_SELF_SPECS \
-  "%{melks-libc:-melks}", \
+  "%{melks-libc:-melks -nostdinc}", \
   "%{melks:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}"
+
+/* This is a hack.  When -melks-libc is specified, then, combined with the
+   -nostdinc above, this hack will (try to) make GCC use the include files
+   under the -melks-libc multilib directory, rather than the Newlib include
+   files in the usual locations.
+
+   We also need to extend the hack to rope in the libgcc include directories
+   --- via `include-fixed' --- since elks-libc's headers use libgcc's.
+	-- tkchia  */
+#define CPP_SPEC	\
+  "%{melks-libc:-isystem include-fixed/../include%s " \
+	       "-isystem include-fixed%s " \
+	       "-isystem include%s}"
 
 /* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
    script specification (%T...) to appear in LIB_SPEC if we are linking in
