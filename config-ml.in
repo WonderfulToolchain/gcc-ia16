@@ -302,7 +302,9 @@ arm-*-*)
 	fi
 	;;
 ia16-*)
-	if [ x"$enable_elks_libc" = xno ]
+	if [ x"$enable_elks_libc" = xno \
+	     -o \( x"$PACKAGE" = xlibstdc++ \
+		   -a x"$enable_elks_libc" != xyes \) ]
 	then
 	  old_multidirs=${multidirs}
 	  multidirs=""
