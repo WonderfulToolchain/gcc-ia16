@@ -33,13 +33,20 @@
    under the -melks-libc multilib directory, rather than the Newlib include
    files in the usual locations.
 
-   We also need to extend the hack to rope in the libgcc include directories
-   --- via `include-fixed' --- since elks-libc's headers use libgcc's.
-	-- tkchia  */
+   We also need to extend the hack to
+     * rope in the libgcc include directories --- via `include-fixed' ---
+       since elks-libc's headers use libgcc's.
+     * fall back on the include directories for the default calling
+       convention (.../ia16-elf/lib/elkslibc/include/), in case the user
+       says e.g. `-melks-libc -mregparmcall' and no include files are
+       installed specifically for this calling convention.
+
+   Again, this is a hack.  -- tkchia  */
 #define CPP_SPEC	\
   "%{melks-libc:-isystem include-fixed/../include%s " \
 	       "-isystem include-fixed%s " \
-	       "-isystem include%s}"
+	       "-isystem include%s " \
+	       "-isystem elkslibc/include%s}"
 
 /* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
    script specification (%T...) to appear in LIB_SPEC if we are linking in
