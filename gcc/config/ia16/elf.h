@@ -24,7 +24,7 @@
 
 #define DRIVER_SELF_SPECS \
   "%{melks-libc:-melks -nostdinc}", \
-  "%{melks:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{melks|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}"
 
@@ -73,10 +73,14 @@
 	"nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \
 	  "%{melks:"	\
-	    "%{nostdlib|nostartfiles:%Telk-ms.ld;:%Telk-mss.ld};" \
+	      "%{nostdlib|nostartfiles:%Telk-ms.ld;:%Telk-mss.ld};" \
+	    "mdpmiable:" \
+	      "%{nostdlib|nostartfiles:%Tdpm-ms.ld;:%Tdpm-mss.ld};" \
 	    "nostdlib|nostartfiles:%Tdos-ms.ld;:%Tdos-mss.ld};" \
 	  "melks:"	\
 	    "%{nostdlib|nostartfiles:%Telk-mt.ld;:%Telk-mts.ld};" \
+	  "mdpmiable:"	\
+	    "%{nostdlib|nostartfiles:%Tdpm-mt.ld;:%Tdpm-mts.ld};" \
 	  "nostdlib|nostartfiles:%Tdos-mt.ld;:%Tdos-mts.ld" \
 	"}"		\
       "}"		\
@@ -100,10 +104,14 @@
 	    "mnewlib-autofloat-stdio:-lastdio} " \
 	  "%{mcmodel=small:" \
 	    "%{melks:"	\
-	      "%{nostartfiles:%Telk-msl.ld;:%Telk-mssl.ld};" \
+		"%{nostartfiles:%Telk-msl.ld;:%Telk-mssl.ld};" \
+	      "mdpmiable:" \
+		"%{nostartfiles:%Tdpm-msl.ld;:%Tdpm-mssl.ld};" \
 	      "nostartfiles:%Tdos-msl.ld;:%Tdos-mssl.ld};" \
 	    "melks:"	\
 	      "%{nostartfiles:%Telk-mtl.ld;:%Telk-mtsl.ld};" \
+	    "mdpmiable:" \
+	      "%{nostartfiles:%Tdpm-mtl.ld;:%Tdpm-mtsl.ld};" \
 	    "nostartfiles:%Tdos-mtl.ld;:%Tdos-mtsl.ld" \
 	  "}"		\
 	"}"		\
