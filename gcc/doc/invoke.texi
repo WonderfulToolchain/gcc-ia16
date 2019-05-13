@@ -757,7 +757,8 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mmsdos -mmsdos-handle-v1 -melks -melks-libc -mcmodel=tiny -mcmodel=small @gol
+-mmsdos -mmsdos-handle-v1 -mdpmiable -melks -melks-libc @gol
+-mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd -mstdcall @gol
 -mregparmcall -mno-callee-assume-ds-data-segment -mprotected-mode @gol
 -mnewlib-nano-stdio -mnewlib-autofloat-stdio}
@@ -16565,6 +16566,15 @@ Produce executables for MS-DOS, in such a way that the executables will fail
 gracefully under MS-DOS version 1.x, rather than crash the system.  This
 option implies @option{-mmsdos}, and is still experimental.
 
+@item -mdpmiable
+@opindex mdpmiable
+Produce MS-DOS executables which try to use the DOS Protected Mode Interface
+(DPMI) to switch to and run in protected mode when they detect a DPMI host. 
+
+This option is still experimental.  It implies @option{-mmsdos} and
+@option{-mprotected-mode}, and requires support from the linker script which
+comes with the C library.
+
 @item -melks
 @opindex melks
 Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
@@ -16724,6 +16734,9 @@ void foo (unsigned selector)
 @}
 @end smallexample
 
+At the linking stage, @option{-mprotected-mode} will also make GCC link your
+code against library routines that are built to work with protected mode.
+
 @item -mnewlib-nano-stdio
 @opindex mnewlib-nano-stdio
 If using the Newlib C library, link against a limited version of the
@@ -16795,6 +16808,9 @@ shift count to their lower 5 bits.
 
 @item __IA16_FEATURE_PROTECTED_MODE
 This macro is defined only if @option{-mprotected-mode} is in effect.
+
+@item __IA16_FEATURE_DPMIABLE
+This macro is defined only if @option{-mdpmiable} is in effect.
 
 @item __IA16_FEATURE_ALLOCABLE_DS_REG
 This macro is defined only if the @code{ds} register is configured to be
