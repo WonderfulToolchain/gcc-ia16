@@ -172,6 +172,11 @@ mmsdos-handle-v1
 Target Report RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
 Generate MS-DOS executables which fail gracefully on DOS v1.x (experimental).
 
+; With the help of elf.h, this also enables -mprotected-mode.
+mdpmiable
+Target Report Mask(DPMIABLE)
+Generate MS-DOS executables which use DPMI if present (experimental).
+
 mnewlib-nano-stdio
 Target Mask(NEWLIB_NANO_STDIO)
 Link with Newlib's limited formatted I/O routines (experimental).
