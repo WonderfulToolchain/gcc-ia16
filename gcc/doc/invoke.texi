@@ -758,7 +758,7 @@ Objective-C and Objective-C++ Dialects}.
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mmsdos -mmsdos-handle-v1 -mdpmiable -melks -melks-libc @gol
--mcmodel=tiny -mcmodel=small @gol
+-maout-total=@var{total} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd -mstdcall @gol
 -mregparmcall -mno-callee-assume-ds-data-segment -mprotected-mode @gol
 -mnewlib-nano-stdio -mnewlib-autofloat-stdio}
@@ -16586,6 +16586,14 @@ ELKS support is currently experimental and incomplete.
 @opindex melks-libc
 Like @option{-melks}, but link against ELKS's own C runtime library---which
 must be built with GCC, and installed---instead of the Newlib C library.
+
+@item -maout-total=@var{total}
+@opindex maout-total
+When building an ELKS program (@option{-melks} or @option{-melks-libc}), set
+it to request the operating system to set the top of the data
+segment---including static storage, heap, and stack---to at least
+@var{total}.  This requires support from the linker script which comes with
+the C library.
 
 @item -mcmodel=tiny
 @opindex mcmodel=tiny
