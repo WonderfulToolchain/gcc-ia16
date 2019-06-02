@@ -189,3 +189,7 @@ Automatically decide between floating-point and non-fp formatted I/O routines (e
 ; supports more than one executable format.
 maout
 Target RejectNegative Undocumented
+
+maout-total=
+Target RejectNegative Joined UInteger
+Set the top of the data segment for ELKS OS executables.
