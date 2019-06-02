@@ -68,7 +68,7 @@
   "%{!T*:"		\
     "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
     "%{!r:"		\
-      "%{melks-libc:" \
+      "%{melks-libc:"	\
 	"%{mcmodel=small:%Telks-small.ld;:%Telks-tiny.ld};" \
 	"nostdlib|nodefaultlibs:" \
 	"%{mcmodel=small:" \
@@ -83,7 +83,9 @@
 	    "%{nostdlib|nostartfiles:%Tdpm-mt.ld;:%Tdpm-mts.ld};" \
 	  "nostdlib|nostartfiles:%Tdos-mt.ld;:%Tdos-mts.ld" \
 	"}"		\
-      "}"		\
+      "} "		\
+      "%{melks*:"	\
+	"%{maout-total=*:--defsym=_total=%*}}" \
     "}"			\
   "}"
 
