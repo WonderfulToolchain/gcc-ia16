@@ -201,10 +201,21 @@ __ia16_ldivmods:
 	.type	__ashlsi3, @function
 __ashlsi3:
 # ifdef __IA16_CALLCVT_CDECL
+#   ifdef __OPTIMIZE_SIZE__
+	popw	%bx
+	popw	%ax
+	popw	%dx
+	popw	%cx
+	pushw	%cx
+	pushw	%dx
+	pushw	%ax
+	pushw	%bx
+#   else
 	movw	%sp,	%bx
 	movw	2(%bx),	%ax
 	movw	4(%bx),	%dx
 	movb	6(%bx),	%cl
+#   endif
 # elif defined __IA16_CALLCVT_STDCALL
 	popw	%bx
 	popw	%ax
@@ -212,7 +223,16 @@ __ashlsi3:
 	popw	%cx
 	pushw	%bx
 # endif
-	andb	$0x1f,	%cl
+	andw	$0x1f,	%cx
+# ifdef __OPTIMIZE_SIZE__
+	jcxz	1f
+0:
+	shlw	%ax
+	rclw	%dx
+	loop	0b
+1:
+	ret
+# else
 	testb	$0x10,	%cl
 	jz	0f
 	movw	%ax,	%dx
@@ -232,15 +252,27 @@ __ashlsi3:
 	shlw	%cl,	%dx
 	orw	%bx,	%dx
 	ret
+# endif
 #elif defined L_lshrsi3
 	.global	__lshrsi3
 	.type	__lshrsi3, @function
 __lshrsi3:
 # ifdef __IA16_CALLCVT_CDECL
+#   ifdef __OPTIMIZE_SIZE__
+	popw	%bx
+	popw	%ax
+	popw	%dx
+	popw	%cx
+	pushw	%cx
+	pushw	%dx
+	pushw	%ax
+	pushw	%bx
+#   else
 	movw	%sp,	%bx
 	movw	2(%bx),	%ax
 	movw	4(%bx),	%dx
 	movb	6(%bx),	%cl
+#   endif
 # elif defined __IA16_CALLCVT_STDCALL
 	popw	%bx
 	popw	%ax
@@ -248,7 +280,16 @@ __lshrsi3:
 	popw	%cx
 	pushw	%bx
 # endif
-	andb	$0x1f,	%cl
+	andw	$0x1f,	%cx
+# ifdef __OPTIMIZE_SIZE__
+	jcxz	1f
+0:
+	shrw	%dx
+	rcrw	%ax
+	loop	0b
+1:
+	ret
+# else
 	testb	$0x10,	%cl
 	jz	0f
 	movw	%dx,	%ax
@@ -264,6 +305,7 @@ __lshrsi3:
 	shrw	%cl,	%ax
 	orw	%bx,	%ax
 	ret
+# endif
 #elif defined L_ne_sf
 	/* Cheat a bit here: define __nesf2, __ltsf2, and __lesf2 in the
 	   same module, since we can collapse all of them to the same jump
