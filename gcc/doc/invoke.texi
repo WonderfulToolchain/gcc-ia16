@@ -16580,8 +16580,6 @@ comes with the C library.
 Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
 system  This option also turns on @option{-mprotected-mode}.
 
-ELKS support is currently experimental and incomplete.
-
 @item -melks-libc
 @opindex melks-libc
 Like @option{-melks}, but link against ELKS's own C runtime library---which
