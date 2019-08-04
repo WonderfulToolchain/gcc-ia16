@@ -1592,21 +1592,20 @@ To avoid ambiguity in parsing, the postfix @code{__far} notation above for
 declaring far functions is not allowed with K&R-style function definitions.
 
 @item
-For a declaration like
+Starting from August 2019, a declaration like
 
 @smallexample
 static int __far x, y, z;
 @end smallexample
 
-there is @emph{no} guarantee that the variables @code{x}, @code{y}, and
-@code{z} will be placed in the same far segment.  GCC only
-guarantees---given an appropriate linker script at link time---that each of
+guarantees that the variables @code{x}, @code{y}, and @code{z} will be
+placed in the same far segment---@emph{though not necessarily in that order}. 
+(To lay out a set of far variables in a fixed order, you can consider
+wrapping them in a struct.)
+
+GCC also guarantees, given an appropriate linker script at link time, that
 @code{x}, @code{y}, and @code{z} will be placed outside the generic (near)
 data address space.
-
-To place a set of variables in a single far segment, you can either wrap
-them in a struct, or use the @code{section} attribute (@pxref{Variable
-Attributes}).
 
 @item
 When using the (default) tiny memory model, or if
