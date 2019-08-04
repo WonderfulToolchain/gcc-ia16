@@ -3131,8 +3131,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
    done with it.
 
    To fabricate the section name, I first decide the prefix for the section
-   type, then add the name of the variable; and finally I compute a hash
-   value of everything and append the hash.
+   type, then add the (sanitized) name of the main source file; and finally
+   I compute a hash value of everything and append the hash.
 
    (Note: apparently CFUN tends to be NULL at this point, even if the
    variable is defined inside a function.)  */
@@ -3140,8 +3140,8 @@ static char *
 ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 {
   const char *prefix;
-  const char *dname;
-  char *name1, *name2;
+  char *name1, *name2, *p, c;
+  size_t prefix_len;
   unsigned short hash;
   bool one_only;
 
@@ -3159,17 +3159,20 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   one_only = DECL_COMDAT_GROUP (decl) && ! HAVE_COMDAT_GROUP;
 
+#define PL(str)		(prefix = (str), \
+			 prefix_len = strlen (prefix))
+
   switch (categorize_decl_for_section (decl, reloc))
     {
     case SECCAT_TEXT:
-      prefix = one_only ? ".gnu.linkonce.ft." : ".fartext.";
+      PL (one_only ? ".gnu.linkonce.ft." : ".fartext.");
       break;
 
     case SECCAT_DATA:
     case SECCAT_DATA_REL:
     case SECCAT_DATA_REL_LOCAL:
     case SECCAT_BSS:
-      prefix = one_only ? ".gnu.linkonce.fd." : ".fardata.";
+      PL (one_only ? ".gnu.linkonce.fd." : ".fardata.");
       break;
 
     case SECCAT_DATA_REL_RO:
@@ -3178,24 +3181,49 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
     case SECCAT_RODATA_MERGE_STR:
     case SECCAT_RODATA_MERGE_STR_INIT:
     case SECCAT_RODATA_MERGE_CONST:
-      prefix = one_only ? ".gnu.linkonce.fr." : ".farrodata.";
+      PL (one_only ? ".gnu.linkonce.fr." : ".farrodata.");
       break;
 
     default:
       return NULL;
     }
 
-  dname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
-  dname = targetm.strip_name_encoding (dname);
+#undef PL
 
-  name1 = ACONCAT ((prefix, dname, NULL));
+  /* Extract and copy the base name of the main input file, and convert
+     non-symbol characters to `_'.  Also add the prefix.  */
+  name1 = ACONCAT ((prefix, main_input_filename, NULL));
+  p = name1 + prefix_len;
+  while ((c = *p) != 0)
+    {
+      switch (c)
+	{
+	case '0': case '1': case '2': case '3': case '4': case '5': case '6':
+	case '7': case '8': case '9':
+	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+	case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+	case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+	case 'v': case 'w': case 'x': case 'y': case 'z':
+	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
+	case 'H': case 'I': case 'J': case 'K': case 'L': case 'M': case 'N':
+	case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
+	case 'V': case 'W': case 'X': case 'Y': case 'Z':
+	case '_': case '.': case '$':
+	  break;
+	default:
+	  *p = '_';
+	}
+      ++p;
+    }
+
+  /* Add a hash.  */
   hash = (unsigned short) htab_hash_string (name1);
   hash *=  036627u;
   hash &= 0177777u;
   hash = hash << 4 | hash >> 12;
   hash &=  077777u;
 
-  if (asprintf (&name2, "%s.%05ho", name1, hash) <= 0)
+  if (asprintf (&name2, "%s.%05ho$", name1, hash) <= 0)
     {
       error ("not enough memory for %<__far%> function or variable "
 	     "section name");
@@ -3437,13 +3465,13 @@ ia16_asm_integer (rtx x, unsigned size, int aligned_p)
   output_addr_const (asm_out_file, x);
 
   /* GNU as does not yet accept the syntax
-	.hword	foo@SEGMENT16
+	.hword	foo@OZSEG16
      so we have to say
-	.reloc	., R_386_SEGMENT16, foo
+	.reloc	., R_386_OZSEG16, foo
 	.hword	0
      instead.  */
   fputs ("\n"
-	 "\t.reloc\t., R_386_SEGMENT16, ", asm_out_file);
+	 "\t.reloc\t., R_386_OZSEG16, ", asm_out_file);
   output_addr_const (asm_out_file, base);
   fputs ("\n" TARGET_ASM_ALIGNED_HI_OP "0\n", asm_out_file);
   return true;
@@ -5220,9 +5248,9 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
 					      "to far function");
       /* GNU as does not like
-		lcall	$foo@SEGMENT16,	$foo
+		lcall	$foo@OZSEG16,	$foo
 	 and says "Error: can't handle non absolute segment in `lcall'".  */
-      return P2 (  ".reloc\t.+3, R_386_SEGMENT16, %c", "\n"
+      return P2 (  ".reloc\t.+3, R_386_OZSEG16, %c", "\n"
 		 "\tlcall\t$0,\t%");
     }
 }
@@ -5256,22 +5284,22 @@ ia16_get_far_thunked_call_expansion (unsigned which_is_addr, bool pop_p)
   if (! pop_p)
     {
       if (which_is_addr == 0)
-	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+	return	  ".reloc\t.+3, R_386_OZSEG16, "
 			  "__ia16_far_call_thunk.%R0.%R1\n"
 		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R0.%R1";
       else
-	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+	return	  ".reloc\t.+3, R_386_OZSEG16, "
 			  "__ia16_far_call_thunk.%R1.%R2\n"
 		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R1.%R2";
     }
   else
     {
       if (which_is_addr == 0)
-	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+	return	  ".reloc\t.+3, R_386_OZSEG16, "
 			  "__ia16_far_call_pop_thunk.%R0.%R1.%R2\n"
 		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R0.%R1.%R2";
       else
-	return	  ".reloc\t.+3, R_386_SEGMENT16, "
+	return	  ".reloc\t.+3, R_386_OZSEG16, "
 			  "__ia16_far_call_pop_thunk.%R1.%R2.%R3\n"
 		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R1.%R2.%R3";
     }
@@ -5320,7 +5348,7 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
       if (! TARGET_SEG_RELOC_STUFF)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable "
 					      "sibcall to far function");
-      return P2 (  ".reloc\t.+3, R_386_SEGMENT16, %c", "\n"
+      return P2 (  ".reloc\t.+3, R_386_OZSEG16, %c", "\n"
 		 "\tljmp\t$0,\t%");
     }
 }
