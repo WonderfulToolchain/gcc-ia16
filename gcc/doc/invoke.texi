@@ -16564,16 +16564,7 @@ Produce executables for MS-DOS.  This is the default.
 @opindex mmsdos-handle-v1
 Produce executables for MS-DOS, in such a way that the executables will fail
 gracefully under MS-DOS version 1.x, rather than crash the system.  This
-option implies @option{-mmsdos}, and is still experimental.
-
-@item -mdpmiable
-@opindex mdpmiable
-Produce MS-DOS executables which try to use the DOS Protected Mode Interface
-(DPMI) to switch to and run in protected mode when they detect a DPMI host. 
-
-This option is still experimental.  It implies @option{-mmsdos} and
-@option{-mprotected-mode}, and requires support from the linker script which
-comes with the C library.
+option implies @option{-mmsdos}.
 
 @item -melks
 @opindex melks
@@ -16721,7 +16712,7 @@ Do not treat a function with a @code{__far} return type as a far function.
 
 @item -mprotected-mode
 @opindex mprotected-mode
-Enable partial (and experimental) support for generating code to run in
+Enable partial support for generating code to run in
 Intel 80286 protected mode.
 
 With this option, the output code will avoid using segment registers
@@ -16742,13 +16733,16 @@ void foo (unsigned selector)
 
 At the linking stage, @option{-mprotected-mode} will also make GCC link your
 code against library routines that are built to work with protected mode.
+@end table
 
+@subsubsection Experimental IA-16 Options
+
+@table @gcctabopt
 @item -mnewlib-nano-stdio
 @opindex mnewlib-nano-stdio
 If using the Newlib C library, link against a limited version of the
 formatted I/O routines (@code{stdio}) which supports only C89 functionality
-and by default excludes floating-point support.  This option is
-experimental.
+and by default excludes floating-point support.
 
 @item -mnewlib-autofloat-stdio
 @opindex mnewlib-autofloat-stdio
@@ -16756,8 +16750,26 @@ If using the Newlib C library, try to detect whether the program needs
 floating-point support in the formatted I/O routines (@code{stdio}), and
 link against the appropriate version of the @code{stdio} code.
 
-This option is experimental.  If you use it, specify it at compile time and
-during the final link.
+If you use this option, specify it at compile time and during the final link.
+
+@item -mdpmiable
+@opindex mdpmiable
+Produce MS-DOS executables which try to use the DOS Protected Mode Interface
+(DPMI) to switch to and run in protected mode when they detect a DPMI host. 
+
+This option implies @option{-mmsdos} and @option{-mprotected-mode}, and
+requires support from the linker script which comes with the C library.
+
+@item -msegelf
+@opindex msegelf
+Generate object files which follow H.@: Peter Anvin's proposed 16-bit
+segmented code ABI,
+@url{https://git.zytor.com/users/hpa/segelf/abi.git/plain/segelf.txt}.
+
+@strong{Warning:} The @option{-msegelf} switch causes GCC
+to generate code that is not binary compatible with code generated
+without that switch.  Using this switch may require recompiling all
+other modules in a program, including system libraries.
 @end table
 
 @anchor{IA-16 Built-in Macros}
