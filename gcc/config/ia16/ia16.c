@@ -3469,11 +3469,22 @@ ia16_asm_integer (rtx x, unsigned size, int aligned_p)
      so we have to say
 	.reloc	., R_386_OZSEG16, foo
 	.hword	0
-     instead.  */
-  fputs ("\n"
-	 "\t.reloc\t., R_386_OZSEG16, ", asm_out_file);
-  output_addr_const (asm_out_file, base);
-  fputs ("\n" TARGET_ASM_ALIGNED_HI_OP "0\n", asm_out_file);
+     instead.  Ditto for the SEG16 case.  */
+  if (! TARGET_ABI_SEGELF)
+    {
+      fputs ("\n"
+	     "\t.reloc\t., R_386_OZSEG16, ", asm_out_file);
+      output_addr_const (asm_out_file, base);
+      fputs ("\n" TARGET_ASM_ALIGNED_HI_OP "0\n", asm_out_file);
+    }
+  else
+    {
+      fputs ("\n"
+	     "\t.reloc\t., R_386_SEG16, \"", asm_out_file);
+      output_addr_const (asm_out_file, base);
+      fputs ("!\"\n" TARGET_ASM_ALIGNED_HI_OP "0\n", asm_out_file);
+    }
+
   return true;
 }
 
@@ -3495,8 +3506,9 @@ static const char *reg_HInames[LAST_HARD_REG + 1] = {
 	%cx before a `rep; movsw').
    'R': Don't print any register prefix before E.
    'O': Print the low 16 bits of the 32-bit constant E (for immediate
-        `lcall' and `ljmp').
+	`lcall' and `ljmp').
    'S': Print the high 16 bits of the 32-bit constant E.
+   'Z': Print the symbol name for the segelf base, sans preceding $.
 */
 void
 ia16_print_operand (FILE *file, rtx e, int code)
@@ -3533,6 +3545,12 @@ ia16_print_operand (FILE *file, rtx e, int code)
       gcc_assert (CONST_INT_P (e));
       x = GEN_INT ((INTVAL (e) >> 16) & 0xffff);
     }
+  else if (code == 'Z')
+    {
+      x = ia16_find_base_symbol_ref (e);
+      if (! x)
+	x = const0_rtx;
+    }
   else
     x = e;
   if (GET_CODE (x) == SUBREG)
@@ -3568,11 +3586,19 @@ ia16_print_operand (FILE *file, rtx e, int code)
       case CONST:
       case SYMBOL_REF:
       case LABEL_REF:
-      fputs (IMMEDIATE_PREFIX, file);
+      if (code != 'Z')
+	fputs (IMMEDIATE_PREFIX, file);
       /* fall through */
 
       case CODE_LABEL:
-      output_addr_const (file, x);
+      if (code != 'Z')
+	output_addr_const (file, x);
+      else
+	{
+	  putc ('"', file);
+	  output_addr_const (file, x);
+	  fputs ("!\"", file);
+	}
       break;
 
       case MEM:
@@ -5185,10 +5211,28 @@ ia16_expand_epilogue (bool sibcall)
     emit_jump_insn (gen_simple_return ());
 }
 
+/* GNU as does not like
+	lcall	$foo@OZSEG16,	$foo
+   and says "Error: can't handle non absolute segment in `lcall'".  */
+#define LCALL_TEMPLATE(dest) \
+			(TARGET_ABI_SEGELF \
+			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
+			     "\tlcall\t$0,\t$" dest \
+			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
+			     "\tlcall\t$0,\t$" dest)
+#define LJMP_TEMPLATE(dest) \
+			(TARGET_ABI_SEGELF \
+			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
+			     "\tljmp\t$0,\t$" dest \
+			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
+			     "\tljmp\t$0,\t$" dest)
+
 #define P(part)	(which_is_addr == 0 ? part "0" : part "1")
 #define P2(part_a, part_b) \
 			(which_is_addr == 0 ? part_a "0" part_b "0" : \
 					      part_a "1" part_b "1")
+/* MACRO is either LCALL_TEMPLATE or LJMP_TEMPLATE.  */
+#define PM(macro)	(which_is_addr == 0 ? macro ("%c0") : macro ("%c1"))
 
 /* Return the insn template for a normal call to a subroutine at address
    ADDR and with machine mode MODE.  ADDR should correspond to "%0" or "%1"
@@ -5247,11 +5291,7 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
       if (! TARGET_SEG_RELOC_STUFF)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
 					      "to far function");
-      /* GNU as does not like
-		lcall	$foo@OZSEG16,	$foo
-	 and says "Error: can't handle non absolute segment in `lcall'".  */
-      return P2 (  ".reloc\t.+3, R_386_OZSEG16, %c", "\n"
-		 "\tlcall\t$0,\t%");
+      return PM (LCALL_TEMPLATE);
     }
 }
 
@@ -5284,24 +5324,16 @@ ia16_get_far_thunked_call_expansion (unsigned which_is_addr, bool pop_p)
   if (! pop_p)
     {
       if (which_is_addr == 0)
-	return	  ".reloc\t.+3, R_386_OZSEG16, "
-			  "__ia16_far_call_thunk.%R0.%R1\n"
-		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R0.%R1";
+	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R0.%R1");
       else
-	return	  ".reloc\t.+3, R_386_OZSEG16, "
-			  "__ia16_far_call_thunk.%R1.%R2\n"
-		"\tlcall\t$0,\t$__ia16_far_call_thunk.%R1.%R2";
+	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R1.%R2");
     }
   else
     {
       if (which_is_addr == 0)
-	return	  ".reloc\t.+3, R_386_OZSEG16, "
-			  "__ia16_far_call_pop_thunk.%R0.%R1.%R2\n"
-		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R0.%R1.%R2";
+	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R0.%R1.%R2");
       else
-	return	  ".reloc\t.+3, R_386_OZSEG16, "
-			  "__ia16_far_call_pop_thunk.%R1.%R2.%R3\n"
-		"\tlcall\t$0,\t$__ia16_far_call_pop_thunk.%R1.%R2.%R3";
+	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R1.%R2.%R3");
     }
 }
 
@@ -5348,13 +5380,13 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
       if (! TARGET_SEG_RELOC_STUFF)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable "
 					      "sibcall to far function");
-      return P2 (  ".reloc\t.+3, R_386_OZSEG16, %c", "\n"
-		 "\tljmp\t$0,\t%");
+      return PM (LJMP_TEMPLATE);
     }
 }
 
 #undef P
 #undef P2
+#undef PM
 
 void
 ia16_asm_output_addr_diff_elt (FILE *stream, rtx body ATTRIBUTE_UNUSED,
