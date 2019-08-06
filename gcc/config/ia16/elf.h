@@ -48,6 +48,9 @@
 	       "-isystem include%s " \
 	       "-isystem elkslibc/include%s}"
 
+#define ASM_SPEC	\
+  "%{msegelf:--32-segelf}"
+
 /* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
    script specification (%T...) to appear in LIB_SPEC if we are linking in
    default libraries, but in LINK_SPEC if we are not (i.e. -nostdlib or

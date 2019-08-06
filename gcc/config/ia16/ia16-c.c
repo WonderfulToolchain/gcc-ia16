@@ -109,7 +109,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__BUILTIN_IA16_FP_OFF");
 
   /* Also define a macro to give the function calling convention settings
-     in use.  */
+     and/or the object file ABI variant in use (segelf vs. non-segelf).  */
   def_or_undef_macro ("__IA16_CALLCVT_CDECL",
 		      target_call_parm_cvt == CALL_PARM_CVT_CDECL);
   def_or_undef_macro ("__IA16_CALLCVT_STDCALL",
@@ -118,6 +118,7 @@ ia16_cpu_cpp_builtins (void)
 		      target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL);
   def_or_undef_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE",
 		      TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
+  def_or_undef_macro ("__IA16_ABI_SEGELF", TARGET_ABI_SEGELF);
 
   /* Since the `regparmcall' convention is still in a state of flux, I am
      adding a crude versioning mechanism so that users can ask the compiler

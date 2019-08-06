@@ -177,6 +177,10 @@ mdpmiable
 Target Report Mask(DPMIABLE)
 Generate MS-DOS executables which use DPMI if present (experimental).
 
+msegelf
+Target Report Mask(ABI_SEGELF)
+Use H. Peter Anvin's proposed 16-bit segmented code ABI (experimental).
+
 mnewlib-nano-stdio
 Target Mask(NEWLIB_NANO_STDIO)
 Link with Newlib's limited formatted I/O routines (experimental).
