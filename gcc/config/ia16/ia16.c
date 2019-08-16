@@ -5331,9 +5331,9 @@ ia16_get_far_thunked_call_expansion (unsigned which_is_addr, bool pop_p)
   else
     {
       if (which_is_addr == 0)
-	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R0.%R1.%R2");
+	return LCALL_TEMPLATE ("__ia16_far_call_pop_thunk.%R0.%R1.%R2");
       else
-	return LCALL_TEMPLATE ("__ia16_far_call_thunk.%R1.%R2.%R3");
+	return LCALL_TEMPLATE ("__ia16_far_call_pop_thunk.%R1.%R2.%R3");
     }
 }
 
