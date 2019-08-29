@@ -3192,7 +3192,7 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
   /* Extract and copy the base name of the main input file, and convert
      non-symbol characters to `_'.  Also add the prefix.  */
-  name1 = ACONCAT ((prefix, main_input_filename, NULL));
+  name1 = ACONCAT ((prefix, lbasename (main_input_filename), NULL));
   p = name1 + prefix_len;
   while ((c = *p) != 0)
     {
