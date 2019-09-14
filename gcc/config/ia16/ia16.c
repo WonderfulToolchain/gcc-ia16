@@ -3137,7 +3137,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
    (Note: apparently CFUN tends to be NULL at this point, even if the
    variable is defined inside a function.)  */
 static char *
-ia16_fabricate_section_name_for_decl (tree decl, int reloc)
+ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
 {
   const char *prefix;
   char *name1, *name2, *p, c;
@@ -3190,9 +3190,14 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc)
 
 #undef PL
 
-  /* Extract and copy the base name of the main input file, and convert
-     non-symbol characters to `_'.  Also add the prefix.  */
-  name1 = ACONCAT ((prefix, lbasename (main_input_filename), NULL));
+  /* Extract and copy the base name of the main input file, or the name of
+     the declared variable or function, and convert non-symbol characters to
+     `_'.  Also add the prefix.  */
+  if (! unique)
+    name1 = ACONCAT ((prefix, lbasename (main_input_filename), NULL));
+  else
+    name1 = ACONCAT ((prefix,
+		      IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl)), NULL));
   p = name1 + prefix_len;
   while ((c = *p) != 0)
     {
@@ -3245,7 +3250,7 @@ ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
       gcc_unreachable ();
 
     case ADDR_SPACE_FAR:
-      sname = ia16_fabricate_section_name_for_decl (expr, reloc);
+      sname = ia16_fabricate_section_name_for_decl (expr, reloc, false);
       if (sname)
 	{
 	  section *sect = get_named_section (expr, sname, reloc);
@@ -3274,7 +3279,7 @@ ia16_asm_unique_section (tree decl, int reloc)
       gcc_unreachable ();
 
     case ADDR_SPACE_FAR:
-      sname = ia16_fabricate_section_name_for_decl (decl, reloc);
+      sname = ia16_fabricate_section_name_for_decl (decl, reloc, true);
       if (sname)
 	{
 	  set_decl_section_name (decl, sname);
@@ -3382,7 +3387,7 @@ ia16_asm_function_section (tree decl, enum node_frequency freq, bool startup,
       || ! ia16_far_section_function_type_p (TREE_TYPE (decl)))
     return default_function_section (decl, freq, startup, stop);
 
-  sname = ia16_fabricate_section_name_for_decl (decl, reloc);
+  sname = ia16_fabricate_section_name_for_decl (decl, reloc, false);
   if (sname)
     {
       section *sect = get_named_section (decl, sname, reloc);
