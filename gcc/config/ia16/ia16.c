@@ -3131,8 +3131,9 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
    done with it.
 
    To fabricate the section name, I first decide the prefix for the section
-   type, then add the (sanitized) name of the main source file; and finally
-   I compute a hash value of everything and append the hash.
+   type, then add the (sanitized) name of the main source file or the
+   declaration; and finally I compute a hash value of everything and append
+   the hash.
 
    (Note: apparently CFUN tends to be NULL at this point, even if the
    variable is defined inside a function.)  */
@@ -3143,7 +3144,7 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
   char *name1, *name2, *p, c;
   size_t prefix_len;
   unsigned short hash;
-  bool one_only;
+  bool one_only, use_gnu_linkonce;
 
   if (! DECL_P (decl))
     return NULL;
@@ -3157,7 +3158,9 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
       return NULL;
     }
 
-  one_only = DECL_COMDAT_GROUP (decl) && ! HAVE_COMDAT_GROUP;
+  one_only = DECL_COMDAT_GROUP (decl) != NULL_TREE;
+  unique |= one_only;
+  use_gnu_linkonce = one_only && ! HAVE_COMDAT_GROUP;
 
 #define PL(str)		(prefix = (str), \
 			 prefix_len = strlen (prefix))
@@ -3165,14 +3168,14 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
   switch (categorize_decl_for_section (decl, reloc))
     {
     case SECCAT_TEXT:
-      PL (one_only ? ".gnu.linkonce.ft." : ".fartext.");
+      PL (use_gnu_linkonce ? ".gnu.linkonce.ft." : ".fartext.");
       break;
 
     case SECCAT_DATA:
     case SECCAT_DATA_REL:
     case SECCAT_DATA_REL_LOCAL:
     case SECCAT_BSS:
-      PL (one_only ? ".gnu.linkonce.fd." : ".fardata.");
+      PL (use_gnu_linkonce ? ".gnu.linkonce.fd." : ".fardata.");
       break;
 
     case SECCAT_DATA_REL_RO:
@@ -3181,7 +3184,7 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
     case SECCAT_RODATA_MERGE_STR:
     case SECCAT_RODATA_MERGE_STR_INIT:
     case SECCAT_RODATA_MERGE_CONST:
-      PL (one_only ? ".gnu.linkonce.fr." : ".farrodata.");
+      PL (use_gnu_linkonce ? ".gnu.linkonce.fr." : ".farrodata.");
       break;
 
     default:
