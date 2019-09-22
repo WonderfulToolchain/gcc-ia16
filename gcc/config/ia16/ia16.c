@@ -281,14 +281,19 @@ ia16_get_function_type_for_addr (rtx addr)
 }
 
 /* Return true iff TYPE is a type for a far function (which returns with
-   `lret').  Currently a function is considered to be "far" if the function
-   type itself is in __far space.  The `-mfar-function-if-far-return-type'
-   switch will also cause a __far on the return type to magically become a
-   __far on the function itself.  */
-static int
+   `lret').  TYPE may be NULL, which indicates a compiler support routine.
+
+   Currently a function is considered to be "far" if the function type
+   itself is in __far space.  Unless the user specifies `-mno-far-
+   function-if-far-return-type', a __far on the return type will also
+   magically become a __far on the function itself.  */
+static bool
 ia16_far_function_type_p (const_tree funtype)
 {
-  return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR;
+  if (! funtype)
+    return TARGET_CMODEL_IS_FAR_TEXT;
+  else
+    return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR;
 }
 
 /* Return true iff we are currently compiling a far function.  */
@@ -871,6 +876,9 @@ ia16_get_callcvt (const_tree type)
       gcc_unreachable ();
     }
 
+  if (ia16_far_function_type_p (type))
+    callcvt |= IA16_CALLCVT_FAR;
+
   if (! type)
     return callcvt;
 
@@ -884,9 +892,6 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_ds_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_DS_DATA;
-
-  if (ia16_far_function_type_p (type))
-    callcvt |= IA16_CALLCVT_FAR;
 
   return callcvt;
 }
@@ -938,8 +943,6 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     {
     case FUNCTION_TYPE:
     case METHOD_TYPE:
-    case FIELD_DECL:
-    case TYPE_DECL:
       break;
 
     default:
@@ -986,7 +989,7 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (! ia16_far_function_type_p (DECL_P (*node) ? TREE_TYPE (*node) : *node)
+  if (! ia16_far_function_type_p (*node)
       && (is_attribute_p ("near_section", name)
 	  || is_attribute_p ("far_section", name)))
     {
@@ -1081,6 +1084,31 @@ ia16_comp_type_attributes (const_tree type1, const_tree type2)
     return 1;
 
   return ia16_get_callcvt (type1) == ia16_get_callcvt (type2);
+}
+
+#undef	TARGET_SET_DEFAULT_TYPE_ATTRIBUTES
+#define TARGET_SET_DEFAULT_TYPE_ATTRIBUTES ia16_set_default_type_attributes
+
+static void
+ia16_set_default_type_attributes (tree type)
+{
+  if (TARGET_CMODEL_IS_FAR_TEXT)
+    {
+      /* Messy hack to make all functions far, when compiling code for a
+	 far-text memory model.  Here the "unqualified" version of a function
+	 type is actually implicitly qualified with a __far.  */
+      switch (TREE_CODE (type))
+	{
+	case FUNCTION_TYPE:
+	case METHOD_TYPE:
+	  if (ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (type)))
+	    TYPE_ADDR_SPACE (type) = ADDR_SPACE_FAR;
+	  break;
+
+	default:
+	  break;
+	}
+    }
 }
 
 /* Addressing Modes */
@@ -3125,7 +3153,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 #define	TARGET_ASM_SELECT_SECTION ia16_asm_select_section
 
 /* Convenience function --- fabricate a section name for a given __far
-   variable or function declaration, or return NULL if something is wrong.
+   variable or function declaration, or return NULL if something is wrong or
+   if the function already has an explicit section name.
 
    The caller should free the section name's memory with free (.) once it is
    done with it.
@@ -3135,8 +3164,8 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
    declaration; and finally I compute a hash value of everything and append
    the hash.
 
-   (Note: apparently CFUN tends to be NULL at this point, even if the
-   variable is defined inside a function.)  */
+   (Note: apparently CFUN tends to be NULL at this point, even if the variable
+   is defined inside a function.)  */
 static char *
 ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
 {
@@ -3146,7 +3175,8 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
   unsigned short hash;
   bool one_only, use_gnu_linkonce;
 
-  if (! DECL_P (decl))
+  if (! DECL_P (decl)
+      || lookup_attribute ("section", DECL_ATTRIBUTES (decl)))
     return NULL;
 
   if (! TARGET_SEG_RELOC_STUFF)
@@ -3197,9 +3227,9 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
      the declared variable or function, and convert non-symbol characters to
      `_'.  Also add the prefix.  */
   if (! unique)
-    name1 = ACONCAT ((prefix, lbasename (main_input_filename), NULL));
+    name1 = ACONCAT ((prefix, "f.", lbasename (main_input_filename), NULL));
   else
-    name1 = ACONCAT ((prefix,
+    name1 = ACONCAT ((prefix, "s.",
 		      IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl)), NULL));
   p = name1 + prefix_len;
   while ((c = *p) != 0)
@@ -3253,7 +3283,8 @@ ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
       gcc_unreachable ();
 
     case ADDR_SPACE_FAR:
-      sname = ia16_fabricate_section_name_for_decl (expr, reloc, false);
+      sname = ia16_fabricate_section_name_for_decl (expr, reloc,
+						    flag_data_sections);
       if (sname)
 	{
 	  section *sect = get_named_section (expr, sname, reloc);
@@ -3385,12 +3416,14 @@ ia16_asm_function_section (tree decl, enum node_frequency freq, bool startup,
   char *sname;
   const int reloc = 0;
 
-  if (! decl
-      || TYPE_ADDR_SPACE (TREE_TYPE (decl)) != ADDR_SPACE_FAR
-      || ! ia16_far_section_function_type_p (TREE_TYPE (decl)))
+  if (! TARGET_CMODEL_IS_FAR_TEXT
+      && (! decl
+	  || ! ia16_far_function_type_p (TREE_TYPE (decl))
+	  || ! ia16_far_section_function_type_p (TREE_TYPE (decl))))
     return default_function_section (decl, freq, startup, stop);
 
-  sname = ia16_fabricate_section_name_for_decl (decl, reloc, false);
+  sname = ia16_fabricate_section_name_for_decl (decl, reloc,
+						flag_function_sections);
   if (sname)
     {
       section *sect = get_named_section (decl, sname, reloc);
@@ -3448,23 +3481,9 @@ ia16_find_base_symbol_ref (rtx x)
 }
 
 static bool
-ia16_asm_integer (rtx x, unsigned size, int aligned_p)
+ia16_assemble_far_pointer (rtx x)
 {
-  rtx base;
-
-  if (default_assemble_integer (x, size, aligned_p))
-    return true;
-
-  while (GET_CODE (x) == CONST)
-    x = XEXP (x, 0);
-
-  if (GET_CODE (x) != UNSPEC
-      || XINT (x, 1) != UNSPEC_STATIC_FAR_PTR
-      || GET_MODE (x) != SImode)
-    return false;
-
-  x = XVECEXP (x, 0, 0);
-  base = ia16_find_base_symbol_ref (x);
+  rtx base = ia16_find_base_symbol_ref (x);
 
   if (! base)
     return false;
@@ -3496,6 +3515,75 @@ ia16_asm_integer (rtx x, unsigned size, int aligned_p)
   return true;
 }
 
+static bool
+ia16_asm_integer (rtx x, unsigned size, int aligned_p)
+{
+  rtx orig_x;
+
+  orig_x = x;
+  while (GET_CODE (x) == CONST)
+    x = XEXP (x, 0);
+
+  if (GET_CODE (x) != UNSPEC
+      || XINT (x, 1) != UNSPEC_STATIC_FAR_PTR
+      || GET_MODE (x) != SImode)
+    return default_assemble_integer (orig_x, size, aligned_p);
+
+  x = XVECEXP (x, 0, 0);
+  return ia16_assemble_far_pointer (x);
+}
+
+/* Macros Controlling Initialization Routines */
+#undef	TARGET_ASM_CONSTRUCTOR
+#define	TARGET_ASM_CONSTRUCTOR	ia16_asm_constructor
+
+static void
+ia16_assemble_far_pointer_to_section (rtx x, section *sec)
+{
+  switch_to_section (sec);
+  assemble_align (POINTER_SIZE);
+  if (! ia16_assemble_far_pointer (x))
+    gcc_unreachable ();
+}
+
+static void
+ia16_asm_constructor (rtx symbol, int priority)
+{
+  section *sec;
+
+  if (! TARGET_CMODEL_IS_FAR_TEXT)
+    default_named_section_asm_out_constructor (symbol, priority);
+  else
+    {
+      if (priority != DEFAULT_INIT_PRIORITY)
+	sec = get_cdtor_priority_section (priority, true);
+      else
+	sec = get_section (".ctors", SECTION_WRITE, NULL);
+      ia16_assemble_far_pointer_to_section (symbol, sec);
+    }
+}
+
+#undef	TARGET_ASM_DESTRUCTOR
+#define	TARGET_ASM_DESTRUCTOR	ia16_asm_destructor
+
+static void
+ia16_asm_destructor (rtx symbol, int priority)
+{
+  section *sec;
+
+  if (! TARGET_CMODEL_IS_FAR_TEXT)
+    default_named_section_asm_out_destructor (symbol, priority);
+  else
+    {
+      if (priority != DEFAULT_INIT_PRIORITY)
+	sec = get_cdtor_priority_section (priority, false);
+      else
+	sec = get_section (".dtors", SECTION_WRITE, NULL);
+      ia16_assemble_far_pointer_to_section (symbol, sec);
+    }
+}
+
+/* Output of Assembler Instructions */
 static const char *reg_QInames[FIRST_NOQI_REG] = {
 	"cl", "ch", "al", "ah", "dl", "dh", "bl", "bh"
 };
@@ -5247,14 +5335,23 @@ ia16_expand_epilogue (bool sibcall)
    in the (define_insn ...), depending on whether WHICH_IS_ADDR is 0 or 1.
 
    There are 4 cases we need to handle:
-     * we are calling a near function (with a 16-bit address), and the current
-       function is not marked __attribute__ ((far_section))
-     * we are calling a far function through a 32-bit pointer
-     * we are calling a far function --- which returns with `lret' --- but
-       the function is defined (in the default text section) in the current
-       module, and is not marked __attribute__ ((far_section)), so we can get
-       away with a `pushw %cs' plus a near call
-     * none of the above --- use `lcall' and do not assume that the function
+
+     * We are calling a near function (with a 16-bit address), and the current
+       function is not marked __attribute__ ((far_section)).
+
+     * We are calling a far function through a 32-bit pointer.
+
+     * We are calling a far function --- which returns with `lret' --- but
+       the function is defined in the current module, and neither caller nor
+       callee is marked __attribute__ ((far_section)), so we can probably
+       get away with a `pushw %cs' plus a near call.
+
+       There are two exceptions to this, where the caller or callee is likely
+       to get its own function-specific section, even without far_section:
+	- if the caller or callee is to go in a link-once (COMDAT) section;
+	- if -ffunction-sections is in effect.
+
+     * None of the above --- use `lcall' and do not assume that the function
        resides in the default text section.
 
    The case where a far_section function tries to call a near function is
@@ -5275,7 +5372,7 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
   fndecl = ia16_get_function_decl_for_addr (addr);
   fntype = ia16_get_function_type_for_decl (fndecl);
 
-  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
+  if (! ia16_far_function_type_p (fntype))
     {
       gcc_assert (! ia16_in_far_section_function_p ());
 
@@ -5284,9 +5381,13 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
       else
 	return P ("call\t%c");
     }
-  else if (! ia16_in_far_section_function_p ()
+  else if (fntype
+	   && ! ia16_in_far_section_function_p ()
 	   && ((DECL_INITIAL (fndecl)
-		&& ! ia16_far_section_function_type_p (fntype))
+		&& ! flag_function_sections
+		&& ! ia16_far_section_function_type_p (fntype)
+		&& ! DECL_COMDAT_GROUP (fndecl)
+		&& ! DECL_COMDAT_GROUP (cfun->decl))
 	       || ia16_near_section_function_type_p (fntype)))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
@@ -5315,7 +5416,7 @@ ia16_use_far_thunked_call_p (rtx addr, machine_mode mode)
     return false;
 
   fntype = ia16_get_function_type_for_addr (addr);
-  return ! fntype || ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (fntype));
+  return ! ia16_far_function_type_p (fntype);
 }
 
 /* Return the insn template for a call from a far_section function to a near
@@ -5366,7 +5467,7 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
   fndecl = ia16_get_function_decl_for_addr (addr);
   fntype = ia16_get_function_type_for_decl (fndecl);
 
-  if (! fntype || TYPE_ADDR_SPACE (fntype) != ADDR_SPACE_FAR)
+  if (! ia16_far_function_type_p (fntype))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("jmp\t*%");
