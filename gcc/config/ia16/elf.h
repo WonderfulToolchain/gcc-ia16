@@ -25,8 +25,11 @@
 #define DRIVER_SELF_SPECS \
   "%{melks-libc:-melks -nostdinc}", \
   "%{melks|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{mseparate-code-segment:%{!mcmodel=*:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
-    "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}"
+    "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
+  "%{mcmodel=medium:"	\
+    "%{melks*:%emedium model not supported for ELKS}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
@@ -46,7 +49,8 @@
   "%{melks-libc:-isystem include-fixed/../include%s " \
 	       "-isystem include-fixed%s " \
 	       "-isystem include%s " \
-	       "-isystem elkslibc/include%s}"
+	       "-isystem elkslibc/include%s}" \
+  "%{mcmodel=medium:%{,c++|,c++-header:%emedium model not supported for C++}}"
 
 #define ASM_SPEC	\
   "%{msegelf:--32-segelf}"
@@ -72,19 +76,17 @@
     "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
     "%{!r:"		\
       "%{melks-libc:"	\
-	"%{mcmodel=small:%Telks-small.ld;:%Telks-tiny.ld};" \
+	  "%Telks-%(cmodel_long_ld);" \
 	"nostdlib|nodefaultlibs:" \
-	"%{mcmodel=small:" \
-	  "%{melks:"	\
-	      "%{nostdlib|nostartfiles:%Telk-ms.ld;:%Telk-mss.ld};" \
-	    "mdpmiable:" \
-	      "%{nostdlib|nostartfiles:%Tdpm-ms.ld;:%Tdpm-mss.ld};" \
-	    "nostdlib|nostartfiles:%Tdos-ms.ld;:%Tdos-mss.ld};" \
-	  "melks:"	\
-	    "%{nostdlib|nostartfiles:%Telk-mt.ld;:%Telk-mts.ld};" \
+	"%{melks:" \
+	  "%{nostdlib|nostartfiles:%Telk-m%(cmodel_ld);" \
+	    ":%Telk-m%(cmodel_s_ld)};" \
 	  "mdpmiable:"	\
-	    "%{nostdlib|nostartfiles:%Tdpm-mt.ld;:%Tdpm-mts.ld};" \
-	  "nostdlib|nostartfiles:%Tdos-mt.ld;:%Tdos-mts.ld" \
+	    "%{nostdlib|nostartfiles:%Tdpm-m%(cmodel_ld);" \
+	      ":%Tdpm-m%(cmodel_s_ld)};" \
+	  "nostdlib|nostartfiles:" \
+	    "%Tdos-m%(cmodel_ld);" \
+	  ":%Tdos-m%(cmodel_s_ld)" \
 	"}"		\
       "} "		\
       "%{melks*:"	\
@@ -107,19 +109,22 @@
 	  "%{mnewlib-nano-stdio:" \
 	    "%{mnewlib-autofloat-stdio:-lanstdio} -lnstdio;" \
 	    "mnewlib-autofloat-stdio:-lastdio} " \
-	  "%{mcmodel=small:" \
-	    "%{melks:"	\
-		"%{nostartfiles:%Telk-msl.ld;:%Telk-mssl.ld};" \
-	      "mdpmiable:" \
-		"%{nostartfiles:%Tdpm-msl.ld;:%Tdpm-mssl.ld};" \
-	      "nostartfiles:%Tdos-msl.ld;:%Tdos-mssl.ld};" \
-	    "melks:"	\
-	      "%{nostartfiles:%Telk-mtl.ld;:%Telk-mtsl.ld};" \
+	  "%{melks:"	\
+	      "%{nostartfiles:%Telk-m%(cmodel_l_ld);:%Telk-m%(cmodel_sl_ld)};"\
 	    "mdpmiable:" \
-	      "%{nostartfiles:%Tdpm-mtl.ld;:%Tdpm-mtsl.ld};" \
-	    "nostartfiles:%Tdos-mtl.ld;:%Tdos-mtsl.ld" \
+	      "%{nostartfiles:%Tdpm-m%(cmodel_l_ld);:%Tdpm-m%(cmodel_sl_ld)};"\
+	    "nostartfiles:" \
+	      "%Tdos-m%(cmodel_l_ld);" \
+	    ":%Tdos-m%(cmodel_sl_ld)" \
 	  "}"		\
 	"}"		\
       "}"		\
     "}"			\
   "}"
+
+#define EXTRA_SPECS	\
+  { "cmodel_ld", "%{mcmodel=medium:m.ld;mcmodel=small:s.ld;:t.ld}" }, \
+  { "cmodel_s_ld", "%{mcmodel=medium:ms.ld;mcmodel=small:ss.ld;:ts.ld}" }, \
+  { "cmodel_l_ld", "%{mcmodel=medium:ml.ld;mcmodel=small:sl.ld;:tl.ld}" }, \
+  { "cmodel_sl_ld", "%{mcmodel=medium:msl.ld;mcmodel=small:ssl.ld;:tsl.ld}" },\
+  { "cmodel_long_ld", "%{mcmodel=*:%*.ld;:tiny.ld}" }
