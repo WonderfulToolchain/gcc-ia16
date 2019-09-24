@@ -4841,7 +4841,9 @@ build_type_attribute_qual_variant (tree ttype, tree attribute, int quals)
 	  return build_qualified_type (ttype, quals);
 	}
 
-      ttype = build_qualified_type (ttype, TYPE_UNQUALIFIED);
+      /* tkchia 20190924 */
+      ttype = build_qualified_type (ttype,
+				    TYPE_QUALS (TYPE_MAIN_VARIANT (ttype)));
       ntype = build_distinct_type_copy (ttype);
 
       TYPE_ATTRIBUTES (ntype) = attribute;
