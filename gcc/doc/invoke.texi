@@ -16801,6 +16801,11 @@ These macros are defined if the tiny code model is selected
 These macros are defined if the small code model is selected
 (@option{-mcmodel=small}).
 
+@item __IA16_CMODEL_MEDIUM__
+@itemx __MEDIUM__
+These macros are defined if the medium code model is selected
+(@option{-mcmodel=medium}).
+
 @item __IA16_ARCH_ANY
 @itemx __IA16_ARCH_ANY_186
 @itemx __IA16_ARCH_I8086
