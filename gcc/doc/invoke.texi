@@ -16566,23 +16566,27 @@ Produce executables for MS-DOS, in such a way that the executables will fail
 gracefully under MS-DOS version 1.x, rather than crash the system.  This
 option implies @option{-mmsdos}.
 
+@item -melks-libc
+@opindex melks-libc
 @item -melks
 @opindex melks
 Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
-system  This option also turns on @option{-mprotected-mode}.
+system.  In addition, link against ELKS's own C runtime library---which must
+be built with GCC, and installed---instead of the Newlib C library.
 
-@item -melks-libc
-@opindex melks-libc
-Like @option{-melks}, but link against ELKS's own C runtime library---which
-must be built with GCC, and installed---instead of the Newlib C library.
+This option also turns on @option{-mprotected-mode}.
+@c
+@c Before December 2019, -melks used to link ELKS programs with an
+@c ELKS-ified Newlib, while -melks-libc would link with elks-libc.  Since,
+@c to my knowledge, nobody has been actually using Newlib to build ELKS
+@c programs, I have decided to unify the two options.  -- tkchia
 
 @item -maout-total=@var{total}
 @opindex maout-total
-When building an ELKS program (@option{-melks} or @option{-melks-libc}), set
-it to request the operating system to set the top of the data
-segment---including static storage, heap, and stack---to at least
-@var{total}.  This requires support from the linker script which comes with
-the C library.
+When building an ELKS program (@option{-melks-libc}), set it to request the
+operating system to set the top of the data segment---including static
+storage, heap, and stack---to at least @var{total}.  This requires support
+from the linker script which comes with the C library.
 
 @item -mcmodel=tiny
 @opindex mcmodel=tiny
