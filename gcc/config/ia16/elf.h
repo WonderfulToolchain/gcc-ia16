@@ -23,13 +23,13 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 #define DRIVER_SELF_SPECS \
-  "%{melks-libc:-melks -nostdinc}", \
-  "%{melks|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{melks-libc:-nostdinc}", \
+  "%{melks-libc|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{mseparate-code-segment:%{!mcmodel=*:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
   "%{mcmodel=medium:"	\
-    "%{melks*:%emedium model not supported for ELKS}}"
+    "%{melks-libc:%emedium model not supported for ELKS}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
@@ -78,10 +78,7 @@
       "%{melks-libc:"	\
 	  "%Telks-%(cmodel_long_ld);" \
 	"nostdlib|nodefaultlibs:" \
-	"%{melks:" \
-	  "%{nostdlib|nostartfiles:%Telk-m%(cmodel_ld);" \
-	    ":%Telk-m%(cmodel_s_ld)};" \
-	  "mdpmiable:"	\
+	"%{mdpmiable:"	\
 	    "%{nostdlib|nostartfiles:%Tdpm-m%(cmodel_ld);" \
 	      ":%Tdpm-m%(cmodel_s_ld)};" \
 	  "nostdlib|nostartfiles:" \
@@ -89,7 +86,7 @@
 	  ":%Tdos-m%(cmodel_s_ld)" \
 	"}"		\
       "} "		\
-      "%{melks*:"	\
+      "%{melks-libc:"	\
 	"%{maout-total=*:--defsym=_total=%*}}" \
     "}"			\
   "}"
@@ -109,9 +106,7 @@
 	  "%{mnewlib-nano-stdio:" \
 	    "%{mnewlib-autofloat-stdio:-lanstdio} -lnstdio;" \
 	    "mnewlib-autofloat-stdio:-lastdio} " \
-	  "%{melks:"	\
-	      "%{nostartfiles:%Telk-m%(cmodel_l_ld);:%Telk-m%(cmodel_sl_ld)};"\
-	    "mdpmiable:" \
+	  "%{mdpmiable:" \
 	      "%{nostartfiles:%Tdpm-m%(cmodel_l_ld);:%Tdpm-m%(cmodel_sl_ld)};"\
 	    "nostartfiles:" \
 	      "%Tdos-m%(cmodel_l_ld);" \
