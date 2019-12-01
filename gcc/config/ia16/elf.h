@@ -73,7 +73,7 @@
    during -r.)  -- tkchia  */
 #define LINK_SPEC	\
   "%{!T*:"		\
-    "%{mmsdos-handle-v1:--defsym=__msdos_handle_v1=1} " \
+    "%{mmsdos-handle-v1:-ldosv1} " \
     "%{!r:"		\
       "%{melks-libc:"	\
 	  "%Telks-%(cmodel_long_ld);" \
