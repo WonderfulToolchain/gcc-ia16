@@ -5777,9 +5777,8 @@ ia16_get_far_thunked_call_expansion (unsigned which_is_addr, bool pop_p)
 }
 
 /* Return the insn template for a sibling call to a subroutine at address
-   ADDR and with machine mode MODE.  ADDR should correspond to "%0", "%1",
-   or "%3" in the (define_insn ...), depending on whether WHICH_IS_ADDR is
-   0, 1, or 3.  */
+   ADDR and with machine mode MODE.  ADDR should correspond to "%0" or "%1"
+   in the (define_insn ...), depending on whether WHICH_IS_ADDR is 0 or 1.  */
 const char *
 ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
 			    unsigned which_is_addr)
