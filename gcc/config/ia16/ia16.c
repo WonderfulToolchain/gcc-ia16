@@ -58,6 +58,7 @@
 #include "stringpool.h"
 #include "attribs.h"
 #include "varasm.h"
+#include "recog.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -4059,11 +4060,38 @@ ia16_verify_calls_from_no_assume_ds (void)
     }
 }
 
+/* Re-recognize INSN: match PATTERN (INSN), which has likely just been
+   modified, to the corresponding instruction pattern in the machine
+   description, and update INSN_CODE (INSN).  */
+static void
+ia16_recog (rtx_insn *insn)
+{
+  INSN_CODE (insn) = recog (PATTERN (insn), insn, NULL);
+}
+
 /* Say whether an RTX operand is the %bp register.  */
 static bool
 ia16_operand_is_bp_reg_p (rtx op)
 {
-  return REG_P (op) && REGNO (op) == BP_REG;
+  return REG_P (op) && REGNO (op) == BP_REG && GET_MODE (op) == HImode;
+}
+
+/* Say whether an RTX operand is the %sp register.  */
+static bool
+ia16_operand_is_sp_reg_p (rtx op)
+{
+  return REG_P (op) && REGNO (op) == SP_REG && GET_MODE (op) == HImode;
+}
+
+/* Say whether an RTX insn pattern is a (clobber (reg CC_REG)).  */
+static bool
+ia16_pattern_is_clobber_cc_reg_p (rtx pat)
+{
+  rtx op;
+  if (GET_CODE (pat) != CLOBBER)
+    return false;
+  op = SET_DEST (pat);
+  return REG_P (op) && REGNO (op) == CC_REG;
 }
 
 /* Say whether an insn is a `pushw %bp' in a prologue.  */
@@ -4096,7 +4124,39 @@ ia16_insn_is_prologue_movw_sp_bp_p (rtx_insn *insn)
 	 && RTX_FRAME_RELATED_P (insn)
 	 && GET_CODE (pat) == SET
 	 && ia16_operand_is_bp_reg_p (SET_DEST (pat))
-	 && REG_P (SET_SRC (pat)) && REGNO (SET_SRC (pat)) == SP_REG;
+	 && ia16_operand_is_sp_reg_p (SET_SRC (pat));
+}
+
+/* Say whether an insn is a `subw $CONST_INT, %sp' in a prologue.  If so,
+   also say what the CONST_INT is.  */
+static bool
+ia16_insn_is_prologue_subw_const_sp_p (rtx_insn *insn, HOST_WIDE_INT *p_value)
+{
+  rtx pat, pat0, pat0_src, pat1;
+
+  if (! INSN_P (insn) || ! RTX_FRAME_RELATED_P (insn))
+    return false;
+
+  pat = PATTERN (insn);
+  if (GET_CODE (pat) != PARALLEL || XVECLEN (pat, 0) != 2)
+    return false;
+
+  pat0 = XVECEXP (pat, 0, 0);
+  pat1 = XVECEXP (pat, 0, 1);
+
+  if (GET_CODE (pat0) != SET
+      || ! ia16_operand_is_sp_reg_p (SET_DEST (pat0))
+      || ! ia16_pattern_is_clobber_cc_reg_p (pat1))
+    return false;
+
+  pat0_src = SET_SRC (pat0);
+  if (GET_CODE (pat0_src) != MINUS
+      || ! ia16_operand_is_sp_reg_p (XEXP (pat0_src, 0))
+      || ! CONST_INT_P (XEXP (pat0_src, 1)))
+    return false;
+
+  *p_value = INTVAL (XEXP (pat0_src, 1));
+  return true;
 }
 
 /* Say whether an insn is a `popw %bp'.  */
@@ -4112,6 +4172,282 @@ ia16_insn_is_popw_bp_p (rtx_insn *insn)
   return ia16_operand_is_bp_reg_p (SET_DEST (pat));
 }
 
+/* Say whether an RTX corresponds to an expression which performs arithmetic
+   on registers without altering them.  */
+static bool
+ia16_rtx_is_pure_reg_arith_p (rtx x)
+{
+  switch (GET_RTX_CLASS (GET_CODE (x)))
+    {
+    case RTX_OBJ:
+      return REG_P (x);
+
+    case RTX_CONST_OBJ:
+      return true;
+
+    case RTX_UNARY:
+      return ia16_rtx_is_pure_reg_arith_p (XEXP (x, 0));
+
+    case RTX_COMPARE:
+    case RTX_COMM_COMPARE:
+    case RTX_COMM_ARITH:
+    case RTX_BIN_ARITH:
+      return ia16_rtx_is_pure_reg_arith_p (XEXP (x, 0))
+	     && ia16_rtx_is_pure_reg_arith_p (XEXP (x, 1));
+
+    case RTX_BITFIELD_OPS:
+    case RTX_TERNARY:
+      return ia16_rtx_is_pure_reg_arith_p (XEXP (x, 0))
+	     && ia16_rtx_is_pure_reg_arith_p (XEXP (x, 1))
+	     && ia16_rtx_is_pure_reg_arith_p (XEXP (x, 2));
+
+    default:
+      return false;
+    }
+}
+
+/* Try to rewrite something like
+		movw	%sp,	%bp
+		subw	$6,	%sp
+		...				// %sp and %bp unchanged
+		movw	%cx,	-6(%bp)		// %cx unchanged
+		...
+		movw	%dx,	-4(%bp)		// %dx unchanged
+   into something like
+		movw	%sp,	%bp
+		subw	$2,	%sp		// or `pushw %ds'
+		pushw	%dx
+		pushw	%cx
+		...
+ */
+static void
+ia16_rewrite_reg_parm_save_as_push (void)
+{
+  edge e;
+  edge_iterator ei;
+  rtx_insn *insn;
+
+  /* To simplify things, look at only the very first basic block...  */
+  if (EDGE_COUNT (ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs) != 1)
+    return;
+
+  FOR_EACH_EDGE (e, ei, ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs)
+    {
+      enum
+	{
+	  /* The maximum offset from %sp for which we want to track the
+	     stack slot contents.  */
+	  MAX_TRACK_SP_OFF = 2 * LAST_ALLOCABLE_REG,
+	  /* Bogus register number meaning "this stack slot is not filled
+	     yet".  */
+	  UNFILLED = FIRST_PSEUDO_REGISTER,
+	  /* Bogus register number meaning "this stack slot is filled with
+	     something, but we are not sure what".  */
+	  UNKNOWN = FIRST_PSEUDO_REGISTER + 1
+	};
+      rtx_insn *subw_const_sp_insn = NULL;
+      rtx pat, dest, dest_addr, src, sp_reg;
+      basic_block bb = e->dest;
+      HOST_WIDE_INT bp_sp_off = 0, new_bp_sp_off;
+      unsigned sp_off_contents[MAX_TRACK_SP_OFF / 2 + 1];
+      rtx_insn *sp_off_insn[MAX_TRACK_SP_OFF / 2 + 1];
+      bool pristine[LAST_ALLOCABLE_REG + 1];
+      unsigned regno, index;
+      machine_mode mode;
+
+      /* Look for the sequence `movw %sp, %bp; subw $CONST_INT, %sp' in the
+	 prologue.  Bail out if this sequence is missing, if the CONST_INT
+	 is not sane, or if we encounter an instruction which might throw
+	 exceptions.  */
+      for (insn = BB_HEAD (bb); insn != BB_END (bb); insn = NEXT_INSN (insn))
+	{
+	  if (! INSN_P (insn))
+	    continue;
+
+	  if (insn_could_throw_p (NEXT_INSN (insn)))
+	    return;
+
+	  if (ia16_insn_is_prologue_movw_sp_bp_p (insn)
+	      && ia16_insn_is_prologue_subw_const_sp_p (NEXT_INSN (insn),
+							&bp_sp_off))
+	    {
+	      subw_const_sp_insn = NEXT_INSN (insn);
+	      break;
+	    }
+	}
+
+      if (! subw_const_sp_insn || bp_sp_off < 2)
+	return;
+
+      /* We found the sequence.  Scan through any simple register assignments
+	 and/or simple arithmetic operations immediately following the `subw
+	 $..., %sp'.
+
+	 Record the places where the original values of registers are stored
+	 in the stack slots we are tracking.
+
+	 TODO: handle more instruction types.  */
+      for (regno = 0; regno <= LAST_ALLOCABLE_REG; ++regno)
+        pristine[regno] = true;
+
+      /* (INDEX is really an offset from %sp, divided by 2...)  */
+      for (index = 0; index <= MAX_TRACK_SP_OFF / 2; ++index)
+	{
+	  sp_off_contents[index] = UNFILLED;
+	  sp_off_insn[index] = NULL;
+	}
+
+      insn = subw_const_sp_insn;
+      while (insn != BB_END (bb))
+	{
+	  insn = NEXT_INSN (insn);
+	  if (! INSN_P (insn))
+	    continue;
+
+	  if (insn_could_throw_p (insn))
+	    break;
+
+	  pat = PATTERN (insn);
+	  if (GET_CODE (pat) == PARALLEL)
+	    {
+	      if (XVECLEN (pat, 0) != 2
+		  || ! ia16_pattern_is_clobber_cc_reg_p (XVECEXP (pat, 0, 1)))
+		break;
+	      pat = XVECEXP (pat, 0, 0);
+	    }
+
+	  if (GET_CODE (pat) != SET)
+	    break;
+
+	  dest = SET_DEST (pat);
+	  src = SET_SRC (pat);
+	  mode = GET_MODE (dest);
+
+	  if (mode != HImode && mode != QImode && mode != V2QImode)
+	    break;
+
+	  if (! ia16_rtx_is_pure_reg_arith_p (src))
+	    break;
+
+	  if (REG_P (dest))
+	    {
+	      regno = REGNO (dest);
+	      if (regno > LAST_ALLOCABLE_REG || regno == BP_REG)
+		break;
+
+	      pristine[regno] = false;
+	      if (regno < FIRST_NOQI_REG && mode != QImode)
+		pristine[regno + 1] = false;
+	    }
+	  else if (MEM_P (dest)
+		   && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest)))
+	    {
+	      dest_addr = XEXP (dest, 0);
+	      if (GET_CODE (dest_addr) == PLUS
+		  && CONST_INT_P (XEXP (dest_addr, 1))
+		  && ia16_operand_is_bp_reg_p (XEXP (dest_addr, 0)))
+		{
+		  /* We found a
+			movw	%reg,	CONST_INT(%bp)
+		     or
+			movb	%reg,	CONST_INT(%bp)
+		     insn.  Convert the offset from %bp into an offset from
+		     the top of the stack.  And, if %reg still has its
+		     initial value at this point, note down that the stack
+		     slot contains this value.  */
+		  HOST_WIDE_INT sp_operand_off
+				  = bp_sp_off + INTVAL (XEXP (dest_addr, 1));
+
+		  if (sp_operand_off % 2 != 0)
+		    break;
+
+		  if (sp_operand_off < 0  /* ??? */
+		      || sp_operand_off > MAX_TRACK_SP_OFF
+		      || sp_operand_off > bp_sp_off - 2)
+		    continue;
+
+		  if (sp_off_contents[sp_operand_off / 2] != UNFILLED)
+		    break;
+
+		  if (REG_P (src)
+		      && REGNO (src) <= LAST_ALLOCABLE_REG
+		      && pristine[REGNO (src)]
+		      && ! ia16_regno_in_class_p (REGNO (src), UP_QI_REGS)
+		      && (mode == QImode || REGNO (src) >= FIRST_NOQI_REG
+			  || pristine[REGNO (src) + 1]))
+		    {
+		      sp_off_contents[sp_operand_off / 2] = REGNO (src);
+		      sp_off_insn[sp_operand_off / 2] = insn;
+		    }
+		  else
+		    sp_off_contents[sp_operand_off / 2] = UNKNOWN;
+		}
+	      else
+		break;
+	    }
+	  else
+	    break;
+	}
+
+      /* We can now try to replace the insns.  */
+      index = 0;
+      while (index <= MAX_TRACK_SP_OFF / 2
+	     && sp_off_contents[index] != UNFILLED
+	     && sp_off_contents[index] != UNKNOWN)
+	++index;
+
+      if (! index)
+	return;
+
+      insn = subw_const_sp_insn;
+      new_bp_sp_off = bp_sp_off - 2 * index;
+      sp_reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 0));
+
+      if (new_bp_sp_off)
+	{
+	  rtx pat0, pat1;
+	  pat0 = gen_rtx_SET (sp_reg,
+			      gen_rtx_MINUS (HImode, sp_reg,
+					     GEN_INT (new_bp_sp_off)));
+	  pat1 = gen_hard_reg_clobber (CCmode, CC_REG);
+	  PATTERN (insn) = gen_rtx_PARALLEL (VOIDmode,
+					     gen_rtvec (2, pat0, pat1));
+	  ia16_recog (insn);
+	}
+      else
+	{
+	  /* We can completely elide the %sp adjustment.  Instead of emitting
+	     a `subw $0, %sp' insn, replace it with a dummy (use ...).  */
+	  PATTERN (insn) = gen_rtx_USE (HImode, sp_reg);
+	  INSN_CODE (insn) = -1;
+	  RTX_FRAME_RELATED_P (insn) = 0;
+	}
+
+      while (index != 0)
+	{
+	  rtx reg;
+	  rtx_insn *push_reg_insn, *mov_reg_insn;
+
+	  --index;
+
+	  /* Build and insert the new `pushw' insn.  */
+	  reg = gen_rtx_REG (HImode, sp_off_contents[index]);
+	  push_reg_insn = make_insn_raw (gen__pushhi1_nonimm (reg));
+	  ia16_recog (insn);
+	  RTX_FRAME_RELATED_P (push_reg_insn) = 1;
+	  add_insn_after (push_reg_insn, insn, bb);
+
+	  /* Blank out the original `mov{w|b} %reg, ...(%bp)' insn.  */
+	  mov_reg_insn = sp_off_insn[index];
+	  PATTERN (mov_reg_insn) = gen_rtx_USE (HImode, reg);
+	  INSN_CODE (mov_reg_insn) = -1;
+	  RTX_FRAME_RELATED_P (mov_reg_insn) = 0;
+
+	  insn = push_reg_insn;
+	}
+    }
+}
+
 /* Try to rewrite the current function so that instead of using the frame
    pointer register, %bp, it uses %bx.  This can potentially allow the
    function to preserve one less register --- unlike %bp, %bx is call-used.
@@ -4123,7 +4459,7 @@ ia16_rewrite_bp_as_bx (void)
   edge_iterator ei;
   rtx_insn *insn, *pushw_bp_insn = NULL, *movw_sp_bp_insn = NULL, **stack;
   rtx sp_reg, bx_reg, use_sp, movw_sp_bx, *rewrite_insn_pat;
-  int *rewrite_insn_code, max_insn_uid, uid, sp = 0;
+  int max_insn_uid, uid, sp = 0;
   bool bp_used = false;
   typedef enum
     {
@@ -4144,8 +4480,8 @@ ia16_rewrite_bp_as_bx (void)
       || FUNCTION_ARG_REGNO_P (BH_REG))
     return;
 
-  /* For now, also do not try to rewrite functions which may throw exceptions
-     --- until we can figure out how to do the rewriting correctly. 
+  /* For now, do not try to rewrite functions which may throw exceptions ---
+     until we can figure out how to do the rewriting correctly.
 
      TODO: allow rewriting functions marked __attribute__ ((nothrow)) etc.  */
   for (insn = get_insns (); insn; insn = NEXT_INSN (insn))
@@ -4160,7 +4496,7 @@ ia16_rewrite_bp_as_bx (void)
 
      Also, to simplify the logic here, and save some time --- at the expense
      of missing some optimization opportunities --- do not try to look for
-     this sequence beyond the first basic block.  */
+     this insn beyond the first basic block.  */
   if (EDGE_COUNT (ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs) != 1)
     return;
 
@@ -4197,7 +4533,6 @@ ia16_rewrite_bp_as_bx (void)
   insn_state = XCNEWVEC (rewrite_bp_state_t, max_insn_uid);
   stack = XCNEWVEC (rtx_insn *, max_insn_uid);
   rewrite_insn_pat = XCNEWVEC (rtx, max_insn_uid);
-  rewrite_insn_code = XCNEWVEC (int, max_insn_uid);
 
   sp_reg = gen_rtx_REG (HImode, SP_REG);
   bx_reg = gen_rtx_REG (HImode, B_REG);
@@ -4212,7 +4547,6 @@ ia16_rewrite_bp_as_bx (void)
 
   uid = INSN_UID (pushw_bp_insn);
   rewrite_insn_pat[uid] = use_sp;
-  rewrite_insn_code[uid] = -1;
 
   stack[sp++] = movw_sp_bp_insn;
   uid = INSN_UID (movw_sp_bp_insn);
@@ -4220,7 +4554,6 @@ ia16_rewrite_bp_as_bx (void)
   movw_sp_bx = gen_rtx_SET (bx_reg, sp_reg);
   RTX_FRAME_RELATED_P (movw_sp_bx) = 1;
   rewrite_insn_pat[uid] = movw_sp_bx;
-  rewrite_insn_code[uid] = INSN_CODE (movw_sp_bp_insn);
 
   while (sp != 0)
     {
@@ -4253,7 +4586,8 @@ ia16_rewrite_bp_as_bx (void)
 		  src = SET_SRC (pat);
 
 		  if (REG_P (dest) && REGNO (dest) != BP_REG
-		      && MEM_P (src))
+		      && MEM_P (src)
+		      && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (src)))
 		    {
 		      addr = XEXP (src, 0);
 		      if (GET_CODE (addr) == PLUS
@@ -4270,7 +4604,6 @@ ia16_rewrite_bp_as_bx (void)
 					       GEN_INT (off));
 			  src = gen_rtx_MEM (GET_MODE (src), addr);
 			  rewrite_insn_pat[uid] = gen_rtx_SET (dest, src);
-			  rewrite_insn_code[uid] = INSN_CODE (insn);
 			}
 		      else
 			goto bail;
@@ -4279,6 +4612,7 @@ ia16_rewrite_bp_as_bx (void)
 			state = RBPS_BX_CLOBBERED;
 		    }
 		  else if (MEM_P (dest)
+			   && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest))
 			   && REG_P (src) && REGNO (src) != BP_REG
 			   && REGNO (src) != B_REG && REGNO (src) != BH_REG)
 		    {
@@ -4297,7 +4631,6 @@ ia16_rewrite_bp_as_bx (void)
 					       GEN_INT (off));
 			  dest = gen_rtx_MEM (GET_MODE (dest), addr);
 			  rewrite_insn_pat[uid] = gen_rtx_SET (dest, src);
-			  rewrite_insn_code[uid] = INSN_CODE (insn);
 			}
 		      else
 			goto bail;
@@ -4314,14 +4647,12 @@ ia16_rewrite_bp_as_bx (void)
 		{
 		  /* `popw %bp'.  */
 		  rewrite_insn_pat[uid] = use_sp;
-		  rewrite_insn_code[uid] = -1;
 		  state = RBPS_BP_POPPED;
 		}
 	      else if (INSN_CODE (insn) == CODE_FOR__leave)
 		{
 		  /* `leave'.  */
 		  rewrite_insn_pat[uid] = gen_rtx_SET (sp_reg, bx_reg);
-		  rewrite_insn_code[uid] = -1;
 		  state = RBPS_BP_POPPED;
 		}
 	      else
@@ -4340,7 +4671,6 @@ ia16_rewrite_bp_as_bx (void)
 	    {
 	      state = RBPS_BP_POPPED;
 	      rewrite_insn_pat[uid] = use_sp;
-	      rewrite_insn_code[uid] = -1;
 	      break;
 	    }
 
@@ -4405,7 +4735,7 @@ ia16_rewrite_bp_as_bx (void)
       if (pat)
 	{
 	  PATTERN (insn) = pat;
-	  INSN_CODE (insn) = rewrite_insn_code[uid];
+	  ia16_recog (insn);
 	  RTX_FRAME_RELATED_P (insn) = RTX_FRAME_RELATED_P (pat);
 	}
     }
@@ -4422,7 +4752,6 @@ bail:
   free (insn_state);
   free (stack);
   free (rewrite_insn_pat);
-  free (rewrite_insn_code);
 }
 
 /* Return true iff INSN is a (set (reg:SEG DS_REG) (reg:SEG SS_REG)).  */
@@ -4640,6 +4969,7 @@ ia16_elide_unneeded_ss_stuff (void)
 	      rtx new_dest = shallow_copy_rtx (dest);
 	      XEXP (new_dest, 0) = gen_rtx_PLUS (HImode, override, addr);
 	      PATTERN (insn) = gen_rtx_SET (new_dest, src);
+	      ia16_recog (insn);
 	    }
 	}
       else if (MEM_P (src)
@@ -4655,6 +4985,7 @@ ia16_elide_unneeded_ss_stuff (void)
 	      rtx new_src = shallow_copy_rtx (src);
 	      XEXP (new_src, 0) = gen_rtx_PLUS (HImode, override, addr);
 	      PATTERN (insn) = gen_rtx_SET (dest, new_src);
+	      ia16_recog (insn);
 	    }
 	}
     }
@@ -4726,7 +5057,7 @@ ia16_rewrite_movw_as_xchgw (void)
 	    continue;
 	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rs),
 					 gen_rtx_REG (HImode, A_REG));
-	  INSN_CODE (insn) = CODE_FOR__xchghi2;
+	  ia16_recog (insn);
 	  reg_now_clobbered_p[rs] = true;
 	}
       else if (rs == A_REG)
@@ -4737,7 +5068,7 @@ ia16_rewrite_movw_as_xchgw (void)
 	    continue;
 	  PATTERN (insn) = gen__xchghi2 (gen_rtx_REG (HImode, rd),
 					 gen_rtx_REG (HImode, A_REG));
-	  INSN_CODE (insn) = CODE_FOR__xchghi2;
+	  ia16_recog (insn);
 	  reg_now_clobbered_p[A_REG] = true;
 	}
     }
@@ -4779,11 +5110,11 @@ ia16_machine_dependent_reorg (void)
 
   if (optimize)
     {
+      compute_bb_for_insn ();
+      ia16_rewrite_reg_parm_save_as_push ();
+
       if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
-	{
-	  compute_bb_for_insn ();
-	  ia16_rewrite_bp_as_bx ();
-	}
+	ia16_rewrite_bp_as_bx ();
 
       /* The insn notes are only needed by the `movw' -> `xchgw' rewriting
 	 subpass (ia16_rewrite_movw_as_xchg ()), but I put the df_analyze ()
@@ -4801,10 +5132,9 @@ ia16_machine_dependent_reorg (void)
 	}
 
       if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
-	{
-	  ia16_elide_unneeded_ss_stuff ();
-	  free_bb_for_insn ();
-	}
+	ia16_elide_unneeded_ss_stuff ();
+
+      free_bb_for_insn ();
 
       if (optimize_size)
 	ia16_rewrite_movw_as_xchgw ();
