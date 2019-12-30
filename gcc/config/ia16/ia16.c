@@ -581,6 +581,7 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
     {
     case QImode:
     case HImode:
+    case PHImode:
     case V2QImode:
       switch (*cum)
 	{
@@ -699,6 +700,7 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     {
     case QImode:
     case HImode:
+    case PHImode:
     case V2QImode:
       ++*cum;
       return;
@@ -4323,7 +4325,8 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	  src = SET_SRC (pat);
 	  mode = GET_MODE (dest);
 
-	  if (mode != HImode && mode != QImode && mode != V2QImode)
+	  if (mode != HImode && mode != QImode
+	      && mode != PHImode && mode != V2QImode)
 	    break;
 
 	  if (! ia16_rtx_is_pure_reg_arith_p (src))
