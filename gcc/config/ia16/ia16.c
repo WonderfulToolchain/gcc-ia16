@@ -1618,11 +1618,11 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
 
       emit_move_insn (gen_rtx_SUBREG (HImode, op2, 0), op);
       if (FUNC_OR_METHOD_TYPE_P (from_type))
-	emit_move_insn (gen_rtx_SUBREG (HImode, op2, 2),
-			gen_rtx_REG (HImode, CS_REG));
+	emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
+			gen_rtx_REG (SEGmode, CS_REG));
       else
-	emit_move_insn (gen_rtx_SUBREG (HImode, op2, 2),
-			gen_rtx_REG (HImode, SS_REG));
+	emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
+			gen_rtx_REG (SEGmode, SS_REG));
 
       return op2;
     }
