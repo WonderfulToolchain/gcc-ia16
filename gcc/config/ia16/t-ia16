@@ -52,6 +52,10 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
 	fi
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
+ia16-reorg.o: $(srcdir)/config/ia16/ia16-reorg.c \
+  $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H)
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+
 MULTILIB_OPTIONS=mprotected-mode melks-libc \
 	mcmodel=medium mrtd/mregparmcall march=any_186 Os
 MULTILIB_DIRNAMES=pmode elkslibc medium rtd regparmcall any_186 size
