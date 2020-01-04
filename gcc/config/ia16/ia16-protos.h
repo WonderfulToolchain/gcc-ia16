@@ -45,8 +45,6 @@ extern void	ia16_split_seg_override_and_offset (rtx x, rtx *ovr, rtx *off);
 #ifdef RTX_CODE
 extern void	ia16_initialize_trampoline (rtx addr, rtx fnaddr, rtx static_chain);
 extern bool	ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9);
-extern void	ia16_print_operand (FILE *file, rtx x, int code);
-extern void	ia16_print_operand_address (FILE *file, rtx x);
 #endif
 extern rtx	ia16_push_reg (unsigned int regno);
 extern rtx	ia16_pop_reg (unsigned int regno);
