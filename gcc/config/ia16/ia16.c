@@ -3609,7 +3609,12 @@ static const char *reg_HInames[LAST_HARD_REG + 1] = {
    'S': Print the high 16 bits of the 32-bit constant E.
    'Z': Print the symbol name for the segelf base, sans preceding $.
 */
-void
+#undef	TARGET_PRINT_OPERAND
+#define	TARGET_PRINT_OPERAND	ia16_print_operand
+
+static void ia16_print_operand_address (FILE *, machine_mode, rtx);
+
+static void
 ia16_print_operand (FILE *file, rtx e, int code)
 {
   enum machine_mode mode;
@@ -3701,7 +3706,7 @@ ia16_print_operand (FILE *file, rtx e, int code)
       break;
 
       case MEM:
-      ia16_print_operand_address (file, XEXP (x, 0));
+      ia16_print_operand_address (file, GET_MODE (x), XEXP (x, 0));
       break;
 
       default:
@@ -3791,8 +3796,12 @@ ia16_to_print_seg_override_p (unsigned seg_regno, rtx rb)
  * rs:(rb)	(plus (unspec rs ...) (reg rb))
  *		etc.
  */
-void
-ia16_print_operand_address (FILE *file, rtx e)
+#undef	TARGET_PRINT_OPERAND_ADDRESS
+#define	TARGET_PRINT_OPERAND_ADDRESS ia16_print_operand_address
+
+static void
+ia16_print_operand_address (FILE *file, machine_mode mode ATTRIBUTE_UNUSED,
+			    rtx e)
 {
   rtx rb, ri, c, rs;
 
