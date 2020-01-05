@@ -1,5 +1,5 @@
 /* Subroutines used during code generation for Intel 16-bit x86.
-   Copyright (C) 2005-2017 Free Software Foundation, Inc.
+   Copyright (C) 2005-2020 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
    Very preliminary IA-16 far pointer support and other changes by TK Chia
@@ -222,6 +222,8 @@ ia16_save_reg_p (unsigned int r)
 
       return frame_pointer_needed;
     }
+  if (r == DS_REG && ! ia16_in_ss_data_function_p ())
+    return ! ia16_in_ds_data_function_p ();
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (ia16_regno_in_class_p (r, UP_QI_REGS))
@@ -317,7 +319,7 @@ ia16_ds_data_function_type_p (const_tree funtype)
   if (! call_used_regs[DS_REG])
     return 0;
 
-  attrs = TYPE_ATTRIBUTES (funtype);
+  attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
 
   if (TARGET_ASSUME_DS_DATA)
     return ! attrs || ! lookup_attribute ("no_assume_ds_data", attrs);
@@ -334,7 +336,8 @@ static int
 ia16_default_ds_abi_function_type_p (const_tree funtype)
 {
   return TARGET_ALLOCABLE_DS_REG
-	 && ia16_ds_data_function_type_p (funtype);
+	 && ia16_ds_data_function_type_p (funtype)
+	 && ia16_ss_data_function_type_p (funtype);
 }
 
 int
@@ -346,9 +349,32 @@ ia16_in_ds_data_function_p (void)
     return TARGET_ASSUME_DS_DATA;
 }
 
+/* Return true iff TYPE is a type for a function which assumes that %ss
+   points to the program's data segment on function entry.  */
+int
+ia16_ss_data_function_type_p (const_tree funtype)
+{
+  tree attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
+
+  if (TARGET_ASSUME_SS_DATA)
+    return ! attrs || ! lookup_attribute ("no_assume_ss_data", attrs);
+  else
+    return attrs && lookup_attribute ("assume_ss_data", attrs);
+}
+
+int
+ia16_in_ss_data_function_p (void)
+{
+  if (cfun && cfun->decl)
+    return ia16_ss_data_function_type_p (TREE_TYPE (cfun->decl));
+  else
+    return TARGET_ASSUME_SS_DATA;
+}
+
 #define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
 				 && call_used_regs[DS_REG] \
-				 && TARGET_ASSUME_DS_DATA)
+				 && TARGET_ASSUME_DS_DATA \
+				 && TARGET_ASSUME_SS_DATA)
 
 static int
 ia16_in_default_ds_abi_function_p (void)
@@ -846,7 +872,8 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #define IA16_CALLCVT_REGPARMCALL	0x04
 #define IA16_CALLCVT_FAR		0x08
 #define IA16_CALLCVT_DS_DATA		0x10
-#define IA16_CALLCVT_NEAR_SECTION	0x20
+#define IA16_CALLCVT_SS_DATA		0x20
+#define IA16_CALLCVT_NEAR_SECTION	0x40
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -885,6 +912,14 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_ds_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_DS_DATA;
+
+  if (ia16_ss_data_function_type_p (type))
+    callcvt |= IA16_CALLCVT_SS_DATA;
+
+  if ((callcvt & (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA)) == 0)
+    error_at (type && TYPE_NAME (type)
+		? DECL_SOURCE_LOCATION (TYPE_NAME (type)) : UNKNOWN_LOCATION,
+	      "unsupported: function with both %%ds and %%ss != .data");
 
   return callcvt;
 }
@@ -1013,6 +1048,29 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
+  if (is_attribute_p ("assume_ss_data", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("no_assume_ss_data", attrs))
+	{
+	  error ("assume_ss_data and no_assume_ss_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("no_assume_ss_data", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("assume_ss_data", attrs))
+	{
+	  error ("assume_ss_data and no_assume_ss_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+
   if (! call_used_regs[DS_REG]
       && (is_attribute_p ("assume_ds_data", name)
 	  || is_attribute_p ("no_assume_ds_data", name)))
@@ -1059,6 +1117,10 @@ static const struct attribute_spec ia16_attribute_table[] =
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ds_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "assume_ss_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "no_assume_ss_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "far_section",
@@ -1097,12 +1159,17 @@ ia16_set_default_type_attributes (tree type)
 	  if (ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (type)))
 	    TYPE_ADDR_SPACE (type) = ADDR_SPACE_FAR;
 	  break;
-
 	default:
 	  break;
 	}
     }
 }
+
+#undef	TARGET_INSERT_ATTRIBUTES
+#define	TARGET_INSERT_ATTRIBUTES ia16_insert_attributes
+
+/* In ia16-no-ss-data.c .  */
+extern void ia16_insert_attributes (tree, tree *);
 
 /* Addressing Modes */
 
@@ -1115,6 +1182,7 @@ ia16_as_address_mode (addr_space_t addrspace)
   switch (addrspace)
     {
     case ADDR_SPACE_GENERIC:
+    case ADDR_SPACE_SEG_SS:
       return HImode;
     /* A far address is actually a HImode value which is "coloured" with a
        segment term -- (plus:HI ...  (unspec:HI ...  UNSPEC_SEG_OVERRIDE)).
@@ -1135,6 +1203,7 @@ ia16_as_pointer_mode (addr_space_t addrspace)
   switch (addrspace)
     {
     case ADDR_SPACE_GENERIC:
+    case ADDR_SPACE_SEG_SS:
       return HImode;
     case ADDR_SPACE_FAR:
       return SImode;
@@ -1152,6 +1221,7 @@ ia16_as_valid_pointer_mode (machine_mode m, addr_space_t addrspace)
   switch (addrspace)
     {
     case ADDR_SPACE_GENERIC:
+    case ADDR_SPACE_SEG_SS:
       return m == HImode;
     case ADDR_SPACE_FAR:
       return m == SImode;
@@ -1189,11 +1259,11 @@ ia16_as_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x,
 			      bool strict, addr_space_t as)
 {
   rtx r1, r2, r9;
-  if (as != ADDR_SPACE_GENERIC && !ia16_have_seg_override_p (x))
+  if (as == ADDR_SPACE_FAR && !ia16_have_seg_override_p (x))
     return false;
   if (CONSTANT_P (x))
     return true;
-  if (!ia16_parse_address (x, &r1, &r2, NULL, &r9))
+  if (!ia16_parse_address (x, &r1, &r2, NULL, &r9, as))
     return false;
   if (r9 != NULL_RTX && strict)
     {
@@ -1253,6 +1323,7 @@ ia16_as_zero_address_valid (addr_space_t addrspace)
     {
     case ADDR_SPACE_GENERIC:
       return false;
+    case ADDR_SPACE_SEG_SS:
     case ADDR_SPACE_FAR:
       return true;
     default:
@@ -1271,7 +1342,10 @@ ia16_bless_selector (rtx seg)
 rtx
 ia16_seg_override_term (rtx seg)
 {
-  return gen_seg_override_prot_mode (ia16_bless_selector (seg));
+  if (TARGET_PROTECTED_MODE)
+    return gen_seg_override_prot_mode (ia16_bless_selector (seg));
+  else
+    return gen_seg_override (seg);
 }
 
 static void
@@ -1332,7 +1406,7 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 
   case SImode:
     /* We want a far pointer, while x is possibly a far address.  */
-    if (! ia16_parse_address (x, &r1, &r2, &c, &r9))
+    if (! ia16_parse_address (x, &r1, &r2, &c, &r9, as))
       return x;
 
     if (no_emit)
@@ -1508,6 +1582,7 @@ ia16_as_legitimize_address (rtx x, rtx oldx,
   rtx ovr, off, newx;
 
   if (as == ADDR_SPACE_GENERIC
+      || as == ADDR_SPACE_SEG_SS
       || ia16_as_legitimate_address_p (mode, x, false, as))
     return x;
 
@@ -1565,7 +1640,8 @@ ia16_as_legitimize_address (rtx x, rtx oldx,
 static bool
 ia16_as_subset_p (addr_space_t subset, addr_space_t superset)
 {
-  return subset == ADDR_SPACE_GENERIC && superset == ADDR_SPACE_FAR;
+  return superset == ADDR_SPACE_FAR
+	 && (subset == ADDR_SPACE_GENERIC || subset == ADDR_SPACE_SEG_SS);
 }
 
 static rtx
@@ -1584,38 +1660,54 @@ ia16_far_pointer_offset (rtx op)
 static rtx
 ia16_as_convert (rtx op, tree from_type, tree to_type)
 {
+  addr_space_t from_as, to_as;
+
   gcc_assert (POINTER_TYPE_P (from_type));
   gcc_assert (POINTER_TYPE_P (to_type));
 
   from_type = TREE_TYPE (from_type);
   to_type = TREE_TYPE (to_type);
 
-  if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_FAR
-      && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_GENERIC)
+  from_as = TYPE_ADDR_SPACE (from_type);
+  to_as = TYPE_ADDR_SPACE (to_type);
+
+  if (from_as == ADDR_SPACE_FAR
+      && (to_as == ADDR_SPACE_GENERIC || to_as == ADDR_SPACE_SEG_SS))
     {
       /* We only handle pointers for now --- not addresses.  */
       gcc_assert (GET_MODE (op) == SImode || GET_MODE (op) == VOIDmode);
 
       return ia16_far_pointer_offset (op);
     }
-  else if (TYPE_ADDR_SPACE (from_type) == ADDR_SPACE_GENERIC
-	   && TYPE_ADDR_SPACE (to_type) == ADDR_SPACE_FAR)
+  else if (to_as == ADDR_SPACE_FAR
+	   && (from_as == ADDR_SPACE_GENERIC || from_as == ADDR_SPACE_SEG_SS))
     {
+      unsigned seg_reg_no = SS_REG;
+
       rtx op2 = gen_reg_rtx (SImode);
       gcc_assert (GET_MODE (op) == HImode || GET_MODE (op) == VOIDmode);
 
+      if (from_as == ADDR_SPACE_GENERIC)
+	{
+	  if (FUNC_OR_METHOD_TYPE_P (from_type))
+	    seg_reg_no = CS_REG;
+	  else if (! ia16_in_ss_data_function_p ())
+	    seg_reg_no = DS_REG;
+	}
+
       emit_move_insn (gen_rtx_SUBREG (HImode, op2, 0), op);
-      if (FUNC_OR_METHOD_TYPE_P (from_type))
-	emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
-			gen_rtx_REG (SEGmode, CS_REG));
-      else
-	emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
-			gen_rtx_REG (SEGmode, SS_REG));
+      emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
+		      gen_rtx_REG (SEGmode, seg_reg_no));
 
       return op2;
     }
   else
-    gcc_unreachable ();
+    {
+      fprintf (stderr, "Trying to convert address-space-%d pointer to "
+		       "address-space-%d:\n", (int) from_as, (int) to_as);
+      debug_rtx (op);
+      gcc_unreachable ();
+    }
 }
 
 /* Condition Code Status */
@@ -2071,10 +2163,12 @@ ia16_seg_override_cost_likely_p (rtx r9, rtx r1, rtx r2)
 
      On the RTL side:
        * A null segment override (R9) means we are accessing an operand in
-	 the generic address space.  We currently assume that %ss points to
-	 this space.  %ds _might_ point to this space --- if the function
-	 assumes that %ds == .data on startup, and if the function we are
-	 compiling does not use %ds for anything.
+	 the generic address space.  If we can assume that %ss points to
+	 this space (the default), then %ds _might_ point to this space ---
+	 if the function assumes that %ds == .data on startup, and if the
+	 function we are compiling does not use %ds for anything.  If we
+	 cannot assume that %ss == .data, then we must have %ds == .data
+	 (for now).
        * If R9 is not null, then we are accessing an operand at an offset
 	 from the specified segment.
 
@@ -2082,26 +2176,26 @@ ia16_seg_override_cost_likely_p (rtx r9, rtx r1, rtx r2)
        * our operand is an offset from %ss, and the offset involves the
 	 register %bp (or the virtual "register" %argp); or
        * our operand is an offset from %ds, and %bp is not involved.  */
-  unsigned seg_regno = SS_REG;
+  unsigned seg_reg_no = ia16_in_ss_data_function_p () ? SS_REG : DS_REG;
 
   if (r9 && REG_P (r9))
-    seg_regno = REGNO (r9);
+    seg_reg_no = REGNO (r9);
 
   if (r1 && REG_P (r1)
       && (REGNO (r1) == BP_REG || REGNO (r1) == ARGP_REG))
     {
-      if (seg_regno == SS_REG)
+      if (seg_reg_no == SS_REG)
 	return false;
     }
   else if (r2 && REG_P (r2)
       && (REGNO (r2) == BP_REG || REGNO (r2) == ARGP_REG))
     {
-      if (seg_regno == SS_REG)
+      if (seg_reg_no == SS_REG)
 	return false;
     }
   else
     {
-      if (seg_regno == DS_REG)
+      if (seg_reg_no == DS_REG)
 	return false;
     }
   return true;
@@ -2520,7 +2614,7 @@ ia16_memory_move_cost (machine_mode mode, reg_class_t rclass ATTRIBUTE_UNUSED,
 #define TARGET_ADDRESS_COST ia16_address_cost
 
 static int
-ia16_address_cost_internal (rtx address)
+ia16_address_cost_internal (rtx address, addr_space_t as)
 {
   rtx r1, r2, c, r9;
 
@@ -2534,18 +2628,21 @@ ia16_address_cost_internal (rtx address)
   /* Check for a (call ...) address.  This is a hack, but without knowing
    * the mode, this is the best we can do.  At least it won't crash.  */
   if (MEM_P (address))
-    address = XEXP (address, 0);
+    {
+      as = MEM_ADDR_SPACE (address);
+      address = XEXP (address, 0);
+    }
 
   /* Parse the address.  */
-  ia16_parse_address (address, &r1, &r2, &c, &r9);
+  ia16_parse_address (address, &r1, &r2, &c, &r9, as);
 
   return IA16_COST (ea_calc (r1, r2, c, r9));
 }
 
 static int
-ia16_address_cost (rtx address, machine_mode, addr_space_t, bool)
+ia16_address_cost (rtx address, machine_mode, addr_space_t as, bool)
 {
-  return ia16_address_cost_internal(address);
+  return ia16_address_cost_internal(address, as);
 }
 
 /* Return true if X is a valid memory operand for xlat and return the cost
@@ -2597,7 +2694,8 @@ ia16_xlat_cost (rtx x, int *total)
 	    *total += IA16_COST (imm_load[M_HI]);
 	  else if (MEM_P (base))
 	    *total += IA16_COST (int_load[M_HI])
-		      + ia16_address_cost_internal (XEXP (base, 0));
+		      + ia16_address_cost_internal (XEXP (base, 0),
+						    MEM_ADDR_SPACE (base));
 	  return (true);	
 	}
       return (false);
@@ -2680,7 +2778,7 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       if ((outer_code == ZERO_EXTEND || outer_code == SET)
 	&& ia16_xlat_cost (x, total))
 	return (true);
-      *total = ia16_address_cost_internal (XEXP (x, 0));
+      *total = ia16_address_cost_internal (XEXP (x, 0), MEM_ADDR_SPACE (x));
       /* This is never called recursively from the SET case.  */
       if (outer_code == SET)
 	*total += IA16_COST (int_load[M_MOD (mode)]);
@@ -3286,6 +3384,13 @@ ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
       /* fall through */
     case ADDR_SPACE_GENERIC:
       return default_elf_select_section (expr, reloc, align);
+
+    case ADDR_SPACE_SEG_SS:
+      error_at (DECL_P (expr) ? DECL_SOURCE_LOCATION (expr)
+			      : EXPR_LOCATION (expr),
+		"cannot allocate static storage "
+		"in %<__seg_ss%> address space");
+      return default_elf_select_section (expr, reloc, align);
     }
 }
 
@@ -3314,6 +3419,12 @@ ia16_asm_unique_section (tree decl, int reloc)
 
       /* fall through */
     case ADDR_SPACE_GENERIC:
+      default_unique_section (decl, reloc);
+      break;
+
+    case ADDR_SPACE_SEG_SS:
+      error_at (DECL_SOURCE_LOCATION (decl), "cannot allocate static storage "
+		"in %<__seg_ss%> address space");
       default_unique_section (decl, reloc);
     }
 }
@@ -3600,7 +3711,7 @@ static const char *reg_HInames[LAST_HARD_REG + 1] = {
 #undef	TARGET_PRINT_OPERAND
 #define	TARGET_PRINT_OPERAND	ia16_print_operand
 
-static void ia16_print_operand_address (FILE *, machine_mode, rtx);
+static void ia16_print_operand_address_internal (FILE *, rtx, addr_space_t);
 
 static void
 ia16_print_operand (FILE *file, rtx e, int code)
@@ -3694,7 +3805,8 @@ ia16_print_operand (FILE *file, rtx e, int code)
       break;
 
       case MEM:
-      ia16_print_operand_address (file, GET_MODE (x), XEXP (x, 0));
+      ia16_print_operand_address_internal (file, XEXP (x, 0),
+					   MEM_ADDR_SPACE (x));
       break;
 
       default:
@@ -3710,18 +3822,20 @@ ia16_print_operand (FILE *file, rtx e, int code)
 #define BASE_REG_REG_P(x) \
 	ia16_regno_in_class_p (REGNO (x), BASE_W_INDEX_REGS)
 
-/* Strictly check an address X and optionally split into its components.
+/* Strictly check an address X in address space AS and optionally split into
+ * its components.
  * If there is only one register, it will be the base register.
  * This is a helper function for ia16_print_operand_address ().
  */
 bool
-ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
+ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs,
+			   addr_space_t as)
 {
 	rtx tmp;
 	rtx rb, ri, c, rs;
 	enum machine_mode mode ATTRIBUTE_UNUSED;
 
-	if (!ia16_parse_address (x, &rb, &ri, &c, &rs))
+	if (!ia16_parse_address (x, &rb, &ri, &c, &rs, as))
 		return (0 == 1);
 	mode = GET_MODE (x);
 
@@ -3759,16 +3873,16 @@ ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri, rtx *p_c, rtx *p_rs)
 /* Say whether a segment override term for SEG_REGNO should be printed in the
    assembly output, given that the base register term is RB.  */
 static bool
-ia16_to_print_seg_override_p (unsigned seg_regno, rtx rb)
+ia16_to_print_seg_override_p (unsigned seg_reg_no, rtx rb)
 {
   if (rb && REG_P (rb) && REGNO (rb) == BP_REG)
     {
-      if (seg_regno == SS_REG)
+      if (seg_reg_no == SS_REG)
 	return false;
     }
   else
     {
-      if (seg_regno == DS_REG)
+      if (seg_reg_no == DS_REG)
 	return false;
     }
   return true;
@@ -3784,16 +3898,12 @@ ia16_to_print_seg_override_p (unsigned seg_regno, rtx rb)
  * rs:(rb)	(plus (unspec rs ...) (reg rb))
  *		etc.
  */
-#undef	TARGET_PRINT_OPERAND_ADDRESS
-#define	TARGET_PRINT_OPERAND_ADDRESS ia16_print_operand_address
-
 static void
-ia16_print_operand_address (FILE *file, machine_mode mode ATTRIBUTE_UNUSED,
-			    rtx e)
+ia16_print_operand_address_internal (FILE *file, rtx e, addr_space_t as)
 {
   rtx rb, ri, c, rs;
 
-  if (!ia16_parse_address_strict (e, &rb, &ri, &c, &rs))
+  if (!ia16_parse_address_strict (e, &rb, &ri, &c, &rs, as))
     {
       debug_rtx (e);
       output_operand_lossage ("Invalid IA16 address expression.");
@@ -3805,6 +3915,11 @@ ia16_print_operand_address (FILE *file, machine_mode mode ATTRIBUTE_UNUSED,
     {
       if (ia16_to_print_seg_override_p (REGNO (rs), rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[REGNO (rs)]);
+    }
+  else if (! ia16_in_ss_data_function_p ())
+    {
+      if (ia16_to_print_seg_override_p (DS_REG, rb))
+	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[DS_REG]);
     }
   else if (TARGET_ALLOCABLE_DS_REG ? df_regs_ever_live_p (DS_REG)
 				   : ! ia16_in_ds_data_function_p ())
@@ -3821,6 +3936,40 @@ ia16_print_operand_address (FILE *file, machine_mode mode ATTRIBUTE_UNUSED,
     fprintf (file, ",%s%s", REGISTER_PREFIX, reg_HInames[REGNO (ri)]);
   if (rb)
     putc (')', file);
+}
+
+#undef	TARGET_PRINT_OPERAND_ADDRESS
+#define	TARGET_PRINT_OPERAND_ADDRESS ia16_print_operand_address
+/* GCC uses this hook to write out "%aDIGIT" (e.g. "%a0") operands in
+   assembly output templates.
+
+   Alas GCC does not exactly tell us which address space the address
+   expression E is relative to.  This is problematic if there is no segment
+   override term in E, and we want to tell between ADDR_SPACE_GENERIC and
+   ADDR_SPACE_SEG_SS.
+
+   Try to fish out the underlying high-level declaration corresponding to E,
+   and use the address space information from there.  */
+static void
+ia16_print_operand_address (FILE *file, machine_mode mode ATTRIBUTE_UNUSED,
+			    rtx e)
+{
+  addr_space_t as = ADDR_SPACE_GENERIC;
+
+  if (ia16_have_seg_override_p (e))
+    as = ADDR_SPACE_FAR;
+  else
+    {
+      tree decl = ia16_get_decl_for_addr (e);
+      if (decl)
+	{
+	  tree type = TREE_TYPE (decl);
+	  if (type && POINTER_TYPE_P (type))
+	    as = TYPE_ADDR_SPACE (TREE_TYPE (type));
+	}
+    }
+
+  ia16_print_operand_address_internal (file, e, as);
 }
 
 /* Helper function for gen_prologue().  Generates RTL to push REGNO, which
@@ -3992,10 +4141,11 @@ ia16_parse_address_internal (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 /* Check an address E and optionally split it into its components.
 */
 bool
-ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
+ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9,
+		    addr_space_t as)
 {
-  rtx r1, c;
-  if (ia16_parse_address_internal (e, &r1, p_r2, &c, p_r9))
+  rtx r1, c, r9;
+  if (ia16_parse_address_internal (e, &r1, p_r2, &c, &r9))
     {
       if (p_r1)
 	*p_r1 = r1;
@@ -4005,6 +4155,14 @@ ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9)
 	    *p_c = c;
 	  else
 	    *p_c = const0_rtx;
+	}
+      if (p_r9)
+	{
+	  /* Remember to insert a %ss: override for a __seg_ss address.  */
+	  if (as == ADDR_SPACE_SEG_SS && ! r9)
+	    *p_r9 = gen_rtx_REG (SEGmode, SS_REG);
+	  else
+	    *p_r9 = r9;
 	}
       return true;
     }
@@ -4233,6 +4391,12 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
     }
 }
 
+#undef	TARGET_SET_CURRENT_FUNCTION
+#define	TARGET_SET_CURRENT_FUNCTION ia16_set_current_function
+
+/* In ia16-no-ss-data.c .  */
+extern void ia16_set_current_function (tree);
+
 /* The Global targetm Variable */
 
 /* #include "target.h" */
@@ -4356,8 +4520,10 @@ ia16_memory_offset_known (rtx m1, rtx m2, int *offset)
   rtx m1base, m1index, m1disp, m1seg, m1sym, m1int;
   rtx m2base, m2index, m2disp, m2seg, m2sym, m2int;
 
-  ia16_parse_address_strict (XEXP (m1, 0), &m1base, &m1index, &m1disp, &m1seg);
-  ia16_parse_address_strict (XEXP (m2, 0), &m2base, &m2index, &m2disp, &m2seg);
+  ia16_parse_address_strict (XEXP (m1, 0), &m1base, &m1index, &m1disp, &m1seg,
+			     MEM_ADDR_SPACE (m1));
+  ia16_parse_address_strict (XEXP (m2, 0), &m2base, &m2index, &m2disp, &m2seg,
+			     MEM_ADDR_SPACE (m2));
 
   if (!rtx_equal_p (m1base, m2base) || !rtx_equal_p (m1index, m2index) ||
       !rtx_equal_p (m1seg, m2seg))
@@ -4418,8 +4584,7 @@ ia16_non_overlapping_mem_p (rtx m1, rtx m2)
     return (false);
 }
 
-/* Emit instructions to reset %ds to .data.  REGNO is either a scratch
-   register number, or a large number.  */
+/* Emit instructions to reset %ds to .data.  */
 static void
 ia16_expand_reset_ds_internal (void)
 {

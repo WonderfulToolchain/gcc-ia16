@@ -1,5 +1,5 @@
 /* GNU Compiler Collection definitions of target machine Intel 16-bit x86.
-   Copyright (C) 2005-2017 Free Software Foundation, Inc.
+   Copyright (C) 2005-2020 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
    Very preliminary IA-16 far pointer support and other changes by TK Chia
@@ -40,6 +40,10 @@
 
 /* Run-time Target Specification */
 #define TARGET_CPU_CPP_BUILTINS() ia16_cpu_cpp_builtins ()
+/* Using SWITCHABLE_TARGET makes it a bit easier for us to mess with
+   this_target_rtl to implement %ss != .data caling conventions.  See
+   ia16-no-ss-data.c .  */
+#define SWITCHABLE_TARGET	1
 
 /* Storage Layout
  *
@@ -143,6 +147,7 @@
    COMPLEX_MODE_P(MODE) &&						\
      HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO] &&			\
+     (ia16_in_ss_data_function_p () || (REGNO) != DS_REG) &&		\
      (! TARGET_PROTECTED_MODE || (MODE) == PHImode			\
       || ((REGNO) != DS_REG && (REGNO) != ES_REG)))
 
@@ -387,8 +392,8 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define PUSH_ROUNDING(BYTES)	(((BYTES) + 1) & ~1)
 
 /* Passing Arguments in Registers */
-/* TODO: Allow arguments to be passed in registers.  */
-#define CUMULATIVE_ARGS				int
+#define CUMULATIVE_ARGS		int
+#define OVERRIDE_ABI_FORMAT(fndecl) ia16_override_abi_format (fndecl)
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, FNDECL, N_NAMED_ARGS) \
 	ia16_init_cumulative_args (&(CUM), (FNTYPE), (LIBNAME), (FNDECL), \
 				   (N_NAMED_ARGS))
@@ -599,6 +604,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define FUNCTION_MODE			QImode
 
 #define ADDR_SPACE_FAR			1
+#define ADDR_SPACE_SEG_SS		2
 /* We hack gcc/tree-ssa-loop-ivopts.c and gcc/calls.c to recognize a new
    macro TARGET_ADDR_SPACE_WEIRD_P (as), which should return true if the
    given address space breaks certain assumptions made by compiler passes.  */

@@ -1,5 +1,5 @@
 /* Machine-dependent reorganization pass for Intel 16-bit x86 target.
-   Copyright (C) 2018-2019 Free Software Foundation, Inc.
+   Copyright (C) 2018-2020 Free Software Foundation, Inc.
    Contributed by TK Chia <https://github.com/tkchia/>
 
    This file is part of GCC.
@@ -53,15 +53,19 @@ static int
 ia16_ds_data_function_rtx_p (rtx addr)
 {
   tree type = ia16_get_function_type_for_addr (addr);
-  if (type)
-    return ia16_ds_data_function_type_p (type);
-  else
-    return TARGET_ASSUME_DS_DATA;
+  return ia16_ds_data_function_type_p (type);
+}
+
+static int
+ia16_ss_data_function_rtx_p (rtx addr)
+{
+  tree type = ia16_get_function_type_for_addr (addr);
+  return ia16_ss_data_function_type_p (type);
 }
 
 /* If we are in an __attribute__ ((no_assume_ds_data)) function, and %ds is
-   fixed, check whether it calls any __attribute__ ((assume_ds_data)).  Flag
-   warnings if it does.  */
+   fixed, check whether it calls any __attribute__ ((assume_ds_data))
+   functions.  Flag warnings if it does.  */
 static void
 ia16_verify_calls_from_no_assume_ds (void)
 {
@@ -81,7 +85,33 @@ ia16_verify_calls_from_no_assume_ds (void)
 	      warning_at (LOCATION_LOCUS (INSN_LOCATION (insn)),
 			  OPT_Wmaybe_uninitialized,
 			  "%%ds is fixed, not resetting %%ds for call to "
-			  "assume_ds_ss function");
+			  "assume_ds_data function");
+	}
+    }
+}
+
+/* If we are in an __attribute__ ((no_assume_ss_data)) function,
+   check whether it calls any __attribute__ ((assume_ss_data)) functions. 
+   Flag warnings if it does.  */
+static void
+ia16_verify_calls_from_no_assume_ss (void)
+{
+  rtx_insn *insn;
+
+  if (ia16_in_ss_data_function_p ())
+    return;
+
+  for (insn = get_insns(); insn; insn = NEXT_INSN (insn))
+    {
+      if (CALL_P (insn))
+	{
+	  rtx call = get_call_rtx_from (insn);
+	  rtx callee = XEXP (XEXP (call, 0), 0);
+	  if (ia16_ss_data_function_rtx_p (callee))
+	      warning_at (LOCATION_LOCUS (INSN_LOCATION (insn)),
+			  OPT_Wmaybe_uninitialized,
+			  "calling assume_ss_data function when "
+			  "%%ss may not point to data segment");
 	}
     }
 }
@@ -232,6 +262,35 @@ ia16_rtx_is_pure_reg_arith_p (rtx x)
     }
 }
 
+/* Say whether an RTX (in the currently compiled function) is for a memory
+   operand in the program's default data segment.  */
+static bool
+ia16_data_seg_mem_p (rtx x)
+{
+  return MEM_P (x) && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (x));
+}
+
+/* Say whether an RTX (in the currently compiled function) is for a memory
+   operand in the same IA-16 segment as the stack.  */
+static bool
+ia16_stack_seg_mem_p (rtx x)
+{
+  if (! MEM_P (x))
+    return false;
+
+  switch (MEM_ADDR_SPACE (x))
+    {
+    case ADDR_SPACE_GENERIC:
+      return ia16_in_ss_data_function_p () ? true : false;
+
+    case ADDR_SPACE_SEG_SS:
+      return true;
+
+    default:
+      return false;
+    }
+}
+
 /* Try to rewrite something like
 		movw	%sp,	%bp
 		subw	$6,	%sp
@@ -366,8 +425,7 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	      if (regno < FIRST_NOQI_REG && mode != QImode)
 		pristine[regno + 1] = false;
 	    }
-	  else if (MEM_P (dest)
-		   && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest)))
+	  else if (ia16_stack_seg_mem_p (dest))
 	    {
 	      dest_addr = XEXP (dest, 0);
 	      if (GET_CODE (dest_addr) == PLUS
@@ -613,8 +671,7 @@ ia16_rewrite_bp_as_bx (void)
 		  src = SET_SRC (pat);
 
 		  if (REG_P (dest) && REGNO (dest) != BP_REG
-		      && MEM_P (src)
-		      && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (src)))
+		      && ia16_stack_seg_mem_p (src))
 		    {
 		      addr = XEXP (src, 0);
 		      if (GET_CODE (addr) == PLUS
@@ -638,8 +695,7 @@ ia16_rewrite_bp_as_bx (void)
 		      if (REGNO (dest) == B_REG || REGNO (dest) == BH_REG)
 			state = RBPS_BX_CLOBBERED;
 		    }
-		  else if (MEM_P (dest)
-			   && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest))
+		  else if (ia16_stack_seg_mem_p (dest)
 			   && REG_P (src) && REGNO (src) != BP_REG
 			   && REGNO (src) != B_REG && REGNO (src) != BH_REG)
 		    {
@@ -828,7 +884,10 @@ ia16_insn_is_use_ds_p (rtx_insn *insn)
 /* Elide unneeded instances of (set (reg:SEG DS_REG) (reg:SEG SS_REG)) in
    the current function.  Also elide any unneeded `%ss:' segment overrides
    from simple moves to/from memory (`ldsw', `cmpw', etc. are not yet
-   handled).  */
+   handled).
+
+   This routine should only be called on functions which assume %ss == .data .
+ */
 static void
 ia16_elide_unneeded_ss_stuff (void)
 {
@@ -847,7 +906,7 @@ ia16_elide_unneeded_ss_stuff (void)
   /* Starting from insns which set (or clobber) %ds to not-.data, "flood"
      insns along the control flow until we hit
 	(set (reg:SEG DS_REG) (reg:SEG SS_REG)).
-     For now we assume %ss == .data always.
+     Assume %ss == .data always.
 
      If the current function does not assume %ds == .data on entry, also
      flood from the function entry point.
@@ -977,9 +1036,7 @@ ia16_elide_unneeded_ss_stuff (void)
       dest = SET_DEST (pat);
       src = SET_SRC (pat);
 
-      if (MEM_P (dest)
-	  && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (dest))
-	  && (REG_P (src) || CONSTANT_P (src)))
+      if (ia16_data_seg_mem_p (dest) && (REG_P (src) || CONSTANT_P (src)))
 	{
 	  /* If the insn is a simple move to generic memory, and the address
 	     does not involve %bp, then _add_ a `%ds:' segment override to
@@ -990,7 +1047,8 @@ ia16_elide_unneeded_ss_stuff (void)
 	      "These are not the %ds references you are looking for.")  */
 	  rtx addr = XEXP (dest, 0), rb, rs;
 
-	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
+	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs,
+					 ADDR_SPACE_GENERIC)
 	      && ! rs && (! rb || REGNO (rb) != BP_REG))
 	    {
 	      rtx new_dest = shallow_copy_rtx (dest);
@@ -999,14 +1057,13 @@ ia16_elide_unneeded_ss_stuff (void)
 	      ia16_recog (insn);
 	    }
 	}
-      else if (MEM_P (src)
-	       && ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (src))
-	       && REG_P (dest))
+      else if (ia16_data_seg_mem_p (src) && REG_P (dest))
 	{
 	  /* Ditto if the insn is a simple move from generic memory.  */
 	  rtx addr = XEXP (src, 0), rb, rs;
 
-	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs)
+	  if (ia16_parse_address_strict (addr, &rb, NULL, NULL, &rs,
+					 ADDR_SPACE_GENERIC)
 	      && ! rs && (! rb || REGNO (rb) != BP_REG))
 	    {
 	      rtx new_src = shallow_copy_rtx (src);
@@ -1131,6 +1188,7 @@ void
 ia16_machine_dependent_reorg (void)
 {
   ia16_verify_calls_from_no_assume_ds ();
+  ia16_verify_calls_from_no_assume_ss ();
 
   if (optimize)
     {
