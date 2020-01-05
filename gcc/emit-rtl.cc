@@ -2688,7 +2688,7 @@ set_mem_attrs_for_spill (rtx mem)
   mem_attrs attrs (*get_mem_attrs (mem));
   attrs.expr = get_spill_slot_decl (true);
   attrs.alias = MEM_ALIAS_SET (DECL_RTL (attrs.expr));
-  attrs.addrspace = ADDR_SPACE_GENERIC;
+  attrs.addrspace = MEM_ADDR_SPACE (DECL_RTL (attrs.expr));
 
   /* We expect the incoming memory to be of the form:
 	(mem:MODE (plus (reg sfp) (const_int offset)))

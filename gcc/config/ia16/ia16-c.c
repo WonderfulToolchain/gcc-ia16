@@ -61,6 +61,7 @@ ia16_cpu_cpp_builtins (void)
 
   builtin_define_std ("ia16");
   def_macro ("__FAR");
+  def_macro ("__SEG_SS");
 
   /* Define macros corresponding to features supported in the chosen -march=
      architecture.  Here I follow the ARM convention of defining macros with
@@ -102,7 +103,10 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_SS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_FAR_SECTION");
   def_macro ("__IA16_FEATURE_FAR_SECTION_TO_NEAR_CALLS");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
@@ -125,6 +129,9 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_CALLCVT_ASSUME_DS_DATA", TARGET_ASSUME_DS_DATA);
   def_or_undef_macro ("__IA16_CALLCVT_NO_ASSUME_DS_DATA",
 		      ! TARGET_ASSUME_DS_DATA);
+  def_or_undef_macro ("__IA16_CALLCVT_ASSUME_SS_DATA", TARGET_ASSUME_SS_DATA);
+  def_or_undef_macro ("__IA16_CALLCVT_NO_ASSUME_SS_DATA",
+		      ! TARGET_ASSUME_SS_DATA);
   def_or_undef_macro ("__IA16_ABI_SEGELF", TARGET_ABI_SEGELF);
 
   /* Since the `regparmcall' convention is still in a state of flux, I am
@@ -245,4 +252,5 @@ void
 ia16_register_pragmas (void)
 {
   c_register_addr_space ("__far", ADDR_SPACE_FAR);
+  c_register_addr_space ("__seg_ss", ADDR_SPACE_SEG_SS);
 }

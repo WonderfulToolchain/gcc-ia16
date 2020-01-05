@@ -1,8 +1,8 @@
 /* GNU Compiler Collection prototypes for target machine Intel 16-bit x86.
-   Copyright (C) 2005-2017 Free Software Foundation, Inc.
+   Copyright (C) 2005-2020 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
-   Very preliminary IA-16 far pointer support by TK Chia
+   Very preliminary IA-16 far pointer support and other changes by TK Chia
 
    This file is part of GCC.
 
@@ -28,9 +28,12 @@ extern int		ia16_save_reg_p (unsigned);
 extern tree		ia16_get_function_type_for_addr (rtx);
 extern int		ia16_in_far_function_p (void);
 extern int		ia16_ds_data_function_type_p (const_tree funtype);
+extern int		ia16_ss_data_function_type_p (const_tree funtype);
 extern int		ia16_in_ds_data_function_p (void);
+extern int		ia16_in_ss_data_function_p (void);
 extern bool		ia16_have_seg_override_p (rtx x);
 extern rtx		ia16_seg_override_term (rtx seg);
+extern void		ia16_override_abi_format (tree fndecl);
 extern HOST_WIDE_INT	ia16_first_parm_offset (tree fundecl);
 extern HOST_WIDE_INT	ia16_initial_frame_pointer_offset (void);
 extern HOST_WIDE_INT
@@ -55,9 +58,10 @@ extern void	ia16_split_seg_override_and_offset (rtx x, rtx *ovr, rtx *off);
 extern void	ia16_initialize_trampoline (rtx addr, rtx fnaddr,
 					    rtx static_chain);
 extern bool	ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c,
-				    rtx *p_r9);
+				    rtx *p_r9, addr_space_t as);
 extern bool	ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri,
-					   rtx *p_c, rtx *p_rs);
+					   rtx *p_c, rtx *p_rs,
+					   addr_space_t as);
 #endif
 extern rtx	ia16_push_reg (unsigned int regno);
 extern rtx	ia16_pop_reg (unsigned int regno);
