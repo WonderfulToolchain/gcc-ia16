@@ -59,7 +59,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  builtin_define_std ("ia16");
+  def_macro ("__ia16__=20200106L");
   def_macro ("__FAR");
   def_macro ("__SEG_SS");
 
