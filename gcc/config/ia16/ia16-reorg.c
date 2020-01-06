@@ -291,6 +291,63 @@ ia16_stack_seg_mem_p (rtx x)
     }
 }
 
+/* In our reorganization subpasses, we sometimes need to look for pairs of
+   adjacent instructions --- within the same basic block, and possibly only
+   separated by NOTE's.  Define a macro FOR_EACH_IA16_INSN_PAIR to help in
+   this.
+
+   When using this macro, the basic block information for each of the insns
+   should be set correctly.  */
+static void
+insn_pair_iterator_next (rtx_insn **p_insn1, rtx_insn **p_insn2)
+{
+  rtx_insn *insn1, *insn2 = *p_insn2;
+
+  gcc_assert (insn2);
+
+  do
+    {
+      insn1 = insn2;
+      insn2 = NEXT_INSN (insn1);
+
+      if (insn1 && BLOCK_FOR_INSN (insn1)
+	  && insn1 == BB_END (BLOCK_FOR_INSN (insn1)))
+	insn1 = NULL;
+
+      while (insn2 && ! INSN_P (insn2))
+	{
+	  if (! NOTE_P (insn2))  /* probably a BARRIER or CODE_LABEL */
+	    insn1 = NULL;
+	  else if (BLOCK_FOR_INSN (insn2)
+		   && insn2 == BB_END (BLOCK_FOR_INSN (insn2)))
+	    insn1 = NULL;
+	  insn2 = NEXT_INSN (insn2);
+	}
+    }
+  while (! insn1 && insn2);
+
+  *p_insn1 = insn1;
+  *p_insn2 = insn2;
+}
+
+static void
+insn_pair_iterator_init (rtx_insn **p_insn1, rtx_insn **p_insn2)
+{
+  rtx_insn *insn2 = get_insns ();
+
+  while (insn2 && ! INSN_P (insn2))
+    insn2 = NEXT_INSN (insn2);
+
+  *p_insn1 = NULL;
+  *p_insn2 = insn2;
+  insn_pair_iterator_next (p_insn1, p_insn2);
+}
+
+#define FOR_EACH_IA16_INSN_PAIR(insn1, insn2) \
+	for (insn_pair_iterator_init (&(insn1), &(insn2)); \
+	     (insn2); \
+	     insn_pair_iterator_next (&(insn1), &(insn2)))
+
 /* Try to rewrite something like
 		movw	%sp,	%bp
 		subw	$6,	%sp
@@ -308,15 +365,10 @@ ia16_stack_seg_mem_p (rtx x)
 static void
 ia16_rewrite_reg_parm_save_as_push (void)
 {
-  edge e;
-  edge_iterator ei;
-  rtx_insn *insn;
+  basic_block bb;
+  rtx_insn *insn1, *insn2, *insn;
 
-  /* To simplify things, look at only the very first basic block...  */
-  if (EDGE_COUNT (ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs) != 1)
-    return;
-
-  FOR_EACH_EDGE (e, ei, ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs)
+  FOR_EACH_IA16_INSN_PAIR (insn1, insn2)
     {
       enum
 	{
@@ -330,9 +382,7 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	     something, but we are not sure what".  */
 	  UNKNOWN = FIRST_PSEUDO_REGISTER + 1
 	};
-      rtx_insn *subw_const_sp_insn = NULL;
       rtx pat, dest, dest_addr, src, sp_reg;
-      basic_block bb = e->dest;
       HOST_WIDE_INT bp_sp_off = 0, new_bp_sp_off;
       unsigned sp_off_contents[MAX_TRACK_SP_OFF / 2 + 1];
       rtx_insn *sp_off_insn[MAX_TRACK_SP_OFF / 2 + 1];
@@ -340,29 +390,17 @@ ia16_rewrite_reg_parm_save_as_push (void)
       unsigned regno, index;
       machine_mode mode;
 
-      /* Look for the sequence `movw %sp, %bp; subw $CONST_INT, %sp' in the
+      /* Look for the sequence `movw %sp, %bp; subw $CONST_INT, %sp' in a
 	 prologue.  Bail out if this sequence is missing, if the CONST_INT
 	 is not sane, or if we encounter an instruction which might throw
 	 exceptions.  */
-      for (insn = BB_HEAD (bb); insn != BB_END (bb); insn = NEXT_INSN (insn))
-	{
-	  if (! INSN_P (insn))
-	    continue;
+      if (insn_could_throw_p (insn2)
+	  || ! ia16_insn_is_prologue_movw_sp_bp_p (insn1)
+	  || ! ia16_insn_is_prologue_subw_const_sp_p (insn2, &bp_sp_off))
+	continue;
 
-	  if (insn_could_throw_p (NEXT_INSN (insn)))
-	    return;
-
-	  if (ia16_insn_is_prologue_movw_sp_bp_p (insn)
-	      && ia16_insn_is_prologue_subw_const_sp_p (NEXT_INSN (insn),
-							&bp_sp_off))
-	    {
-	      subw_const_sp_insn = NEXT_INSN (insn);
-	      break;
-	    }
-	}
-
-      if (! subw_const_sp_insn || bp_sp_off < 2)
-	return;
+      if (bp_sp_off < 2)
+	continue;
 
       /* We found the sequence.  Scan through any simple register assignments
 	 and/or simple arithmetic operations immediately following the `subw
@@ -382,7 +420,8 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	  sp_off_insn[index] = NULL;
 	}
 
-      insn = subw_const_sp_insn;
+      insn = insn2;
+      bb = BLOCK_FOR_INSN (insn);
       while (insn != BB_END (bb))
 	{
 	  insn = NEXT_INSN (insn);
@@ -482,9 +521,9 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	++index;
 
       if (! index)
-	return;
+	continue;
 
-      insn = subw_const_sp_insn;
+      insn = insn2;
       new_bp_sp_off = bp_sp_off - 2 * index;
       sp_reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 0));
 
@@ -493,7 +532,7 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	  rtx pat0, pat1;
 	  pat0 = gen_rtx_SET (sp_reg,
 			      gen_rtx_MINUS (HImode, sp_reg,
-					     GEN_INT (new_bp_sp_off)));
+					    GEN_INT (new_bp_sp_off)));
 	  pat1 = gen_hard_reg_clobber (CCmode, CC_REG);
 	  PATTERN (insn) = gen_rtx_PARALLEL (VOIDmode,
 					     gen_rtvec (2, pat0, pat1));
@@ -518,8 +557,8 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	  /* Build and insert the new `pushw' insn.  */
 	  reg = gen_rtx_REG (HImode, sp_off_contents[index]);
 	  push_reg_insn = make_insn_raw (gen__pushhi1_nonimm (reg));
-	  ia16_recog (insn);
 	  RTX_FRAME_RELATED_P (push_reg_insn) = 1;
+	  ia16_recog (push_reg_insn);
 	  add_insn_after (push_reg_insn, insn, bb);
 
 	  /* Blank out the original `mov{w|b} %reg, ...(%bp)' insn.  */
@@ -530,6 +569,9 @@ ia16_rewrite_reg_parm_save_as_push (void)
 
 	  insn = push_reg_insn;
 	}
+
+      /* The basic block information should still be correct, so we can
+	 simply continue iterating over the insn chain.  */
     }
 }
 
@@ -837,6 +879,32 @@ bail:
   free (rewrite_insn_pat);
 }
 
+/* Return true iff INSN is a (set (reg:SEG SOME_REG) (reg:SEG SS_REG)) where
+   SOME_REG is a general register.  */
+static bool
+ia16_insn_is_copy_ss_p (rtx_insn *insn)
+{
+  rtx pat, op;
+
+  if (! NONJUMP_INSN_P (insn))
+    return false;
+
+  pat = PATTERN (insn);
+  if (GET_CODE (pat) != SET)
+    return false;
+
+  op = SET_SRC (pat);
+  if (! REG_P (op) || REGNO (op) != SS_REG || GET_MODE (op) != SEGmode)
+    return false;
+
+  op = SET_DEST (pat);
+  if (! REG_P (op) || ! ia16_regno_in_class_p (REGNO (op), GENERAL_REGS)
+      || GET_MODE (op) != SEGmode)
+    return false;
+
+  return true;
+}
+
 /* Return true iff INSN is a (set (reg:SEG DS_REG) (reg:SEG SS_REG)).  */
 static bool
 ia16_insn_is_reset_ds_p (rtx_insn *insn)
@@ -1084,6 +1152,40 @@ ia16_elide_unneeded_ss_stuff (void)
   free (stack);
 }
 
+/* Try to rewrite
+		movw	%ss,	%reg
+		pushw	%ss
+		popw	%ds
+   as
+		movw	%ss,	%reg
+		movw	%reg,	%ds
+
+   We cannot do this as a peephole rule, since we want to do it _after_ the
+   above subpass to eliminate any (set (reg:SEG DS_REG) (reg:SEG SS_REG))
+   patterns which are totally redundant in the first place.
+
+   This routine should only be called on functions which assume %ss == .data .
+ */
+static void
+ia16_tweak_reset_ds (void)
+{
+  rtx_insn *insn1, *insn2;
+
+  FOR_EACH_IA16_INSN_PAIR (insn1, insn2)
+    {
+      rtx dest, new_src;
+
+      if (! ia16_insn_is_copy_ss_p (insn1)
+	  || ! ia16_insn_is_reset_ds_p (insn2))
+	continue;
+
+      new_src = SET_DEST (PATTERN (insn1));
+      dest = SET_DEST (PATTERN (insn2));
+      PATTERN (insn2) = gen_rtx_SET (dest, new_src);
+      ia16_recog (insn2);
+    }
+}
+
 /* If optimizing for size, try to rewrite each 2-byte `movw %reg, %ax' or
    `movw %ax, %reg' into a 1-byte `xchgw %ax, %reg', wherever possible.
 
@@ -1214,7 +1316,10 @@ ia16_machine_dependent_reorg (void)
 	}
 
       if (TARGET_ALLOCABLE_DS_REG && call_used_regs[DS_REG])
-	ia16_elide_unneeded_ss_stuff ();
+	{
+	  ia16_elide_unneeded_ss_stuff ();
+	  ia16_tweak_reset_ds ();
+	}
 
       free_bb_for_insn ();
 
