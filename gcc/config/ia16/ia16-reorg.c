@@ -340,7 +340,8 @@ insn_pair_iterator_init (rtx_insn **p_insn1, rtx_insn **p_insn2)
 
   *p_insn1 = NULL;
   *p_insn2 = insn2;
-  insn_pair_iterator_next (p_insn1, p_insn2);
+  if (insn2)
+    insn_pair_iterator_next (p_insn1, p_insn2);
 }
 
 #define FOR_EACH_IA16_INSN_PAIR(insn1, insn2) \

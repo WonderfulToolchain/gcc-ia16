@@ -55,13 +55,15 @@ static GTY (()) struct target_rtl *ss_data_target_rtl = NULL;
 static GTY (()) struct target_rtl *no_ss_data_target_rtl = NULL;
 
 /* Given a type TYPE, return a version of the type which is in the __seg_ss
-   address space (unless TYPE is already in a non-generic address space).  */
+   address space (unless TYPE is already in a non-generic address space, or
+   is void).  */
 static tree
 ia16_stackify_type (tree type)
 {
   int quals;
 
-  if (! ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (type)))
+  if (! ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (type))
+      || VOID_TYPE_P (type))
     return type;
 
   quals = TYPE_QUALS_NO_ADDR_SPACE (type)
@@ -83,8 +85,14 @@ ia16_override_abi_format (tree fndecl)
 
   if (! fndecl)
     {
+#if 0
+      /* This often results in spurious warnings in cases where no actual
+	 function calls appear.  So just do nothing here, and rely on the
+	 other checking mechanisms in the back-end.  */
       if (! TARGET_ASSUME_SS_DATA)
-	error ("unsupported: compiler-generated functions with %%ss != .data");
+	warning (OPT_Wmaybe_uninitialized, "unsupported: calling "
+		 "compiler support functions with %%ss != .data");
+#endif
       return;
     }
 
