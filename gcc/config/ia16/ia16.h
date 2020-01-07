@@ -147,7 +147,7 @@
    COMPLEX_MODE_P(MODE) &&						\
      HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
    ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO] &&			\
-     (ia16_in_ss_data_function_p () || (REGNO) != DS_REG) &&		\
+     ((REGNO) != DS_REG || ia16_in_ss_data_function_p ()) &&		\
      (! TARGET_PROTECTED_MODE || (MODE) == PHImode			\
       || ((REGNO) != DS_REG && (REGNO) != ES_REG)))
 
