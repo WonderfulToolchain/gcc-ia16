@@ -67,3 +67,5 @@ int main (void)
     }
   return 0;
 }
+
+/* { dg-final { scan-assembler-not "movw\[ \\t\]*%dx,\[ \\t\]*\[-0-9\]*\\(%bp\\)" } } */
