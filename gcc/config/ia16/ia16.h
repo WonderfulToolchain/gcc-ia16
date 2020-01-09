@@ -399,11 +399,15 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 				   (N_NAMED_ARGS))
 /* If %ds is an allocatable register, pretend that it "might" be used to
    pass arguments to functions, so that when GCC sees a %ds <- %ss just
-   before a subroutine call, it does not try to separate the two.  */
+   before a subroutine call, it does not try to separate the two.
+   FIXME: must %ah, %dh, and %ch be listed here?  -- tkchia 20200109  */
 #define FUNCTION_ARG_REGNO_P(regno) \
 	((regno) == A_REG \
+	 || (regno) == AH_REG \
 	 || (regno) == D_REG \
+	 || (regno) == DH_REG \
 	 || (regno) == C_REG \
+	 || (regno) == CH_REG \
 	 || (TARGET_ALLOCABLE_DS_REG && (regno) == DS_REG))
 
 /* How Large Values Are Returned */
