@@ -874,6 +874,7 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #define IA16_CALLCVT_DS_DATA		0x10
 #define IA16_CALLCVT_SS_DATA		0x20
 #define IA16_CALLCVT_NEAR_SECTION	0x40
+#define IA16_CALLCVT_FAR_SECTION	0x80
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -908,6 +909,8 @@ ia16_get_callcvt (const_tree type)
     {
       if (lookup_attribute ("near_section", attrs))
 	callcvt |= IA16_CALLCVT_NEAR_SECTION;
+      else if (lookup_attribute ("far_section", attrs))
+	callcvt |= IA16_CALLCVT_FAR_SECTION;
     }
 
   if (ia16_ds_data_function_type_p (type))
@@ -1138,7 +1141,8 @@ ia16_comp_type_attributes (const_tree type1, const_tree type2)
       && TREE_CODE (type1) != METHOD_TYPE)
     return 1;
 
-  return ia16_get_callcvt (type1) == ia16_get_callcvt (type2);
+  return (ia16_get_callcvt (type1) & ~IA16_CALLCVT_FAR_SECTION)
+	 == (ia16_get_callcvt (type2) & ~IA16_CALLCVT_FAR_SECTION);
 }
 
 #undef	TARGET_SET_DEFAULT_TYPE_ATTRIBUTES
@@ -1170,6 +1174,41 @@ ia16_set_default_type_attributes (tree type)
 
 /* In ia16-no-ss-data.c .  */
 extern void ia16_insert_attributes (tree, tree *);
+
+#undef	TARGET_FUNCTION_ATTRIBUTE_INLINABLE_P
+#define	TARGET_FUNCTION_ATTRIBUTE_INLINABLE_P \
+	ia16_function_attribute_inlinable_p
+
+static bool
+ia16_function_attribute_inlinable_p (const_tree fndecl)
+{
+  /* Allow FNDECL to be inlined into the current function if the two
+     functions' calling conventions are "close enough".
+
+     Do not inline FNDECL if its caling convention makes more assumptions on
+     function entry than CFUN.
+
+     And, do not inline __attribute__ ((far_section)) functions.  There will
+     probably be special reasons why these functions are marked as such.  */
+  unsigned their_cvt = ia16_get_callcvt (TREE_TYPE (fndecl));
+  unsigned our_cvt;
+
+  if ((their_cvt & IA16_CALLCVT_FAR_SECTION) != 0)
+    return false;
+
+  our_cvt = ia16_get_callcvt (TREE_TYPE (cfun->decl));
+
+  /* Whether the caller and/or callee is/are near_section is not very
+     important...  */
+  our_cvt &= ~IA16_CALLCVT_NEAR_SECTION;
+  their_cvt &= ~IA16_CALLCVT_NEAR_SECTION;
+
+  if (their_cvt == our_cvt
+      || their_cvt == (our_cvt & ~IA16_CALLCVT_SS_DATA))
+    return true;
+
+  return false;
+}
 
 /* Addressing Modes */
 
@@ -3386,10 +3425,18 @@ ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
       return default_elf_select_section (expr, reloc, align);
 
     case ADDR_SPACE_SEG_SS:
-      error_at (DECL_P (expr) ? DECL_SOURCE_LOCATION (expr)
-			      : EXPR_LOCATION (expr),
-		"cannot allocate static storage "
-		"in %<__seg_ss%> address space");
+      /* Do not allow explicit declarations of variables etc. in __seg_ss
+	 space.
+
+	 However, allow initializer expressions, jump tables, etc., and put
+	 them in the default data segment.  The MACHINE_DEPENDENT_REORG pass
+	 should correct any (mem/u ...) references to these things, so that
+	 they refer to %ds and not %ss.  */
+      if ((! CONSTANT_CLASS_P (expr) && ! EXPR_P (expr))
+	  || ! TREE_READONLY (expr))
+	error_at (DECL_P (expr) ? DECL_SOURCE_LOCATION (expr)
+				: UNKNOWN_LOCATION, "cannot allocate "
+		  "static storage object in %<__seg_ss%> address space");
       return default_elf_select_section (expr, reloc, align);
     }
 }
@@ -3424,7 +3471,7 @@ ia16_asm_unique_section (tree decl, int reloc)
 
     case ADDR_SPACE_SEG_SS:
       error_at (DECL_SOURCE_LOCATION (decl), "cannot allocate static storage "
-		"in %<__seg_ss%> address space");
+		"object in %<__seg_ss%> address space");
       default_unique_section (decl, reloc);
     }
 }
