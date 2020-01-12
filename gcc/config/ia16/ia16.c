@@ -825,6 +825,9 @@ ia16_get_raw_arg_mode (int regno)
     case D_REG:
     case C_REG:
       return HImode;
+    case AH_REG:
+    case DH_REG:
+    case CH_REG:
     case DS_REG:
       return VOIDmode;
     default:
