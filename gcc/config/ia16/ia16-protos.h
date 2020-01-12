@@ -32,6 +32,7 @@ extern int		ia16_ss_data_function_type_p (const_tree funtype);
 extern int		ia16_in_ds_data_function_p (void);
 extern int		ia16_in_ss_data_function_p (void);
 extern bool		ia16_have_seg_override_p (rtx x);
+extern rtx		ia16_bless_selector (rtx seg);
 extern rtx		ia16_seg_override_term (rtx seg);
 extern void		ia16_override_abi_format (tree fndecl);
 extern HOST_WIDE_INT	ia16_first_parm_offset (tree fundecl);
@@ -66,6 +67,7 @@ extern bool	ia16_parse_address_strict (rtx x, rtx *p_rb, rtx *p_ri,
 extern rtx	ia16_push_reg (unsigned int regno);
 extern rtx	ia16_pop_reg (unsigned int regno);
 #ifdef RTX_CODE
+extern rtx	ia16_far_pointer_offset (rtx op);
 extern enum machine_mode
 		ia16_select_cc_mode (enum rtx_code op, rtx x, rtx y,
 				     bool branch);

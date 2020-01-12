@@ -607,6 +607,14 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define Pmode				HImode
 #define FUNCTION_MODE			QImode
 
+/* Index codes for machine-specific built-in functions.  */
+enum ia16_builtin
+{
+  IA16_BUILTIN_SELECTOR,
+  IA16_BUILTIN_FP_OFF,
+  IA16_BUILTIN_MAX
+};
+
 #define ADDR_SPACE_FAR			1
 #define ADDR_SPACE_SEG_SS		2
 /* We hack gcc/tree-ssa-loop-ivopts.c and gcc/calls.c to recognize a new

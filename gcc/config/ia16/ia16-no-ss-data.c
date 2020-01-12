@@ -51,8 +51,8 @@
 
 /* XXX: deep black magic ahead.  */
 
-static GTY (()) struct target_rtl *ss_data_target_rtl = NULL;
-static GTY (()) struct target_rtl *no_ss_data_target_rtl = NULL;
+struct target_rtl *ia16_ss_data_target_rtl = NULL,
+		  *ia16_no_ss_data_target_rtl = NULL;
 
 /* Given a type TYPE, return a version of the type which is in the __seg_ss
    address space (unless TYPE is already in a non-generic address space, or
@@ -138,13 +138,13 @@ ia16_set_current_function (tree decl)
   bool need_no_ss_data = ! ia16_ss_data_function_type_p (type);
   struct target_rtl *r;
 
-  if (! ss_data_target_rtl)
-    ss_data_target_rtl = this_target_rtl;
+  if (! ia16_ss_data_target_rtl)
+    ia16_ss_data_target_rtl = this_target_rtl;
 
   if (! need_no_ss_data)
-    r = ss_data_target_rtl;
-  else if (no_ss_data_target_rtl)
-    r = no_ss_data_target_rtl;
+    r = ia16_ss_data_target_rtl;
+  else if (ia16_no_ss_data_target_rtl)
+    r = ia16_no_ss_data_target_rtl;
   else
     {
       int i;
@@ -156,17 +156,17 @@ ia16_set_current_function (tree decl)
 
 	 Yep, this works, except when it does not.  */
       r = ggc_alloc <target_rtl> ();
-      *r = *ss_data_target_rtl;
+      *r = *ia16_ss_data_target_rtl;
 
       for (i = 0; i < (int) MAX_MACHINE_MODE; ++i)
 	{
 	  mem_attrs *seg_ss_attrs = ggc_alloc <mem_attrs> ();
-	  *seg_ss_attrs = *ss_data_target_rtl->x_mode_mem_attrs[i];
+	  *seg_ss_attrs = *ia16_ss_data_target_rtl->x_mode_mem_attrs[i];
 	  seg_ss_attrs->addrspace = ADDR_SPACE_SEG_SS;
 	  r->x_mode_mem_attrs[i] = seg_ss_attrs;
 	}
 
-      no_ss_data_target_rtl = r;
+      ia16_no_ss_data_target_rtl = r;
     }
 
   this_target_rtl = r;
