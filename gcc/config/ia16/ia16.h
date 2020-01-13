@@ -281,7 +281,7 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
  *	(unspec:<mode> [<expr> ...] <unspec_op>)
  * if this SEGMENT term is part of an address.  For IA-16, the form is
  *	(unspec:HI [<expr>] UNSPEC_SEG_OVERRIDE)
- * and we want to get <expr> loaded into a segment register (well, %es).
+ * and we want to get <expr> loaded into a segment register (%ds or %es).
  */
 #define MODE_SEGMENT_REG_CLASS(outer_mode, inner_mode, unspec_op) \
 	((unspec_op) == UNSPEC_SEG_OVERRIDE ? SEGMENT_REGS : NO_REGS)

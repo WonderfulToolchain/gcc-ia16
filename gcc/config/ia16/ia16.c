@@ -1392,6 +1392,15 @@ ia16_seg_override_term (rtx seg)
     return gen_seg_override (seg);
 }
 
+static rtx
+ia16_seg16_reloc (rtx thang)
+{
+  if (TARGET_PROTECTED_MODE)
+    return gen_seg16_reloc_prot_mode (thang);
+  else
+    return gen_seg16_reloc (thang);
+}
+
 static void
 ia16_error_seg_reloc (location_t loc, const char *msg)
 {
@@ -1481,7 +1490,7 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 
 	    /* Otherwise, create a pseudo-register the normal way for the
 	       segment term.  */
-	    r9 = gen_seg16_reloc (x);
+	    r9 = ia16_seg16_reloc (x);
 	    break;
 
 	  default:
@@ -1669,7 +1678,8 @@ ia16_as_legitimize_address (rtx x, rtx oldx,
 
      This code needs to work in both cases.  */
   if (! ovr)
-    ovr = ia16_seg_override_term (force_reg (HImode, gen_seg16_reloc (oldx)));
+    ovr = ia16_seg_override_term (force_reg (SEGmode,
+					     ia16_seg16_reloc (oldx)));
 
   newx = gen_rtx_PLUS (HImode, off, ovr);
   if (ia16_as_legitimate_address_p (mode, newx, false, as))
@@ -4473,9 +4483,9 @@ static void
 ia16_expand_reset_ds_internal (void)
 {
   if (TARGET_PROTECTED_MODE)
-    emit_insn (gen__reset_ds_slow_prot_mode ());
+    emit_insn (gen__movphi_ds_ss_slow ());
   else
-    emit_insn (gen__reset_ds_slow ());
+    emit_insn (gen__movhi_ds_ss_slow ());
   emit_use (gen_rtx_REG (SEGmode, DS_REG));
 }
 

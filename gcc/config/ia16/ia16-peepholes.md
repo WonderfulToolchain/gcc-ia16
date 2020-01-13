@@ -806,7 +806,7 @@
 ; a simpler RTL representation.
 ;
 ; TODO: allow rewriting this insn as `movw %ss, %tmp; movw %tmp, %ds'.
-(define_insn "_reset_ds_slow<pmrm>"
+(define_insn "_mov<mode>_ds_ss_slow"
   [(set (reg:SEG DS_REG) (reg:SEG SS_REG))]
   ""
   "pushw\t%%ss\;popw\t%%ds"
