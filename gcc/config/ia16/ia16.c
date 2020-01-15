@@ -135,6 +135,12 @@ struct ptt
   int features;
 };
 
+/* Cached information for each compiled function */
+struct GTY (()) machine_function
+{
+  unsigned cached_callcvt;
+};
+
 #undef	TARGET_PREFERRED_RELOAD_CLASS
 #define	TARGET_PREFERRED_RELOAD_CLASS ia16_preferred_reload_class
 
@@ -232,6 +238,95 @@ ia16_save_reg_p (unsigned int r)
 	  (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
 }
 
+static enum call_parm_cvt_type
+ia16_get_call_parm_cvt (const_tree type)
+{
+  if (type)
+    {
+      tree attrs = TYPE_ATTRIBUTES (type);
+
+      if (attrs != NULL_TREE)
+	{
+	  if (lookup_attribute ("cdecl", attrs))
+	    return CALL_PARM_CVT_CDECL;
+	  else if (lookup_attribute ("stdcall", attrs))
+	    return CALL_PARM_CVT_STDCALL;
+	  else if (lookup_attribute ("regparmcall", attrs))
+	    return CALL_PARM_CVT_REGPARMCALL;
+	}
+    }
+
+  return (enum call_parm_cvt_type) target_call_parm_cvt;
+}
+
+/* Calling convention flags as returned by ia16_get_callcvt (.).
+
+   These should only cover specifiers, qualifiers, and attributes that
+   affect what happens when one function tries to call another function. 
+   Attributes which only affect how code behaves _within_ a function should
+   not be included.  */
+#define IA16_CALLCVT_CDECL		0x01
+#define IA16_CALLCVT_STDCALL		0x02
+#define IA16_CALLCVT_REGPARMCALL	0x04
+#define IA16_CALLCVT_FAR		0x08
+#define IA16_CALLCVT_DS_DATA		0x10
+#define IA16_CALLCVT_SS_DATA		0x20
+#define IA16_CALLCVT_NEAR_SECTION	0x40
+#define IA16_CALLCVT_FAR_SECTION	0x80
+
+static bool ia16_far_function_type_p (const_tree funtype);
+
+static unsigned
+ia16_get_callcvt (const_tree type)
+{
+  tree attrs;
+  unsigned callcvt;
+
+  switch (ia16_get_call_parm_cvt (type))
+    {
+    case CALL_PARM_CVT_CDECL:
+      callcvt = IA16_CALLCVT_CDECL;
+      break;
+    case CALL_PARM_CVT_STDCALL:
+      callcvt = IA16_CALLCVT_STDCALL;
+      break;
+    case CALL_PARM_CVT_REGPARMCALL:
+      callcvt = IA16_CALLCVT_REGPARMCALL;
+      break;
+    default:
+      gcc_unreachable ();
+    }
+
+  if (ia16_far_function_type_p (type))
+    callcvt |= IA16_CALLCVT_FAR;
+
+  if (! type)
+    return callcvt;
+
+  attrs = TYPE_ATTRIBUTES (type);
+
+  if (attrs != NULL_TREE)
+    {
+      if (lookup_attribute ("near_section", attrs))
+	callcvt |= IA16_CALLCVT_NEAR_SECTION;
+      else if (lookup_attribute ("far_section", attrs))
+	callcvt |= IA16_CALLCVT_FAR_SECTION;
+    }
+
+  if (ia16_ds_data_function_type_p (type))
+    callcvt |= IA16_CALLCVT_DS_DATA;
+
+  if (ia16_ss_data_function_type_p (type))
+    callcvt |= IA16_CALLCVT_SS_DATA;
+
+  if ((callcvt & (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA)) == 0)
+    error_at (type && TYPE_NAME (type)
+		? DECL_SOURCE_LOCATION (TYPE_NAME (type)) : UNKNOWN_LOCATION,
+	      "unsupported: function with both %%ds and %%ss != .data");
+
+  return callcvt;
+}
+
 /* Given the address ADDR of a function or variable, return its declaration
    node, or NULL_TREE if none can be found.
    FIXME: this may not be 100% reliable...  */
@@ -299,12 +394,29 @@ ia16_far_function_type_p (const_tree funtype)
     return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR;
 }
 
+/* Determine the current function's calling convention, and cache this
+   information under cfun->machine.  */
+static void
+ia16_cache_function_info (void)
+{
+  if (! cfun->machine)
+    {
+      struct machine_function *machine
+	= ggc_cleared_alloc <machine_function> ();
+      tree type = cfun->decl ? TREE_TYPE (cfun->decl) : NULL_TREE;
+      machine->cached_callcvt = ia16_get_callcvt (type);
+      cfun->machine = machine;
+    }
+}
+
 /* Return true iff we are currently compiling a far function.  */
 int
 ia16_in_far_function_p (void)
 {
-  return cfun && cfun->decl
-	 && ia16_far_function_type_p (TREE_TYPE (cfun->decl));
+  if (! cfun)
+    return TARGET_CMODEL_IS_FAR_TEXT;
+  ia16_cache_function_info ();
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_FAR) != 0;
 }
 
 /* Return true iff TYPE is a type for a function which assumes that %ds
@@ -336,6 +448,7 @@ static int
 ia16_default_ds_abi_function_type_p (const_tree funtype)
 {
   return TARGET_ALLOCABLE_DS_REG
+	 && call_used_regs[DS_REG]
 	 && ia16_ds_data_function_type_p (funtype)
 	 && ia16_ss_data_function_type_p (funtype);
 }
@@ -343,10 +456,10 @@ ia16_default_ds_abi_function_type_p (const_tree funtype)
 int
 ia16_in_ds_data_function_p (void)
 {
-  if (cfun && cfun->decl)
-    return ia16_ds_data_function_type_p (TREE_TYPE (cfun->decl));
-  else
+  if (! cfun)
     return TARGET_ASSUME_DS_DATA;
+  ia16_cache_function_info ();
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_DS_DATA) != 0;
 }
 
 /* Return true iff TYPE is a type for a function which assumes that %ss
@@ -365,10 +478,10 @@ ia16_ss_data_function_type_p (const_tree funtype)
 int
 ia16_in_ss_data_function_p (void)
 {
-  if (cfun && cfun->decl)
-    return ia16_ss_data_function_type_p (TREE_TYPE (cfun->decl));
-  else
+  if (! cfun)
     return TARGET_ASSUME_SS_DATA;
+  ia16_cache_function_info ();
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_SS_DATA) != 0;
 }
 
 #define TARGET_DEFAULT_DS_ABI	(TARGET_ALLOCABLE_DS_REG \
@@ -379,10 +492,14 @@ ia16_in_ss_data_function_p (void)
 static int
 ia16_in_default_ds_abi_function_p (void)
 {
-  if (cfun && cfun->decl)
-    return ia16_default_ds_abi_function_type_p (TREE_TYPE (cfun->decl));
-  else
+  if (! cfun)
     return TARGET_DEFAULT_DS_ABI;
+  ia16_cache_function_info ();
+  return TARGET_ALLOCABLE_DS_REG
+	 && call_used_regs[DS_REG]
+	 && (cfun->machine->cached_callcvt
+	     & (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA))
+	    == (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA);
 }
 
 static int
@@ -412,10 +529,10 @@ ia16_far_section_function_type_p (const_tree funtype)
 static int
 ia16_in_far_section_function_p (void)
 {
-  if (cfun && cfun->decl)
-    return ia16_far_section_function_type_p (TREE_TYPE (cfun->decl));
-  else
+  if (! cfun)
     return 0;
+  ia16_cache_function_info ();
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_FAR_SECTION) != 0;
 }
 
 /* Basic Stack Layout */
@@ -634,27 +751,6 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
     }
 }
 
-static enum call_parm_cvt_type
-ia16_get_call_parm_cvt (const_tree type)
-{
-  if (type)
-    {
-      tree attrs = TYPE_ATTRIBUTES (type);
-
-      if (attrs != NULL_TREE)
-	{
-	  if (lookup_attribute ("cdecl", attrs))
-	    return CALL_PARM_CVT_CDECL;
-	  else if (lookup_attribute ("stdcall", attrs))
-	    return CALL_PARM_CVT_STDCALL;
-	  else if (lookup_attribute ("regparmcall", attrs))
-	    return CALL_PARM_CVT_REGPARMCALL;
-	}
-    }
-
-  return (enum call_parm_cvt_type) target_call_parm_cvt;
-}
-
 static bool
 ia16_regparmcall_function_type_p (const_tree fntype)
 {
@@ -863,72 +959,6 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 /* Passing Function Arguments on the Stack */
 #undef	TARGET_RETURN_POPS_ARGS
 #define	TARGET_RETURN_POPS_ARGS ia16_return_pops_args
-
-/* Calling convention flags as returned by ia16_get_callcvt (.).
-
-   These should only cover specifiers, qualifiers, and attributes that
-   affect what happens when one function tries to call another function. 
-   Attributes which only affect how code behaves _within_ a function should
-   not be included.  */
-#define IA16_CALLCVT_CDECL		0x01
-#define IA16_CALLCVT_STDCALL		0x02
-#define IA16_CALLCVT_REGPARMCALL	0x04
-#define IA16_CALLCVT_FAR		0x08
-#define IA16_CALLCVT_DS_DATA		0x10
-#define IA16_CALLCVT_SS_DATA		0x20
-#define IA16_CALLCVT_NEAR_SECTION	0x40
-#define IA16_CALLCVT_FAR_SECTION	0x80
-
-static unsigned
-ia16_get_callcvt (const_tree type)
-{
-  tree attrs;
-  unsigned callcvt;
-
-  switch (ia16_get_call_parm_cvt (type))
-    {
-    case CALL_PARM_CVT_CDECL:
-      callcvt = IA16_CALLCVT_CDECL;
-      break;
-    case CALL_PARM_CVT_STDCALL:
-      callcvt = IA16_CALLCVT_STDCALL;
-      break;
-    case CALL_PARM_CVT_REGPARMCALL:
-      callcvt = IA16_CALLCVT_REGPARMCALL;
-      break;
-    default:
-      gcc_unreachable ();
-    }
-
-  if (ia16_far_function_type_p (type))
-    callcvt |= IA16_CALLCVT_FAR;
-
-  if (! type)
-    return callcvt;
-
-  attrs = TYPE_ATTRIBUTES (type);
-
-  if (attrs != NULL_TREE)
-    {
-      if (lookup_attribute ("near_section", attrs))
-	callcvt |= IA16_CALLCVT_NEAR_SECTION;
-      else if (lookup_attribute ("far_section", attrs))
-	callcvt |= IA16_CALLCVT_FAR_SECTION;
-    }
-
-  if (ia16_ds_data_function_type_p (type))
-    callcvt |= IA16_CALLCVT_DS_DATA;
-
-  if (ia16_ss_data_function_type_p (type))
-    callcvt |= IA16_CALLCVT_SS_DATA;
-
-  if ((callcvt & (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA)) == 0)
-    error_at (type && TYPE_NAME (type)
-		? DECL_SOURCE_LOCATION (TYPE_NAME (type)) : UNKNOWN_LOCATION,
-	      "unsupported: function with both %%ds and %%ss != .data");
-
-  return callcvt;
-}
 
 static int
 ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
@@ -1201,7 +1231,8 @@ ia16_function_attribute_inlinable_p (const_tree fndecl)
   if ((their_cvt & IA16_CALLCVT_FAR_SECTION) != 0)
     return false;
 
-  our_cvt = ia16_get_callcvt (TREE_TYPE (cfun->decl));
+  ia16_cache_function_info ();
+  our_cvt = cfun->machine->cached_callcvt;
 
   /* Whether the caller and/or callee is/are near_section is not very
      important...  */
@@ -3495,6 +3526,12 @@ ia16_asm_unique_section (tree decl, int reloc)
 #undef  TARGET_OPTION_OVERRIDE
 #define TARGET_OPTION_OVERRIDE	ia16_option_override
 
+static struct machine_function *
+ia16_init_machine_status (void)
+{
+  return NULL;
+}
+
 static void
 ia16_option_override (void)
 {
@@ -3514,6 +3551,8 @@ ia16_option_override (void)
      similar to the override in gcc/config/i386/i386.c .  -- tkchia */
   if (optimize && ! global_options_set.x_flag_omit_frame_pointer)
     global_options.x_flag_omit_frame_pointer = 1;
+
+  init_machine_status = ia16_init_machine_status;
 }
 
 /* The Overall Framework of an Assembler File */
