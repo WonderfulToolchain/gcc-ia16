@@ -60,8 +60,7 @@ struct target_rtl *ia16_ss_data_target_rtl = NULL,
 
    1) For %ss != .data, this is a good time to tag segment override terms ---
       of the form `(unspec:HI [<data-seg-rtx>] UNSPEC_SEG_OVERRIDE)' ---
-      segment override terms onto `(mem ...)' addresses that go to the generic
-      address space.
+      onto `(mem ...)' addresses that go to the generic address space.
 
       (Exceptions are `(call (mem ...) ...)`, where the `(mem ...)' refer to
       text segment addresses.)
@@ -117,7 +116,7 @@ ia16_rectify_mems (rtx x, enum rtx_code outer_code)
 	    {
 	      rtx data_seg = ia16_data_seg_rtx (), ovr;
 	      gcc_assert (data_seg);
-	      ovr = ia16_seg_override_term (data_seg);
+	      ovr = ia16_seg_override_term (copy_to_reg (data_seg));
 	      addr = gen_rtx_PLUS (HImode, addr, ovr);
 	      if (! copied)
 		{
@@ -315,7 +314,6 @@ ia16_insert_attributes (tree node, tree *attr_ptr ATTRIBUTE_UNUSED)
   switch (TREE_CODE (node))
     {
     case PARM_DECL:
-
     case VAR_DECL:
       if (! ia16_in_ss_data_function_p ()
 	  && ! TREE_STATIC (node) && ! TREE_PUBLIC (node)
