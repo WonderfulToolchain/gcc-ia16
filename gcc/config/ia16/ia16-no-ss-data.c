@@ -116,7 +116,7 @@ ia16_rectify_mems (rtx x, enum rtx_code outer_code)
 	    {
 	      rtx data_seg = ia16_data_seg_rtx (), ovr;
 	      gcc_assert (data_seg);
-	      ovr = ia16_seg_override_term (copy_to_reg (data_seg));
+	      ovr = ia16_seg_override_term (data_seg);
 	      addr = gen_rtx_PLUS (HImode, addr, ovr);
 	      if (! copied)
 		{
