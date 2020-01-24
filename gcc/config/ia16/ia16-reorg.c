@@ -425,6 +425,10 @@ ia16_rewrite_reg_parm_save_as_push (void)
 	      pat = XVECEXP (pat, 0, 0);
 	    }
 
+	  /* We may have (use (reg:SEG DS_REG)) here if %ss != .data .  */
+	  if (GET_CODE (pat) == USE && REG_P (XEXP (pat, 0)))
+	    continue;
+
 	  if (GET_CODE (pat) != SET)
 	    break;
 
