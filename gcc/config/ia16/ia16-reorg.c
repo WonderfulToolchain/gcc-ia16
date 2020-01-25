@@ -992,7 +992,7 @@ ia16_elide_unneeded_ss_stuff (void)
 	{
 	  rtx call = get_call_rtx_from (insn);
 	  rtx callee = XEXP (XEXP (call, 0), 0);
-	  if (ia16_ds_data_function_rtx_p (callee))
+	  if (ia16_restore_ds_function_rtx_p (callee))
 	    continue;
 	}
 
