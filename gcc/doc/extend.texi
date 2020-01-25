@@ -4250,8 +4250,11 @@ pops all pushed arguments.
 @cindex @code{assume_ds_data} function attribute, IA-16
 This attribute, attached to a function, causes the compiler to assume that
 the @code{ds} register points to the program's data segment on function
-entry.  This is useful to override the effects of the
-@option{-mno-callee-assume-ds-data-segment} switch.
+entry.  The function will also arrange to restore @code{ds} to the same data
+segment on function exit.
+
+This attribute can be used to override the
+@option{-mno-callee-assume-ds-data-segment} switch for a function.
 
 This attribute has no effect if @code{ds} is a call-saved register
 (@option{-fcall-saved-ds}).
@@ -4261,6 +4264,21 @@ This attribute has no effect if @code{ds} is a call-saved register
 This attribute, attached to a function, causes the compiler @emph{not} to
 assume that @code{ds} points to the program's data segment on function
 entry.  It has no effect if @code{ds} is a call-saved register.
+
+Note that, if @code{ds} is a call-used register (the default), this also
+means that the function may clobber @code{ds}---and callers cannot assume
+that the function will preserve it---unless you also specify the
+@code{restore_ds} attribute.
+
+@item restore_ds
+@cindex @code{restore_ds} function attribute, IA-16
+This attribute, attached to a function, means that the function should
+preserve the @code{ds} register value and restore it on function return.
+This is mostly useful in conjunction with the @code{no_assume_ds_data}
+attribute.
+
+This attribute has no effect if @code{ds} is a fixed or call-saved register
+(@option{-ffixed-ds} or @option{-fcall-saved-ds}).
 
 @item no_assume_ss_data
 @cindex @code{no_assume_ss_data} function attribute, IA-16
