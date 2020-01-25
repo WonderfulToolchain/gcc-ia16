@@ -247,6 +247,12 @@ ia16_save_reg_p (unsigned int r)
 
       return frame_pointer_needed;
     }
+  /* Note: assume_ds_data functions will also correctly restore %ds on
+     return, but they are handled separately (e.g. we might be able to
+     restore %ds from %ss).  */
+  if (r == DS_REG)
+    return (df_regs_ever_live_p (r) && ! ia16_in_ds_data_function_p ()
+				    && ia16_in_restore_ds_function_p ());
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (ia16_regno_in_class_p (r, UP_QI_REGS))
@@ -282,14 +288,15 @@ ia16_get_call_parm_cvt (const_tree type)
    affect what happens when one function tries to call another function. 
    Attributes which only affect how code behaves _within_ a function should
    not be included.  */
-#define IA16_CALLCVT_CDECL		0x01
-#define IA16_CALLCVT_STDCALL		0x02
-#define IA16_CALLCVT_REGPARMCALL	0x04
-#define IA16_CALLCVT_FAR		0x08
-#define IA16_CALLCVT_DS_DATA		0x10
-#define IA16_CALLCVT_SS_DATA		0x20
-#define IA16_CALLCVT_NEAR_SECTION	0x40
-#define IA16_CALLCVT_FAR_SECTION	0x80
+#define IA16_CALLCVT_CDECL		0x0001
+#define IA16_CALLCVT_STDCALL		0x0002
+#define IA16_CALLCVT_REGPARMCALL	0x0004
+#define IA16_CALLCVT_FAR		0x0008
+#define IA16_CALLCVT_DS_DATA		0x0010
+#define IA16_CALLCVT_SS_DATA		0x0020
+#define IA16_CALLCVT_RESTORE_DS		0x0040
+#define IA16_CALLCVT_NEAR_SECTION	0x0080
+#define IA16_CALLCVT_FAR_SECTION	0x0100
 
 static bool ia16_far_function_type_p (const_tree funtype);
 
@@ -332,6 +339,9 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_ds_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_DS_DATA;
+
+  if (ia16_restore_ds_function_type_p (type))
+    callcvt |= IA16_CALLCVT_RESTORE_DS;
 
   if (ia16_ss_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_SS_DATA;
@@ -488,9 +498,49 @@ int
 ia16_in_ds_data_function_p (void)
 {
   if (! cfun)
-    return TARGET_ASSUME_DS_DATA;
+    return TARGET_ASSUME_DS_DATA && call_used_regs[DS_REG];
   ia16_cache_function_info (false);
   return (cfun->machine->cached_callcvt & IA16_CALLCVT_DS_DATA) != 0;
+}
+
+/* Return true iff TYPE is a type for a function which correctly restores the
+   value of %ds on function exit.
+
+   If the function assume %ds == .data on entry, this is always true.
+
+   If %ds is a call-saved register (-fcall-saved-ds), this is always false.  */
+int
+ia16_restore_ds_function_type_p (const_tree funtype)
+{
+  tree attrs;
+
+  if (! call_used_regs[DS_REG])
+    return 0;
+
+  attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
+
+  if (TARGET_ASSUME_DS_DATA)
+    return ! attrs || ! lookup_attribute ("no_assume_ds_data", attrs)
+		   || lookup_attribute ("restore_ds", attrs);
+  else
+    return attrs && (lookup_attribute ("assume_ds_data", attrs)
+		     || lookup_attribute ("restore_ds", attrs));
+}
+
+int
+ia16_restore_ds_function_rtx_p (rtx addr)
+{
+  tree type = ia16_get_function_type_for_addr (addr);
+  return ia16_restore_ds_function_type_p (type);
+}
+
+int
+ia16_in_restore_ds_function_p (void)
+{
+  if (! cfun)
+    return TARGET_ASSUME_DS_DATA && call_used_regs[DS_REG];
+  ia16_cache_function_info (false);
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_RESTORE_DS) != 0;
 }
 
 /* Return true iff TYPE is a type for a function which assumes that %ss
@@ -1152,6 +1202,17 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
+  if (is_attribute_p ("restore_ds", name))
+    {
+      if (fixed_regs[DS_REG])
+	{
+	  warning (OPT_Wattributes, "%qE attribute directive ignored as "
+				    "%%ds is a fixed register", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+    }
+
   return NULL_TREE;
 }
 
@@ -1168,6 +1229,8 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "assume_ss_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ss_data",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "restore_ds",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },

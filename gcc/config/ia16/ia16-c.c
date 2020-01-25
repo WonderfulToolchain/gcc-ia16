@@ -59,7 +59,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20200122L");
+  def_macro ("__ia16__=20200125L");
   def_macro ("__FAR");
   def_macro ("__SEG_SS");
 
@@ -103,6 +103,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_RESTORE_DS");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
