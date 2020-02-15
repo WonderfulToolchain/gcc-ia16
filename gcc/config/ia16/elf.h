@@ -25,7 +25,7 @@
 #define DRIVER_SELF_SPECS \
   "%{melks-libc:-nostdinc}", \
   "%{melks-libc|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
-  "%{mseparate-code-segment:%{!mcmodel=*:-mcmodel=small}}", \
+  "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
   "%{mcmodel=medium:"	\
