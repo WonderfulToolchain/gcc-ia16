@@ -16567,15 +16567,16 @@ Produce executables for MS-DOS, in such a way that the executables will fail
 gracefully under MS-DOS version 1.x, rather than crash the system.  This
 option implies @option{-mmsdos}.
 
-@item -melks-libc
-@opindex melks-libc
 @item -melks
 @opindex melks
+@item -melks-libc
+@opindex melks-libc
 Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
 system.  In addition, link against ELKS's own C runtime library---which must
 be built with GCC, and installed---instead of the Newlib C library.
 
-This option also turns on @option{-mprotected-mode}.
+This option also turns on @option{-mprotected-mode} and
+@option{-mcmodel=small}.
 @c
 @c Before December 2019, -melks used to link ELKS programs with an
 @c ELKS-ified Newlib, while -melks-libc would link with elks-libc.  Since,
@@ -16584,7 +16585,7 @@ This option also turns on @option{-mprotected-mode}.
 
 @item -maout-total=@var{total}
 @opindex maout-total
-When building an ELKS program (@option{-melks-libc}), set it to request the
+When building an ELKS program (@option{-melks}), set it to request the
 operating system to set the top of the data segment---including static
 storage, heap, and stack---to at least @var{total}.  This requires support
 from the linker script which comes with the C library.
@@ -16592,30 +16593,32 @@ from the linker script which comes with the C library.
 @item -mcmodel=tiny
 @opindex mcmodel=tiny
 Generate code for the tiny code model, with a single combined data and text
-segment in a @w{64 KiB} address space.  This is the default.
+segment in a @w{64 KiB} address space.  This is the default for MS-DOS.
 
 @item -mcmodel=small
 @itemx -mseparate-code-segment
 @opindex mcmodel=small
 @opindex mseparate-code-segment
 Generate code for the small code model, with one data segment and one text
-segment, in separate @w{64 KiB} spaces.  At the compile stage, this
-currently disables trampolines for nested functions.  At the linking
-stage---unless @option{-T} is used---this option also causes GCC to switch to
-a different output format to better support separate segments:
-@itemize
-@item
-If targeting MS-DOS, GCC will produce an @code{MZ} executable.
-@item
-If targeting ELKS, GCC will produce a ``separate I/D'' a.out executable.
-@end itemize
+segment, in separate @w{64 KiB} spaces.  This is now (February 2020) the
+default for ELKS (@option{-melks}).
+@c
+@c Recent versions of ELKS (e.g. 0.3.0) will only run a.out programs marked
+@c "separate I/D", and will no longer run tiny model a.out programs.  Hence
+@c this change.
+
+At the compile stage, @option{-mcmodel=small} currently disables trampolines
+for nested functions.
+
+At the linking stage---unless @option{-T} is used---this option also causes
+GCC to switch to a different output format to better support separate
+segments.  In particular, if targeting MS-DOS, GCC will produce an @code{MZ}
+executable.  (This requires support from the linker script which comes with
+the C library.)
 @c
 @c -mseparate-code-segment used to be a separate option which merely
 @c disabled trampolines.  Since this is not very useful in itself, I have
 @c now unified it with -mcmodel=small.  -- tkchia
-
-(This requires support from the linker script which comes with the C
-library.)
 
 @item -msegment-relocation-stuff
 @itemx -mno-segment-relocation-stuff
