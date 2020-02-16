@@ -208,3 +208,7 @@ Target RejectNegative Undocumented
 maout-total=
 Target RejectNegative Joined UInteger
 Set the top of the data segment for ELKS OS executables.
+
+maout-chmem=
+Target RejectNegative Joined UInteger
+Set the size of non-static data for ELKS OS executables.

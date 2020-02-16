@@ -29,7 +29,9 @@
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
   "%{mcmodel=medium:"	\
-    "%{melks-libc:%emedium model not supported for ELKS}}"
+    "%{melks-libc:%emedium model not supported for ELKS}}", \
+  "%{maout-total=*:"	\
+    "%{maout-chmem=*:%emay not use both -maout-total= and -maout-chmem=}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
@@ -87,7 +89,8 @@
 	"}"		\
       "} "		\
       "%{melks-libc:"	\
-	"%{maout-total=*:--defsym=_total=%*}}" \
+	"%{maout-total=*:--defsym=_total=%*} " \
+	"%{maout-chmem=*:--defsym=_chmem=%*}}" \
     "}"			\
   "}"
 
