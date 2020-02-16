@@ -758,7 +758,8 @@ Objective-C and Objective-C++ Dialects}.
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mmsdos -mmsdos-handle-v1 -mdpmiable -melks -melks-libc @gol
--maout-total=@var{total} -mcmodel=tiny -mcmodel=small @gol
+-maout-total=@var{total} -maout-chmem=@var{chmem} -mcmodel=tiny @gol
+-mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd -mstdcall @gol
 -mregparmcall -mno-callee-assume-ds-data-segment @gol
 -mno-callee-assume-ss-data-segment -mno-far-function-if-far-return-type @gol
@@ -16588,6 +16589,13 @@ This option also turns on @option{-mprotected-mode} and
 When building an ELKS program (@option{-melks}), set it to request the
 operating system to set the top of the data segment---including static
 storage, heap, and stack---to at least @var{total}.  This requires support
+from the linker script which comes with the C library.
+
+@item -maout-chmem=@var{chmem}
+@opindex maout-total
+When building an ELKS program (@option{-melks}), set it to request the
+operating system to reserve at least @var{chmem} bytes in the data segment
+for non-static storage (such as heap and stack).  This requires support
 from the linker script which comes with the C library.
 
 @item -mcmodel=tiny
