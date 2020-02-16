@@ -16592,7 +16592,7 @@ storage, heap, and stack---to at least @var{total}.  This requires support
 from the linker script which comes with the C library.
 
 @item -maout-chmem=@var{chmem}
-@opindex maout-total
+@opindex maout-chmem
 When building an ELKS program (@option{-melks}), set it to request the
 operating system to reserve at least @var{chmem} bytes in the data segment
 for non-static storage (such as heap and stack).  This requires support
