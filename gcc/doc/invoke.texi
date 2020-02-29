@@ -16674,13 +16674,15 @@ harmlessly ignored.)
 
 @item -mregparmcall
 @opindex mregparmcall
-Use a different function-calling convention, in which functions that take a
-fixed number of arguments receive their first few arguments in registers,
-and pop their remaining arguments off the stack (except for arguments to
-variadic functions).
+Use a different function-calling convention, in which functions receive
+their first few arguments in the registers @code{ax}, @code{dx}, and
+@code{cx}, and pop their remaining arguments off the stack.  An exception is
+that, if the number of arguments to a function is variable, the @code{...}
+variable arguments will always go on the stack, and the calling function
+pops all pushed arguments.
 
-At the linking stage, this option will also make GCC link your code against
-the appropriate @option{-mregparmcall} multilib.
+At the linking stage, @option{-mregparmcall} will also make GCC link your
+code against the appropriate @option{-mregparmcall} multilib.
 
 You can specify that an individual function is called with this calling
 sequence with the function attribute @code{regparmcall}.  You can also
