@@ -59,7 +59,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20200216L");
+  def_macro ("__ia16__=20200307L");
   def_macro ("__FAR");
   def_macro ("__SEG_SS");
 
@@ -115,6 +115,8 @@ ia16_cpu_cpp_builtins (void)
 		      TARGET_NEWLIB_AUTOFLOAT_STDIO);
   def_macro ("__BUILTIN_IA16_SELECTOR");
   def_macro ("__BUILTIN_IA16_FP_OFF");
+  def_macro ("__BUILTIN_IA16_NEAR_DATA_SEGMENT");
+  def_macro ("__BUILTIN_IA16_SS");
 
   /* Also define macros to give the function calling convention settings
      and/or the object file ABI variant in use (segelf vs. non-segelf),
