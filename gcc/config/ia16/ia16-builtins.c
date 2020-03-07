@@ -60,7 +60,8 @@ ia16_init_builtins (void)
 {
   tree intSEG_type_node = unsigned_intHI_type_node, const_void_far_type_node,
        const_void_far_ptr_type_node,
-       intSEG_ftype_intHI, unsigned_intHI_ftype_const_void_far_ptr, func;
+       intSEG_ftype_intHI, unsigned_intHI_ftype_const_void_far_ptr,
+       intSEG_ftype_void, func;
 
   /* With -mprotected-mode, we need a type node for PHImode for use with
      __builtin_ia16_selector (), but there is no such existing node.  So
@@ -84,6 +85,7 @@ ia16_init_builtins (void)
   unsigned_intHI_ftype_const_void_far_ptr
     = build_function_type_list (unsigned_intHI_type_node,
 				const_void_far_ptr_type_node, NULL_TREE);
+  intSEG_ftype_void = build_function_type (intSEG_type_node, void_list_node);
 
   func = add_builtin_function ("__builtin_ia16_selector", intSEG_ftype_intHI,
 			       IA16_BUILTIN_SELECTOR, BUILT_IN_MD, NULL,
@@ -97,6 +99,19 @@ ia16_init_builtins (void)
 			       NULL_TREE);
   TREE_READONLY (func) = 1;
   ia16_builtin_decls[IA16_BUILTIN_FP_OFF] = func;
+
+  func = add_builtin_function ("__builtin_ia16_near_data_segment",
+			       intSEG_ftype_void,
+			       IA16_BUILTIN_NEAR_DATA_SEGMENT, BUILT_IN_MD,
+			       NULL, NULL_TREE);
+  TREE_READONLY (func) = 1;
+  ia16_builtin_decls[IA16_BUILTIN_NEAR_DATA_SEGMENT] = func;
+
+  func = add_builtin_function ("__builtin_ia16_ss",
+			       intSEG_ftype_void, IA16_BUILTIN_SS,
+			       BUILT_IN_MD, NULL, NULL_TREE);
+  TREE_READONLY (func) = 1;
+  ia16_builtin_decls[IA16_BUILTIN_SS] = func;
 }
 
 tree
@@ -115,7 +130,7 @@ ia16_expand_builtin (tree expr, rtx target ATTRIBUTE_UNUSED,
 		     int ignore ATTRIBUTE_UNUSED)
 {
   tree fndecl = TREE_OPERAND (CALL_EXPR_FN (expr), 0), arg0;
-  rtx op0;
+  rtx op0, res;
   unsigned fcode = DECL_FUNCTION_CODE (fndecl);
 
   switch (fcode)
@@ -129,6 +144,15 @@ ia16_expand_builtin (tree expr, rtx target ATTRIBUTE_UNUSED,
       arg0 = CALL_EXPR_ARG (expr, 0);
       op0 = expand_normal (arg0);
       return ia16_far_pointer_offset (op0);
+
+    case IA16_BUILTIN_NEAR_DATA_SEGMENT:
+      res = ia16_data_seg_rtx ();
+      if (res)
+	return res;
+      /* fall through */
+
+    case IA16_BUILTIN_SS:
+      return gen_rtx_REG (SEGmode, SS_REG);
 
     default:
       gcc_unreachable ();
@@ -223,6 +247,10 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 					       ptrtype);
       op = fold_build1 (NOP_EXPR, unsigned_intHI_type_node, op);
       return op;
+
+    case IA16_BUILTIN_NEAR_DATA_SEGMENT:
+    case IA16_BUILTIN_SS:
+      return NULL_TREE;
 
     default:
       gcc_unreachable ();
