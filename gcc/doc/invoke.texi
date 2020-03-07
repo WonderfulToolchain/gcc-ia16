@@ -16900,6 +16900,8 @@ is supported (@pxref{IA-16 Function Attributes}).
 
 @item __BUILTIN_IA16_SELECTOR
 @itemx __BUILTIN_IA16_FP_OFF
+@itemx __BUILTIN_IA16_NEAR_DATA_SEGMENT
+@itemx __BUILTIN_IA16_SS
 Each of these macros is defined only if the corresponding
 @code{__builtin_ia16_}@dots{} macro is defined (@pxref{IA-16 Built-in
 Functions}).

@@ -4253,7 +4253,7 @@ the @code{ds} register points to the program's data segment on function
 entry.  The function will also arrange to restore @code{ds} to the same data
 segment on function exit.
 
-This attribute can be used to override the
+Use this attribute to override the
 @option{-mno-callee-assume-ds-data-segment} switch for a function.
 
 This attribute has no effect if @code{ds} is a call-saved register
@@ -13151,6 +13151,16 @@ be used within a static initializer, under certain
 conditions@footnote{Currently, this is allowed if @var{fp} is a pointer to
 a locally defined variable or function, or if @var{fp} points to an external
 variable or function and LTO is not in effect.}.
+
+@item __builtin_ia16_segment_t __builtin_ia16_near_data_segment (void)
+Return the segment value for the generic (near) data address space.
+
+@item __builtin_ia16_segment_t __builtin_ia16_ss (void)
+Return the value of the stack segment register @code{ss}.
+
+This should return the same value as @code{__builtin_ia16_near_data_segment
+()}, unless the calling function is marked @code{__attribute__
+((__no_assume_ss_data__))} (@pxref{IA-16 Function Attributes}).
 
 @end table
 
