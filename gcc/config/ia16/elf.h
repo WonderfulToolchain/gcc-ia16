@@ -28,8 +28,6 @@
   "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
-  "%{mcmodel=medium:"	\
-    "%{melks-libc:%emedium model not supported for ELKS}}", \
   "%{maout-total=*:"	\
     "%{maout-chmem=*:%emay not use both -maout-total= and -maout-chmem=}}"
 
@@ -87,12 +85,13 @@
 	    "%Tdos-m%(cmodel_ld);" \
 	  ":%Tdos-m%(cmodel_s_ld)" \
 	"}"		\
-      "} "		\
-      "%{melks-libc:"	\
-	"%{maout-total=*:--defsym=_total=%*} " \
-	"%{maout-chmem=*:--defsym=_chmem=%*}}" \
+      "}"		\
     "}"			\
-  "}"
+  "} "			\
+  "%{melks-libc:"	\
+    "%{mcmodel=medium:-m i386elks}" \
+    "%{maout-total=*:--defsym=_total=%*} " \
+    "%{maout-chmem=*:--defsym=_chmem=%*}}"
 
 #define STARTFILE_SPEC	\
   "%{melks-libc:-l:crt0.o}"
