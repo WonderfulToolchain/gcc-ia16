@@ -90,7 +90,6 @@ ia16_all_multilibs=$(strip \
 #     -mprotected-mode, or -mcmodel=medium.
 # (4) Assume that -melks-libc and -mprotected-mode multilibs are always size-
 #     -optimized.  Do not build size-optimized multilibs for the medium model.
-# (5) elks-libc does not support the medium memory model yet.
 #	-- tkchia
 #
 ia16_multilib_map=$(strip \
@@ -106,9 +105,8 @@ ia16_multilib_map=$(strip \
 		    $(patsubst mcmodel=medium%/Os,mcmodel=medium%,\
 		      $(patsubst mprotected-mode/mcmodel=medium%/Os,\
 				 mprotected-mode/mcmodel=medium%,\
-			$(subst melks-libc/mcmodel=medium,melks-libc,\
-			  $(subst mprotected-mode/melks-libc,melks-libc,\
-			    $1))))))))))))))
+			$(subst mprotected-mode/melks-libc,melks-libc,\
+			  $1)))))))))))))
 MULTILIB_REQUIRED=$(strip \
 	$(foreach ml,$(ia16_all_multilibs),\
 	  $(filter $(call ia16_multilib_map,$(ml)),$(ml))))
