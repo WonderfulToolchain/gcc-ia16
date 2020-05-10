@@ -89,7 +89,11 @@
     "}"			\
   "} "			\
   "%{melks-libc:"	\
-    "%{mcmodel=medium:-m i386elks}" \
+    "%{mcmodel=medium:-m i386elks " \
+      "%{maout-total=*:" \
+	"%e-maout-total not yet supported for ELKS medium model} " \
+      "%{maout-chmem=*:" \
+	"%e-maout-chmem not yet supported for ELKS medium model}} " \
     "%{maout-total=*:--defsym=_total=%*} " \
     "%{maout-chmem=*:--defsym=_chmem=%*}}"
 
