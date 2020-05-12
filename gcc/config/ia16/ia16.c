@@ -1523,6 +1523,7 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 				      bool no_emit)
 {
   rtx r1, r2, c, off, r9;
+  tree decl, type;
 
   gcc_assert (as == ADDR_SPACE_FAR);
 
@@ -1581,6 +1582,30 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 
 	  case SYMBOL_REF:
 	    /* Address of a far static variable.  */
+
+	    /* If we are inside a function which will go in the default text
+	       section, and X refers to an __attribute__ ((near_section))
+	       function, we can use %cs as the segment component of the far
+	       pointer.  This let us avoid emitting an unneeded segment
+	       relocation.  */
+	    if (! TARGET_CMODEL_IS_FAR_TEXT
+		&& cfun && ! ia16_in_far_section_function_p ())
+	      {
+		decl = ia16_get_decl_for_addr (x);
+		if (decl)
+		  {
+		    type = TREE_TYPE (decl);
+		    if (type
+			&& (TREE_CODE (type) == FUNCTION_TYPE
+			    || TREE_CODE (type) == METHOD_TYPE)
+			&& ia16_near_section_function_type_p (type))
+		      {
+			r9 = gen_rtx_REG (SEGmode, CS_REG);
+			break;
+		      }
+		  }
+	      }
+
 	    if (! TARGET_SEG_RELOC_STUFF)
 	      {
 		ia16_error_seg_reloc (input_location,
