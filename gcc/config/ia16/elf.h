@@ -91,11 +91,17 @@
   "%{melks-libc:"	\
     "%{mcmodel=medium:-m i386elks " \
       "%{maout-total=*:" \
-	"%e-maout-total not yet supported for ELKS medium model} " \
+	"%e-maout-total= not yet supported for ELKS medium model} " \
       "%{maout-chmem=*:" \
-	"%e-maout-chmem not yet supported for ELKS medium model}} " \
+	"%e-maout-chmem= not yet supported for ELKS medium model} " \
+      "%{maout-stack=*:" \
+	"%e-maout-stack= not yet supported for ELKS medium model} " \
+      "%{maout-heap=*:" \
+	"%e-maout-heap= not yet supported for ELKS medium model}} " \
     "%{maout-total=*:--defsym=_total=%*} " \
-    "%{maout-chmem=*:--defsym=_chmem=%*}}"
+    "%{maout-chmem=*:--defsym=_chmem=%*} " \
+    "%{maout-stack=*:--defsym=_stack=%*} " \
+    "%{maout-heap=*:--defsym=_heap=%*}}"
 
 #define STARTFILE_SPEC	\
   "%{melks-libc:-l:crt0.o}"
