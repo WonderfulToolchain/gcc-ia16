@@ -89,15 +89,10 @@
     "}"			\
   "} "			\
   "%{melks-libc:"	\
-    "%{mcmodel=medium:-m i386elks " \
-      "%{maout-total=*:" \
-	"%e-maout-total= not yet supported for ELKS medium model} " \
-      "%{maout-chmem=*:" \
-	"%e-maout-chmem= not yet supported for ELKS medium model} " \
-      "%{maout-stack=*:" \
-	"%e-maout-stack= not yet supported for ELKS medium model} " \
-      "%{maout-heap=*:" \
-	"%e-maout-heap= not yet supported for ELKS medium model}} " \
+    "%{mcmodel=medium:-m i386elks %{maout-total=*:--total-data %*} " \
+				 "%{maout-chmem=*:--chmem %*} " \
+				 "%{maout-stack=*:--stack %*} " \
+				 "%{maout-heap=*:--heap %*}} " \
     "%{maout-total=*:--defsym=_total=%*} " \
     "%{maout-chmem=*:--defsym=_chmem=%*} " \
     "%{maout-stack=*:--defsym=_stack=%*} " \
