@@ -114,7 +114,8 @@ Target RejectNegative Var(target_cmodel,CMODEL_MEDIUM)
 Generate code for the medium code model, with one data segment and multiple text segments.
 
 msegment-relocation-stuff
-Target RejectNegative Mask(SEG_RELOC_STUFF) Undocumented
+Target RejectNegative Mask(SEG_RELOC_STUFF)
+Enable language features which use segment relocations.
 
 mno-segment-relocation-stuff
 Target RejectNegative InverseMask(SEG_RELOC_STUFF)
@@ -212,3 +213,15 @@ Set the top of the data segment for ELKS OS executables.
 maout-chmem=
 Target RejectNegative Joined UInteger
 Set the size of non-static data for ELKS OS executables.
+
+maout-stack=
+Target RejectNegative Joined UInteger
+Set the size of the initial stack for ELKS OS executables.
+
+mstack-size=
+Target RejectNegative Joined UInteger Alias(maout-stack=)
+Set the size of the initial stack for ELKS OS executables.
+
+maout-heap=
+Target RejectNegative Joined UInteger
+Set the size of the heap for ELKS OS executables.
