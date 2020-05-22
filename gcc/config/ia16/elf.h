@@ -29,7 +29,12 @@
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
   "%{maout-total=*:"	\
-    "%{maout-chmem=*:%emay not use both -maout-total= and -maout-chmem=}}"
+    "%{maout-chmem=*:%emay not use both -maout-total= and -maout-chmem=}" \
+    "%{maout-stack=*:%emay not use both -maout-total= and -maout-stack=}" \
+    "%{maout-heap=*:%emay not use both -maout-total= and -maout-heap=}}", \
+  "%{maout-chmem=*:"	\
+    "%{maout-stack=*:%emay not use both -maout-chmem= and -maout-stack=}" \
+    "%{maout-heap=*:%emay not use both -maout-chmem= and -maout-heap=}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files

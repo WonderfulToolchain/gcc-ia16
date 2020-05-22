@@ -758,13 +758,14 @@ Objective-C and Objective-C++ Dialects}.
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
 -mmsdos -mmsdos-handle-v1 -mdpmiable -melks -melks-libc @gol
--maout-total=@var{total} -maout-chmem=@var{chmem} @gol
--maout-stack=@var{stack-size} -mstack-size=@var{stack-size}
+-maout-stack=@var{stack-size} -mstack-size=@var{stack-size} @gol
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mrtd -mstdcall @gol
 -mregparmcall -mno-callee-assume-ds-data-segment @gol
--mno-callee-assume-ss-data-segment -mno-far-function-if-far-return-type @gol
--mprotected-mode -mnewlib-nano-stdio -mnewlib-autofloat-stdio}
+-mno-callee-assume-ss-data-segment @gol
+-mprotected-mode -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
+-mno-far-function-if-far-return-type @gol
+-maout-total=@var{total} -maout-chmem=@var{chmem}}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16585,21 +16586,6 @@ This option also turns on @option{-mprotected-mode} and
 @c to my knowledge, nobody has been actually using Newlib to build ELKS
 @c programs, I have decided to unify the two options.  -- tkchia
 
-@item -maout-total=@var{total}
-@opindex maout-total
-When building an ELKS program (@option{-melks}), set it to request the
-operating system to set the top of the data segment---including static
-storage, heap, and stack---to at least @var{total}.  This requires support
-from the linker back-end and from the linker script which comes with the C
-library.
-
-@item -maout-chmem=@var{chmem}
-@opindex maout-chmem
-When building an ELKS program (@option{-melks}), set it to request the
-operating system to reserve at least @var{chmem} bytes in the data segment
-for non-static storage (such as heap and stack).  This requires support from
-the linker back-end and from the script which comes with the C library.
-
 @item -maout-stack=@var{stack-size}
 @item -mstack-size=@var{stack-size}
 @opindex maout-stack
@@ -16741,11 +16727,6 @@ You can override this option for individual functions, by using the
 @code{assume_ds_data} and @code{no_assume_ds_data} function attributes.
 @xref{IA-16 Function Attributes}.
 
-@item -mno-far-function-if-far-return-type
-@opindex mno-far-function-if-far-return-type
-Do not treat a function with a @code{__far} return type as a far function.
-@xref{IA-16 Named Address Spaces}.
-
 @item -mprotected-mode
 @opindex mprotected-mode
 Enable partial support for generating code to run in
@@ -16825,6 +16806,31 @@ other modules in a program, including system libraries.
 Use a different function-calling convention, in which the @code{ss} register
 is not assumed to point to the program's data segment at function entry. 
 This option exists only for testing.
+@end table
+
+@subsubsection Deprecated IA-16 Options
+
+@table @gcctabopt
+@item -mno-far-function-if-far-return-type
+@opindex mno-far-function-if-far-return-type
+Do not treat a function with a @code{__far} return type as a far function.
+@xref{IA-16 Named Address Spaces}.
+
+@item -maout-total=@var{total}
+@opindex maout-total
+When building an ELKS program (@option{-melks}), set it to request the
+operating system to set the top of the data segment---including static
+storage, heap, stack, and environment variables---to at least @var{total}. 
+This requires support from the linker back-end and from the linker script
+which comes with the C library.
+
+@item -maout-chmem=@var{chmem}
+@opindex maout-chmem
+When building an ELKS program (@option{-melks}), set it to request the
+operating system to reserve at least @var{chmem} bytes in the data segment
+for non-static storage (such as heap, stack, and environment variables). 
+This requires support from the linker back-end and from the script which
+comes with the C library.
 @end table
 
 @anchor{IA-16 Built-in Macros}
