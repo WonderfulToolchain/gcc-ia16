@@ -158,8 +158,8 @@ mcallee-assume-ss-data-segment
 Target RejectNegative InverseMask(NO_ASSUME_SS_DATA, ASSUME_SS_DATA) Undocumented
 
 mno-far-function-if-far-return-type
-Target RejectNegative Report Mask(NO_FAR_FUNCTION_IF_FAR_RETURN_TYPE)
-Do not treat a function as __far even if it has a __far return type.
+Target RejectNegative Report Mask(NO_FAR_FUNCTION_IF_FAR_RETURN_TYPE) Warn(%<-mno-far-function-if-far-return-type%> is deprecated)
+Deprecated.  Do not treat a function as __far even if it has a __far return type.
 
 mfar-function-if-far-return-type
 Target RejectNegative InverseMask(NO_FAR_FUNCTION_IF_FAR_RETURN_TYPE, FAR_FUNCTION_IF_FAR_RETURN_TYPE) Undocumented
@@ -206,14 +206,6 @@ Automatically decide between floating-point and non-fp formatted I/O routines (e
 maout
 Target RejectNegative Undocumented
 
-maout-total=
-Target RejectNegative Joined UInteger
-Set the top of the data segment for ELKS OS executables.
-
-maout-chmem=
-Target RejectNegative Joined UInteger
-Set the size of non-static data for ELKS OS executables.
-
 maout-stack=
 Target RejectNegative Joined UInteger
 Set the size of the initial stack for ELKS OS executables.
@@ -225,3 +217,11 @@ Set the size of the initial stack for ELKS OS executables.
 maout-heap=
 Target RejectNegative Joined UInteger
 Set the size of the heap for ELKS OS executables.
+
+maout-total=
+Target RejectNegative Joined UInteger Warn(%<-maout-total=%> is deprecated; use %<-maout-stack=%> and %<-maout-heap=%>)
+Deprecated.  Set the top of the data segment for ELKS executables.
+
+maout-chmem=
+Target RejectNegative Joined UInteger Warn(%<-maout-chmem=%> is deprecated; use %<-maout-stack=%> and %<-maout-heap=%>)
+Deprecated.  Set the size of non-static data for ELKS executables.
