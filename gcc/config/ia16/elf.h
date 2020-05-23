@@ -94,14 +94,12 @@
     "}"			\
   "} "			\
   "%{melks-libc:"	\
-    "%{mcmodel=medium:-m i386elks %{maout-total=*:--total-data %*} " \
-				 "%{maout-chmem=*:--chmem %*} " \
-				 "%{maout-stack=*:--stack %*} " \
-				 "%{maout-heap=*:--heap %*}} " \
-    "%{maout-total=*:--defsym=_total=%*} " \
-    "%{maout-chmem=*:--defsym=_chmem=%*} " \
-    "%{maout-stack=*:--defsym=_stack=%*} " \
-    "%{maout-heap=*:--defsym=_heap=%*}}"
+    "-m i386elks "	\
+    "%{mcmodel=tiny:--tiny} " \
+    "%{maout-total=*:--total-data %* --defsym=_total=%*} " \
+    "%{maout-chmem=*:--chmem %* --defsym=_chmem=%*} " \
+    "%{maout-stack=*:--stack %* --defsym=_stack=%*} " \
+    "%{maout-heap=*:--heap %* --defsym=_heap=%*}}"
 
 #define STARTFILE_SPEC	\
   "%{melks-libc:-l:crt0.o}"
