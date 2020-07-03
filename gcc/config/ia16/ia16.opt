@@ -46,8 +46,16 @@ march=i286
 Target RejectNegative Alias(march=i80286)
 Use features of and optimize code for the Intel 80286.
 
+mtune=any
+Target RejectNegative Var(target_tune,PROCESSOR_ANY) Init(PROCESSOR_ANY)
+Optimize code for a generic IA-16 CPU.
+
+mtune=any_186
+Target RejectNegative Var(target_tune,PROCESSOR_ANY_186)
+Optimize code for a generic IA-16 CPU with Intel 80186 features.
+
 mtune=i8086
-Target RejectNegative Var(target_tune,PROCESSOR_I8086) Init(PROCESSOR_ANY)
+Target RejectNegative Var(target_tune,PROCESSOR_I8086)
 Optimize code for the Intel 8086.
 
 mtune=i8088

@@ -2698,8 +2698,8 @@ static struct processor_costs ia16_nec_v20_costs = {
 /* This table must be in sync with enum processor_type in ia16.h.  */
 static const struct ptt processor_target_table[PROCESSOR_max] =
 {
-  {&ia16_i8086_costs,    0},
-  {&ia16_i8086_costs,    1},
+  {&ia16_i80186_costs,   0},
+  {&ia16_i80186_costs,   1},
   {&ia16_i8086_costs,    4},
   {&ia16_i8088_costs,   20},
   {&ia16_nec_v30_costs,  1},
