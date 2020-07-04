@@ -192,6 +192,10 @@ mmsdos-handle-v1
 Target Report RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
 Generate MS-DOS executables which fail gracefully on DOS v1.x.
 
+mhandle-non-i186
+Target RejectNegative
+Generate executables which check if they are running on an 80186-capable CPU.
+
 ; With the help of elf.h, this also enables -mprotected-mode.
 mdpmiable
 Target Report Mask(DPMIABLE)

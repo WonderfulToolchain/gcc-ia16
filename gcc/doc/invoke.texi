@@ -16570,6 +16570,14 @@ Produce executables for MS-DOS, in such a way that the executables will fail
 gracefully under MS-DOS version 1.x, rather than crash the system.  This
 option implies @option{-mmsdos}.
 
+@item -mhandle-non-i186
+If generating code for a machine that supports Intel 80186 instructions
+(e.g. @option{-march=v30} or @option{-march=i80286}), insert code to check,
+at startup, whether the code is indeed running on an 80186-capable system. 
+
+This requires support from the C library, and currently only works when
+targeting MS-DOS.
+
 @item -melks
 @opindex melks
 @item -melks-libc
@@ -16674,7 +16682,7 @@ functions.
 
 In addition, seriously incorrect code results if you call a
 function with too many arguments.  (Normally, extra arguments are
-harmlessly ignored.)
+harmlessly ignored.  @xref{Default IA-16 Calling Convention}.)
 
 @item -mregparmcall
 @opindex mregparmcall
@@ -16935,6 +16943,32 @@ Functions}).
 @c viz. __IA16_CALLCVT_{CDECL, STDCALL}, etc.  -- tkchia
 @c
 @end table
+
+@anchor{Default IA-16 Calling Convention}
+@subsubsection Default IA-16 Calling Convention
+
+By default, GCC outputs code for this calling convention:
+
+@itemize
+
+@item
+A function's caller pushes the function's arguments onto the stack, and pops
+off the stack space used to pass arguments.
+
+@item
+@code{ax}, @code{bx}, @code{cx}, and @code{dx} are call-used.
+
+@item
+@code{si}, @code{di}, @code{bp}, and @code{es} are call-saved.
+
+@item
+@code{ds} is a special case.  Both @code{ds} and @code{ss} are assumed to
+point to the program's data segment on entry, and @code{ds} should be
+restored on exit.  A function is free to modify @code{ds}, but it should
+restore it to its initial value---perhaps via a @samp{pushw %ss; popw
+%ds}---before calling another function, and before returning to its caller.
+
+@end itemize
 
 @node IA-64 Options
 @subsection IA-64 Options

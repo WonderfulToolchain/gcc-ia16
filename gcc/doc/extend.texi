@@ -4222,15 +4222,22 @@ These function attributes are supported by the IA-16 back end:
 @opindex mrtd
 @opindex mregparmcall
 On the IA-16 target, the @code{cdecl} attribute causes the compiler to
-assume that the calling function pops off the stack space used to
-pass arguments.  This is useful to override the effects of a @option{-mrtd}
-or @option{-mregparmcall} switch.
+assume that the function's caller pushes arguments onto the stack, and pops
+off the stack space used to pass arguments.  This is the default function
+calling convention if neither of the options @option{-mrtd} or
+@option{-mregparmcall} is specified (@pxref{IA-16 Options}).
+For more information on this default convention, @xref{Default IA-16 Calling
+Convention}.
+
+Specifying this function attribute is useful to override the
+effects of a @option{-mrtd} or @option{-mregparmcall} switch.
 
 @item stdcall
 @cindex @code{stdcall} function attribute, IA-16
 @cindex functions that pop the argument stack on IA-16
 On the IA-16 target, the @code{stdcall} attribute causes the compiler to
-assume that the called function pops off the stack space used to
+assume that the function's caller pushes arguments onto the stack, and the
+function itself (the callee) pops off the stack space used to
 pass arguments, unless it takes a variable number of arguments.
 
 @item regparmcall
@@ -4240,7 +4247,7 @@ pass arguments, unless it takes a variable number of arguments.
 On the IA-16 target, the @code{regparmcall} attribute causes the compiler to
 pass its first few arguments to the function in the registers @code{ax},
 @code{dx}, and @code{cx}, instead of on the stack.  The called function pops
-the arguments off the stack.
+the remaining arguments off the stack.
 
 An exception is that, if the number of arguments is variable, the @code{...}
 variable arguments will always go on the stack, and the calling function
@@ -13140,7 +13147,7 @@ or not.
 @table @code
 
 @item __builtin_ia16_segment_t __builtin_ia16_selector (unsigned @var{sel})
-With @option{-mprotected-mode} (@xref{IA-16 Options}), internally flag
+With @option{-mprotected-mode} (@pxref{IA-16 Options}), internally flag
 @var{sel} as a segment selector value which can be loaded into a segment
 register, and return the flagged value.  Without @option{-mprotected-mode},
 simply return @var{sel}.
