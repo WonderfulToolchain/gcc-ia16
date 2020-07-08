@@ -514,6 +514,9 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* Output of Assembler Instructions.  */
 
+extern const char * const ia16_register_prefix[],
+		  * const ia16_immediate_prefix[];
+
 #define REGISTER_NAMES { "c", "ch", "a", "ah", "d", "dh", "b", "bh", \
                          "si", "di", "bp", "es", "ds", "sp", "cc", \
                          "ss", "cs", "argp" }
@@ -521,14 +524,17 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 	{ { "cl", 0 }, {"al", 2 }, { "dl", 4 }, { "bl", 6 } }
 #define OVERLAPPING_REGISTER_NAMES \
 	{ { "cx", 0, 2 }, {"ax", 2, 2 }, { "dx", 4, 2 }, { "bx", 6, 2 } }
-#define REGISTER_PREFIX "%"
+#define REGISTER_PREFIX (ia16_register_prefix[ASSEMBLER_DIALECT])
 #define LOCAL_LABEL_PREFIX "."
-#define IMMEDIATE_PREFIX "$"
+#define IMMEDIATE_PREFIX (ia16_immediate_prefix[ASSEMBLER_DIALECT])
+
+#define ASSEMBLER_DIALECT	ia16_asm_dialect
 
 /* This is complicated slightly because there is no 8-bit push/pop.  */
 #define ASM_OUTPUT_REG_PUSH(stream, regno) \
   do { \
-    fputs ("\tpush\t" REGISTER_PREFIX, stream); \
+    fputs ("\tpush\t", stream); \
+    fputs (REGISTER_PREFIX, stream); \
     if (regno < SI_REG) \
       {  \
 	putc (reg_names[(regno) & 6][0], stream); \
@@ -541,7 +547,8 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 #define ASM_OUTPUT_REG_POP(stream, regno) \
   do { \
-    fputs ("\tpop\t" REGISTER_PREFIX, stream); \
+    fputs ("\tpop\t", stream); \
+    fputs (REGISTER_PREFIX, stream); \
     if (regno < SI_REG) \
       { \
 	putc (reg_names[(regno) & 6][0], stream); \
@@ -694,6 +701,15 @@ enum call_parm_cvt_type
   CALL_PARM_CVT_STDCALL,
   CALL_PARM_CVT_REGPARMCALL,
   CALL_PARM_CVT_max
+};
+
+/* Assembly language dialect to use.  Support for the Intel dialect may
+   still be incomplete.  */
+
+enum asm_dialect
+{
+  ASM_ATT,
+  ASM_INTEL
 };
 
 /* The linker will take care of this.  */

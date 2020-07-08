@@ -237,3 +237,6 @@ Deprecated.  Set the top of the data segment for ELKS executables.
 maout-chmem=
 Target RejectNegative Joined UInteger Warn(%<-maout-chmem=%> is deprecated; use %<-maout-stack=%> and %<-maout-heap=%>)
 Deprecated.  Set the size of non-static data for ELKS executables.
+
+masm=att
+Target RejectNegative Undocumented Var(ia16_asm_dialect, ASM_ATT) Init(ASM_ATT)

@@ -3670,7 +3670,7 @@ ia16_option_override (void)
 static void
 ia16_asm_file_start (void)
 {
-	const char *arch, *code;
+	const char *arch, *code, *syntax, *noprefix;
 
 	if (TARGET_FSTSW_AX)
 		arch = "i286";
@@ -3680,9 +3680,24 @@ ia16_asm_file_start (void)
 		arch = "i8086";
 	code = "16";
 
+	switch (ia16_asm_dialect)
+	{
+	case ASM_ATT:
+		syntax = "att";
+		noprefix = "";
+		break;
+	case ASM_INTEL:
+		syntax = "intel";
+		noprefix = "no";
+		break;
+	default:
+		gcc_unreachable ();
+	}
+
 	fprintf (asm_out_file,	"\t.arch %s,jumps\n"
 				"\t.code%s\n"
-				"\t.att_syntax prefix\n", arch, code);
+				"\t.%s_syntax %sprefix\n",
+				arch, code, syntax, noprefix);
 	default_file_start ();
 }
 
@@ -3887,13 +3902,23 @@ ia16_asm_destructor (rtx symbol, int priority)
 }
 
 /* Output of Assembler Instructions */
-static const char *reg_QInames[FIRST_NOQI_REG] = {
+static const char * const reg_QInames[FIRST_NOQI_REG] = {
 	"cl", "ch", "al", "ah", "dl", "dh", "bl", "bh"
 };
 
-static const char *reg_HInames[LAST_HARD_REG + 1] = {
+static const char * const reg_HInames[LAST_HARD_REG + 1] = {
 	"cx", 0, "ax", 0, "dx", 0, "bx", 0, "si", "di", "bp", "es", "ds", "sp",
 	0, "ss", "cs"
+};
+
+const char * const ia16_register_prefix[] = {
+	"%",	/* AT&T syntax */
+	""	/* Intel syntax */
+};
+
+const char * const ia16_immediate_prefix[] = {
+	"$",	/* AT&T syntax */
+	""	/* Intel syntax */
 };
 
 /* E is known not to be null when this is called.  These non-standard codes are
