@@ -192,7 +192,7 @@ ia16_cpu_cpp_builtins (void)
 
   /* Define a macro for the chosen -mtune=, for good measure.  */
   def_or_undef_macro ("__IA16_TUNE_ANY", target_tune == PROCESSOR_ANY);
-  def_or_undef_macro ("__IA16_TUNE_ANY_186", target_tune == PROCESSOR_ANY);
+  def_or_undef_macro ("__IA16_TUNE_ANY_186", target_tune == PROCESSOR_ANY_186);
   def_or_undef_macro ("__IA16_TUNE_I8086", target_tune == PROCESSOR_I8086);
   def_or_undef_macro ("__IA16_TUNE_I8088", target_tune == PROCESSOR_I8088);
   def_or_undef_macro ("__IA16_TUNE_NEC_V30", target_tune == PROCESSOR_NEC_V30);
