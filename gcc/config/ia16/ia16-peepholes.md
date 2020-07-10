@@ -181,7 +181,7 @@
 				     + INTVAL (operands[3]) * 256);
   else
     operands[5] = widen_memory_access (operands[1], HImode, 0);
-  return "movw\t%5,\t%4";
+  return "mov{w\t%5,\t%4|\t%4,\t%5}";
 })
 
 (define_insn "*store_multipleqi"
@@ -201,7 +201,7 @@
   else
     operands[4] = simplify_gen_subreg (HImode, operands[1], QImode, 0);
   operands[5] = widen_memory_access (operands[0], HImode, 0);
-  return "movw\t%4,\t%5";
+  return "mov{w\t%4,\t%5|\t%5,\t%4}";
 })
 
 ; Optimize "movw mem, reg16; movw mem+2, %es" into "lesw mem, reg16".
@@ -293,7 +293,7 @@
 	(match_operand:SEG 3 "memory_operand" "m"))]
   "reload_completed
    && ia16_move_multiple_mem_p (HImode, operands[1], operands[3])"
-  "l%R2w\t%1,\t%0"
+  "l%R2{w\t%1,\t%0|\t%0,\t%1}"
 )
 
 ;; Misc peepholes.
@@ -355,13 +355,13 @@
       case 32:
 	return ("pusha\;pusha");
       case 18:
-	return ("pushw\t%%ds\;pusha");
+	return ("push{w}\t{%%}ds\;pusha");
       case 16:
 	return ("pusha");
       case  4:
-	return ("pushw\t%%ds\;pushw\t%%ds");
+	return ("push{w}\t{%%}ds\;push{w}\t{%%}ds");
       case  2:
-	return ("pushw\t%%ds");
+	return ("push{w}\t{%%}ds");
       default:
 	gcc_unreachable ();
     }
@@ -396,9 +396,9 @@
   switch (INTVAL (operands[0]))
     {
       case  4:
-	return ("popw\t%1\;popw\t%1");
+	return ("pop{w}\t%1\;pop{w}\t%1");
       case  2:
-	return ("popw\t%1");
+	return ("pop{w}\t%1");
       default:
 	gcc_unreachable ();
     }
@@ -701,7 +701,7 @@
 	              (const_int 255)))]
 	""
 {
-	return "movb\t$0,\t%H0";
+	return "mov{b\t$0,\t%H0|\t%H0,\t0}";
 })
 
 ; Optimize "movw mem, reg; andw $x, reg" into "movb mem, reg; andw $x, reg"
@@ -809,5 +809,5 @@
 (define_insn "_mov<mode>_ds_ss_slow"
   [(set (reg:SEG DS_REG) (reg:SEG SS_REG))]
   ""
-  "pushw\t%%ss\;popw\t%%ds"
+  "push{w}\t{%%}ss\;pop{w}\t{%%}ds"
 )
