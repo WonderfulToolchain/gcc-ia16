@@ -59,7 +59,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20200512L");
+  def_macro ("__ia16__=20200710L");
   def_macro ("__FAR");
   def_macro ("__SEG_SS");
 
@@ -191,6 +191,8 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ARCH_I80286", target_arch == PROCESSOR_I80286);
 
   /* Define a macro for the chosen -mtune=, for good measure.  */
+  def_or_undef_macro ("__IA16_TUNE_ANY", target_tune == PROCESSOR_ANY);
+  def_or_undef_macro ("__IA16_TUNE_ANY_186", target_tune == PROCESSOR_ANY);
   def_or_undef_macro ("__IA16_TUNE_I8086", target_tune == PROCESSOR_I8086);
   def_or_undef_macro ("__IA16_TUNE_I8088", target_tune == PROCESSOR_I8088);
   def_or_undef_macro ("__IA16_TUNE_NEC_V30", target_tune == PROCESSOR_NEC_V30);
@@ -198,6 +200,10 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_TUNE_I80186", target_tune == PROCESSOR_I80186);
   def_or_undef_macro ("__IA16_TUNE_I80188", target_tune == PROCESSOR_I80188);
   def_or_undef_macro ("__IA16_TUNE_I80286", target_tune == PROCESSOR_I80286);
+
+  /* Define a macro for the chosen assembly language syntax (-masm=).  */
+  def_or_undef_macro ("__IA16_ASM_ATT", ia16_asm_dialect == ASM_ATT);
+  def_or_undef_macro ("__IA16_ASM_INTEL", ia16_asm_dialect == ASM_INTEL);
 
   /* Define macros corresponding to the chosen target operating system.
      Borland C apparently defines __MSDOS__, and Bruce's C compiler defines

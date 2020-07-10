@@ -239,4 +239,9 @@ Target RejectNegative Joined UInteger Warn(%<-maout-chmem=%> is deprecated; use 
 Deprecated.  Set the size of non-static data for ELKS executables.
 
 masm=att
-Target RejectNegative Undocumented Var(ia16_asm_dialect, ASM_ATT) Init(ASM_ATT)
+Target RejectNegative Var(ia16_asm_dialect, ASM_ATT) Init(ASM_ATT)
+Use AT&T assembler dialect (default).
+
+masm=intel
+Target RejectNegative Var(ia16_asm_dialect, ASM_INTEL)
+Use Intel assembler dialect (experimental).

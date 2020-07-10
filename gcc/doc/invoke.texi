@@ -756,14 +756,15 @@ Objective-C and Objective-C++ Dialects}.
 -munix=@var{unix-std}  -nolibdld  -static  -threads}
 
 @emph{IA-16 Options}
-@gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} -mshort-jumps @gol
--mmsdos -mmsdos-handle-v1 -mdpmiable -melks -melks-libc @gol
+@gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} @gol
+-mmsdos -mmsdos-handle-v1 -melks -melks-libc @gol
 -maout-stack=@var{stack-size} -mstack-size=@var{stack-size} @gol
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
--mseparate-code-segment -mno-segment-relocation-stuff -mrtd -mstdcall @gol
--mregparmcall -mno-callee-assume-ds-data-segment @gol
--mno-callee-assume-ss-data-segment @gol
--mprotected-mode -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
+-mseparate-code-segment -mno-segment-relocation-stuff -mshort-jumps @gol
+-mrtd -mstdcall -mregparmcall @gol
+-mno-callee-assume-ds-data-segment -mprotected-mode @gol
+-mcmodel=medium -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
+-mdpmiable -msegelf -mno-callee-assume-ss-data-segment -masm=intel @gol
 -mno-far-function-if-far-return-type @gol
 -maout-total=@var{total} -maout-chmem=@var{chmem}}
 
@@ -16814,6 +16815,13 @@ other modules in a program, including system libraries.
 Use a different function-calling convention, in which the @code{ss} register
 is not assumed to point to the program's data segment at function entry. 
 This option exists only for testing.
+
+@item -masm=intel
+@opindex masm=intel
+Output assembly instructions using Intel syntax, rather than the default
+AT&T syntax.  This also affects
+which dialect is used for basic @code{asm} (@pxref{Basic Asm}) and
+extended @code{asm} (@pxref{Extended Asm}).
 @end table
 
 @subsubsection Deprecated IA-16 Options
@@ -16871,7 +16879,9 @@ or medium) is selected.
 These macros are defined according to the @option{-march=@var{cpu-type}}
 option settings.
 
-@item __IA16_TUNE_I8086
+@item __IA16_TUNE_ANY
+@itemx __IA16_TUNE_ANY_186
+@itemx __IA16_TUNE_I8086
 @itemx __IA16_TUNE_I8088
 @itemx __IA16_TUNE_NEC_V30
 @itemx __IA16_TUNE_NEC_V20

@@ -4016,7 +4016,17 @@ ia16_print_operand (FILE *file, rtx e, int code)
       case SYMBOL_REF:
       case LABEL_REF:
       if (code != 'Z')
-	fputs (IMMEDIATE_PREFIX, file);
+	{
+	  switch (ia16_asm_dialect)
+	    {
+	      case ASM_ATT:
+		fputc ('$', file);
+		break;
+	      case ASM_INTEL:
+		if (GET_CODE (x) != CONST_INT)
+		  fputs ("OFFSET ", file);
+	    }
+	}
       /* fall through */
 
       case CODE_LABEL:
@@ -4031,6 +4041,26 @@ ia16_print_operand (FILE *file, rtx e, int code)
       break;
 
       case MEM:
+      if (ia16_asm_dialect == ASM_INTEL)
+	{
+	  switch (mode)
+	    {
+	    case QImode:
+	      fputs ("BYTE PTR ", file);
+	      break;
+	    case HImode:
+	    case PHImode:
+	    case V2QImode:
+	      fputs ("WORD PTR ", file);
+	      break;
+	    case SImode:
+	    case SFmode:
+	      fputs ("DWORD PTR ", file);
+	      break;
+	    default:
+	      ;
+	    }
+	}
       ia16_print_operand_address_internal (file, XEXP (x, 0),
 					   MEM_ADDR_SPACE (x));
       break;
@@ -4154,14 +4184,37 @@ ia16_print_operand_address_internal (FILE *file, rtx e, addr_space_t as)
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
     }
 
-  if (c)
-    output_addr_const (file, c);
-  if (rb)
-    fprintf (file, "(%s%s", REGISTER_PREFIX, reg_HInames[REGNO (rb)]);
-  if (ri)
-    fprintf (file, ",%s%s", REGISTER_PREFIX, reg_HInames[REGNO (ri)]);
-  if (rb)
-    putc (')', file);
+  switch (ia16_asm_dialect)
+  {
+  case ASM_ATT:
+    if (c)
+      output_addr_const (file, c);
+    if (rb)
+      fprintf (file, "(%%%s", reg_HInames[REGNO (rb)]);
+    if (ri)
+      fprintf (file, ",%%%s", reg_HInames[REGNO (ri)]);
+    if (rb)
+      putc (')', file);
+    break;
+
+  case ASM_INTEL:
+    putc ('[', file);
+    if (c)
+      output_addr_const (file, c);
+    if (rb)
+      {
+	if (c)
+	  putc ('+', file);
+	fputs (reg_HInames[REGNO (rb)], file);
+      }
+    if (ri)
+      fprintf (file, "+%s", reg_HInames [REGNO (ri)]);
+    putc (']', file);
+    break;
+
+  default:
+    gcc_unreachable ();
+  }
 }
 
 #undef	TARGET_PRINT_OPERAND_ADDRESS
@@ -4766,20 +4819,27 @@ ia16_expand_epilogue (bool sibcall)
 #define LCALL_TEMPLATE(dest) \
 			(TARGET_ABI_SEGELF \
 			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
-			     "\tlcall\t$0,\t$" dest \
+			     "\t{lcall\t$0,\t$" dest "|call\t0:" dest "}" \
 			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
-			     "\tlcall\t$0,\t$" dest)
+			     "\t{lcall\t$0,\t$" dest "|call\t0:" dest "}")
 #define LJMP_TEMPLATE(dest) \
 			(TARGET_ABI_SEGELF \
 			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
-			     "\tljmp\t$0,\t$" dest \
+			     "\t{ljmp\t$0,\t$" dest "|jmp\t0:" dest "}" \
 			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
-			     "\tljmp\t$0,\t$" dest)
+			     "\t{ljmp\t$0,\t$" dest "|jmp\t0:" dest "}")
 
-#define P(part)	(which_is_addr == 0 ? part "0" : part "1")
-#define P2(part_a, part_b) \
-			(which_is_addr == 0 ? part_a "0" part_b "0" : \
-					      part_a "1" part_b "1")
+#define P(part_att, part_intel)	\
+			(which_is_addr == 0 \
+			  ? "{" part_att "0|" part_intel "0}" \
+			  : "{" part_att "1|" part_intel "1}")
+#define PC(part)	(which_is_addr == 0 ? part "0" : part "1")
+#define P2(part_a_att, part_b_att, part_a_intel, part_b_intel) \
+			(which_is_addr == 0 \
+			  ? "{" part_a_att "0" part_b_att "0|" \
+				part_a_intel "0" part_b_intel "0}" \
+			  : "{" part_a_att "1" part_b_att "1|" \
+				part_a_intel "1" part_b_intel "1}")
 /* MACRO is either LCALL_TEMPLATE or LJMP_TEMPLATE.  */
 #define PM(macro)	(which_is_addr == 0 ? macro ("%c0") : macro ("%c1"))
 
@@ -4817,9 +4877,9 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
   if (mode == SImode)
     {
       if (CONST_INT_P (addr))
-	return P2 ("lcall\t%S", ",\t%O");
+	return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
       else
-	return P ("lcall\t*%");
+	return P ("lcall\t*%", "call\t%");
     }
 
   fndecl = ia16_get_decl_for_addr (addr);
@@ -4830,9 +4890,9 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
       gcc_assert (! ia16_in_far_section_function_p ());
 
       if (MEM_P (addr) || ! CONSTANT_P (addr))
-	return P ("call\t*%");
+	return P ("call\t*%", "call\t%");
       else
-	return P ("call\t%c");
+	return PC ("call\t%c");
     }
   else if (fntype
 	   && ! ia16_in_far_section_function_p ()
@@ -4844,9 +4904,9 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 	       || ia16_near_section_function_type_p (fntype)))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
-	return P ("pushw\t%%cs\n\tcall\t*%");
+	return P ("pushw\t%%cs\n\tcall\t*%", "push\tcs\n\tcall\t%");
       else
-	return P ("pushw\t%%cs\n\tcall\t%c");
+	return P ("pushw\t%%cs\n\tcall\t%c", "push\tcs\n\tcall\t%c");
     }
   else
     {
@@ -4911,9 +4971,9 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
   if (mode == SImode)
     {
       if (CONST_INT_P (addr))
-	return P2 ("ljmp\t%S", ",\t%O");
+	return P2 ("ljmp\t%S", ",\t%O", "jmp\t%S", ":%O");
       else
-	return P ("ljmp\t*%");
+	return P ("ljmp\t*%", "jmp\t%");
     }
 
   fndecl = ia16_get_decl_for_addr (addr);
@@ -4922,9 +4982,9 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
   if (! ia16_far_function_type_p (fntype))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
-	return P ("jmp\t*%");
+	return P ("jmp\t*%", "jmp\t%");
       else
-	return P ("jmp\t%c");
+	return PC ("jmp\t%c");
     }
   else if (! ia16_in_far_section_function_p ()
 	   && ((DECL_INITIAL (fndecl)
@@ -4932,9 +4992,9 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
 	       || ia16_near_section_function_type_p (fntype)))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
-	return P ("jmp\t*%");
+	return P ("jmp\t*%", "jmp\t%");
       else
-	return P ("jmp\t%c");
+	return PC ("jmp\t%c");
     }
   else
     {
@@ -4946,6 +5006,7 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
 }
 
 #undef P
+#undef PC
 #undef P2
 #undef PM
 
