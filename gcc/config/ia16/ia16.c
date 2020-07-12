@@ -1309,10 +1309,10 @@ ia16_function_attribute_inlinable_p (const_tree fndecl)
   ia16_cache_function_info (false);
   our_cvt = cfun->machine->cached_callcvt;
 
-  /* Whether the caller and/or callee is/are near_section is not very
-     important...  */
-  our_cvt &= ~IA16_CALLCVT_NEAR_SECTION;
-  their_cvt &= ~IA16_CALLCVT_NEAR_SECTION;
+  /* Whether the caller and/or callee is/are far, and whether they are
+     near_section, is not very important...  */
+  our_cvt &= ~(IA16_CALLCVT_FAR | IA16_CALLCVT_NEAR_SECTION);
+  their_cvt &= ~(IA16_CALLCVT_FAR | IA16_CALLCVT_NEAR_SECTION);
 
   if (their_cvt == our_cvt
       || their_cvt == (our_cvt & ~IA16_CALLCVT_SS_DATA))
