@@ -4024,7 +4024,7 @@ ia16_print_operand (FILE *file, rtx e, int code)
 		break;
 	      case ASM_INTEL:
 		if (GET_CODE (x) != CONST_INT)
-		  fputs ("OFFSET ", file);
+		  fputs ("offset ", file);
 	    }
 	}
       /* fall through */
@@ -4046,16 +4046,16 @@ ia16_print_operand (FILE *file, rtx e, int code)
 	  switch (mode)
 	    {
 	    case QImode:
-	      fputs ("BYTE PTR ", file);
+	      fputs ("byte ptr ", file);
 	      break;
 	    case HImode:
 	    case PHImode:
 	    case V2QImode:
-	      fputs ("WORD PTR ", file);
+	      fputs ("word ptr ", file);
 	      break;
 	    case SImode:
 	    case SFmode:
-	      fputs ("DWORD PTR ", file);
+	      fputs ("dword ptr ", file);
 	      break;
 	    default:
 	      ;
@@ -4199,16 +4199,26 @@ ia16_print_operand_address_internal (FILE *file, rtx e, addr_space_t as)
 
   case ASM_INTEL:
     putc ('[', file);
-    if (c)
-      output_addr_const (file, c);
     if (rb)
-      {
-	if (c)
-	  putc ('+', file);
-	fputs (reg_HInames[REGNO (rb)], file);
-      }
+      fputs (reg_HInames[REGNO (rb)], file);
     if (ri)
       fprintf (file, "+%s", reg_HInames [REGNO (ri)]);
+    if (c)
+      {
+	if (CONST_INT_P (c))
+	  {
+	    if (rb)
+	      fprintf (file, "%+ld", (long) INTVAL (c));
+	    else
+	      fprintf (file, "%ld", (long) INTVAL (c));
+	  }
+	else
+	  {
+	    if (rb)
+	      putc ('+', file);
+	    output_addr_const (file, c);
+	  }
+      }
     putc (']', file);
     break;
 
