@@ -70,6 +70,17 @@
 	(match_test "REGNO (op) == A_REG"))
 )
 
+; Anything not involving %sp.  For eliminating stack adjustments.
+(define_predicate "no_sp_operand"
+   (match_test "! refers_to_regno_p (SP_REG, SP_REG + 1, op, NULL)")
+)
+
+; Any non-immediate not involving %sp.
+(define_predicate "no_sp_nonimmediate_operand"
+   (and (match_operand 0 "nonimmediate_operand")
+	(match_operand 0 "no_sp_operand"))
+)
+
 ; Register usable in a 1-byte `xchgw (reg), %ax' instruction.
 ;(define_predicate "xchgw_ax_register_operand"
 ;   (and (match_operand 0 "nonsegment_register_operand")

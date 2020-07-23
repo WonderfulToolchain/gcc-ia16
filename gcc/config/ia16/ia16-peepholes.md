@@ -42,6 +42,7 @@
 ; Misc peepholes.
 ; And with constants.
 ; Far pointers, far addresses, and general 32-bit weirdness.
+; Stack adjustments.
 ; Handling the %ds ?= %ss problem.
 
 ;; Move multiple peepholes.
@@ -792,6 +793,70 @@
     [(set (match_dup 0) (match_dup 1))
      (set (match_dup 4) (match_dup 3))])
    (set (match_dup 2) (match_dup 4))]
+  ""
+)
+
+;; Stack adjustments.
+
+; EXIT_IGNORE_STACK (in ia16.h) cannot handle all cases.
+
+;	addw	$36,	%sp
+;	xorw	%ax,	%ax	->	xorw	%ax,	%ax
+;	movw	%bp,	%sp		movw	%bp,	%sp
+; (https://github.com/tkchia/gcc-ia16/issues/62)
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (parallel
+    [(set (match_operand:MO 1 "no_sp_nonimmediate_operand")
+	  (match_operand:MO 2 "no_sp_operand"))
+     (clobber (reg:CC CC_REG))])
+   (use (match_dup 1))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  "reload_completed"
+  [(parallel
+    [(set (match_dup 1) (match_dup 2))
+     (clobber (reg:CC CC_REG))])
+   (use (match_dup 1))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:MO 1 "no_sp_nonimmediate_operand")
+	(match_operand:MO 2 "no_sp_operand"))
+   (use (match_dup 1))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  "reload_completed"
+  [(set (match_dup 1) (match_dup 2))
+   (use (match_dup 1))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (use (match_operand:MO 1 "no_sp_nonimmediate_operand"))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  "reload_completed"
+  [(use (match_dup 1))
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (set (reg:HI SP_REG) (reg:HI BP_REG))]
+  "reload_completed"
+  [(set (reg:HI SP_REG) (reg:HI BP_REG))]
   ""
 )
 
