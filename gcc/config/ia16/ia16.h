@@ -417,12 +417,18 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 
 /* Function Entry and Exit */
 /* Thunks support is missing.  */
-/* Stack adjustment at function exit isn't needed if we need to tear down the
-   stack frame with `leave' or `movw %bp, %sp'.  */
+
+/* Stack adjustment at function exit isn't needed if we know we need to tear
+   down the stack frame with `leave' or `movw %bp, %sp'.
+
+   This macro may be invoked quite early, before the stack frame is really
+   fixed, so it cannot really cover all the possible cases.
+
+   The peephole optimization rules (ia16-peepholes.md) try to remove any
+   remaining unneeded stack adjustments.  -- tkchia 20200722 */
 #define EXIT_IGNORE_STACK	(HAVE__leave \
 				 || get_frame_size () > 0 \
-				 || cfun->calls_alloca \
-				 || crtl->outgoing_args_size > 0)
+				 || cfun->calls_alloca)
 
 /* Generating Code for Profiling */
 /* It isn't there yet.  */
