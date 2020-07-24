@@ -860,6 +860,80 @@
   ""
 )
 
+; FIXME: Ugh.  Why do we still need to handle cases involving `leave'?
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (parallel
+    [(set (match_operand:MO 1 "no_sp_nonimmediate_operand")
+	  (match_operand:MO 2 "no_sp_operand"))
+     (clobber (reg:CC CC_REG))])
+   (use (match_dup 1))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  "reload_completed"
+  [(parallel
+    [(set (match_dup 1) (match_dup 2))
+     (clobber (reg:CC CC_REG))])
+   (use (match_dup 1))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:MO 1 "no_sp_nonimmediate_operand")
+	(match_operand:MO 2 "no_sp_operand"))
+   (use (match_dup 1))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  "reload_completed"
+  [(set (match_dup 1) (match_dup 2))
+   (use (match_dup 1))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (use (match_operand:MO 1 "no_sp_nonimmediate_operand"))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  "reload_completed"
+  [(use (match_dup 1))
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  ""
+)
+
+(define_peephole2
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI SP_REG) (match_operand:HI 0)))
+     (clobber (reg:CC CC_REG))])
+   (parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  "reload_completed"
+  [(parallel
+    [(set (reg:HI SP_REG) (plus:HI (reg:HI BP_REG) (const_int 2)))
+     (set (reg:HI BP_REG) (mem:HI (reg:HI BP_REG)))])]
+  ""
+)
+
 ;; Handling the %ds ?= .data problem.
 
 ; Insn to reset %ds = .data, via %ss, before a function call or just before
