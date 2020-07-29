@@ -7563,17 +7563,6 @@ This macro is defined in the IA-16 backend to implement @code{__far}
 functions and pointers to such functions.
 @end defmac
 
-@defmac TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P (@var{as})
-This macro is not needed for most targets.  If defined---and if
-@code{TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P} is defined---this macro should
-return true, if GCC should treat a function as belonging to the address
-space @var{as}, whenever the function's return type is marked as belonging
-to @var{as} (and the function itself has no address space qualifier).
-
-This macro is defined in the IA-16 backend to implement the option
-@option{-mno-far-function-if-far-return-type}.
-@end defmac
-
 @node Misc
 @section Miscellaneous Parameters
 @cindex parameters, miscellaneous

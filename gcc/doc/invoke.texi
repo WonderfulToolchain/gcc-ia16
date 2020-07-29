@@ -765,8 +765,8 @@ Objective-C and Objective-C++ Dialects}.
 -mno-callee-assume-ds-data-segment -mprotected-mode @gol
 -mcmodel=medium -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
 -mdpmiable -msegelf -mno-callee-assume-ss-data-segment -masm=intel @gol
--mno-far-function-if-far-return-type @gol
--maout-total=@var{total} -maout-chmem=@var{chmem}}
+-maout-total=@var{total} -maout-chmem=@var{chmem} @gol
+-mfar-function-if-far-return-type}
 
 @emph{IA-64 Options}
 @gccoptlist{-mbig-endian  -mlittle-endian  -mgnu-as  -mgnu-ld  -mno-pic @gol
@@ -16827,11 +16827,6 @@ extended @code{asm} (@pxref{Extended Asm}).
 @subsubsection Deprecated IA-16 Options
 
 @table @gcctabopt
-@item -mno-far-function-if-far-return-type
-@opindex mno-far-function-if-far-return-type
-Do not treat a function with a @code{__far} return type as a far function.
-@xref{IA-16 Named Address Spaces}.
-
 @item -maout-total=@var{total}
 @opindex maout-total
 When building an ELKS program (@option{-melks}), set it to request the
@@ -16847,6 +16842,11 @@ operating system to reserve at least @var{chmem} bytes in the data segment
 for non-static storage (such as heap, stack, and environment variables). 
 This requires support from the linker back-end and from the script which
 comes with the C library.
+
+@item -mfar-function-if-far-return-type
+@opindex mfar-function-if-far-return-type
+This option is ignored.  It exists only for compatibility with older build
+systems.
 @end table
 
 @anchor{IA-16 Built-in Macros}

@@ -658,10 +658,6 @@ enum ia16_builtin
    gcc/c/c-tree.h are also updated to account for the changes in the C
    parser's internal structures.  */
 #define TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P(as) ((as) == ADDR_SPACE_FAR)
-/* Also, gcc/c/c-decl.c is updated to recognize a new macro which says
-   whether a function may get its address space from its return type.  */
-#define TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P(as) \
-	TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE
 
 /* Which processor to tune code generation for.  These must be in sync
    with processor_target_table in ia16.c.  */
