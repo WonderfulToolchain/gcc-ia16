@@ -165,12 +165,9 @@ Alternate (experimental) calling convention (callee cannot assume %ss points to 
 mcallee-assume-ss-data-segment
 Target RejectNegative InverseMask(NO_ASSUME_SS_DATA, ASSUME_SS_DATA) Undocumented
 
-mno-far-function-if-far-return-type
-Target RejectNegative Report Mask(NO_FAR_FUNCTION_IF_FAR_RETURN_TYPE) Warn(%<-mno-far-function-if-far-return-type%> is deprecated)
-Deprecated.  Do not treat a function as __far even if it has a __far return type.
-
 mfar-function-if-far-return-type
-Target RejectNegative InverseMask(NO_FAR_FUNCTION_IF_FAR_RETURN_TYPE, FAR_FUNCTION_IF_FAR_RETURN_TYPE) Undocumented
+Target RejectNegative
+Ignored.
 
 mprotected-mode
 Target Report Mask(PROTECTED_MODE)

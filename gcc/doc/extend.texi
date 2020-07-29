@@ -1496,8 +1496,7 @@ int bar (void) __far
 @end smallexample
 
 You can also declare or define a far function using a syntax more compatible
-with that of classical IA-16 compilers (unless you specify
-@option{-mno-far-function-if-far-return-type}):
+with that of classical IA-16 compilers:
 
 @smallexample
 int __far baz (void)
