@@ -127,8 +127,7 @@ ia16_cpu_cpp_builtins (void)
 		      target_call_parm_cvt == CALL_PARM_CVT_STDCALL);
   def_or_undef_macro ("__IA16_CALLCVT_REGPARMCALL",
 		      target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL);
-  def_or_undef_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE",
-		      TARGET_FAR_FUNCTION_IF_FAR_RETURN_TYPE);
+  def_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE");
   def_or_undef_macro ("__IA16_CALLCVT_ASSUME_DS_DATA", TARGET_ASSUME_DS_DATA);
   def_or_undef_macro ("__IA16_CALLCVT_NO_ASSUME_DS_DATA",
 		      ! TARGET_ASSUME_DS_DATA);

@@ -7089,15 +7089,11 @@ grokdeclarator (const struct c_declarator *declarator,
 		  specs_loc = loc;
 
 #ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
-# ifdef TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
 		if (CLEAR_QUAL_ADDR_SPACE (type_quals) == 0
 		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
-			(DECODE_QUAL_ADDR_SPACE (type_quals))
-		    && TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
 			(DECODE_QUAL_ADDR_SPACE (type_quals)))
 		  ;
 		else
-# endif
 #endif
 		{
 		/* Type qualifiers on a function return type are
@@ -7142,13 +7138,11 @@ grokdeclarator (const struct c_declarator *declarator,
 		  = ENCODE_QUAL_ADDR_SPACE (declarator->u.function.as);
 		type = c_build_qualified_type (type, type_quals);
 	      }
-# ifdef TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P
 	    else
 	      {
 		addr_space_t rv_as = TYPE_ADDR_SPACE (TREE_TYPE (type));
 		if (! ADDR_SPACE_GENERIC_P (rv_as)
-		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (rv_as)
-		    && TARGET_FUNCTION_ADDR_SPACE_FROM_RETURN_TYPE_P (rv_as))
+		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P (rv_as))
 		  {
 		    /* Remove the address space qualifier from the return
 		       type, and construct the function type again.
@@ -7169,7 +7163,6 @@ grokdeclarator (const struct c_declarator *declarator,
 		    type = c_build_qualified_type (type, type_quals);
 		  }
 	      }
-# endif
 #endif
 	    declarator = declarator->declarator;
 
