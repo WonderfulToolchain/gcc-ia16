@@ -588,10 +588,13 @@ ia16_rewrite_bp_as_bx (void)
   basic_block bb;
 
   /* Bail out early if we are not supposed to eliminate the frame pointer,
-     or if the function does not use %bp anyway, or in the unlikely future
-     case that we actually pass function arguments via %bx.  */
+     or if the function does not use %bp anyway, or if the user has asked to
+     make %bx not a call-used register, or in the unlikely future case that
+     we actually pass function arguments via %bx.  */
   if (! global_options.x_flag_omit_frame_pointer
       || ! ia16_save_reg_p (BP_REG)
+      || ! call_used_regs[B_REG] || ! call_used_regs[BH_REG]
+      || fixed_regs[B_REG] || fixed_regs[BH_REG]
       || FUNCTION_ARG_REGNO_P (B_REG)
       || FUNCTION_ARG_REGNO_P (BH_REG))
     return;
@@ -625,7 +628,8 @@ ia16_rewrite_bp_as_bx (void)
 	  if (! INSN_P (insn))
 	    continue;
 
-	  if (dead_or_set_regno_p (insn, B_REG)
+	  if (CALL_P (insn)
+	      || dead_or_set_regno_p (insn, B_REG)
 	      || dead_or_set_regno_p (insn, BH_REG)
 	      || dead_or_set_regno_p (insn, BP_REG))
 	    return;
@@ -774,7 +778,8 @@ ia16_rewrite_bp_as_bx (void)
 	    }
 	  else if (refers_to_regno_p (B_REG, BH_REG + 1, pat, NULL))
 	    goto bail;
-	  else if (dead_or_set_regno_p (insn, B_REG)
+	  else if (CALL_P (insn)
+		   || dead_or_set_regno_p (insn, B_REG)
 		   || dead_or_set_regno_p (insn, BH_REG))
 	    state = RBPS_BX_CLOBBERED;
 
