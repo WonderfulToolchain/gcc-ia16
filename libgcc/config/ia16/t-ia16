@@ -67,10 +67,22 @@ LIB2ADD += $(srcdir)/config/ia16/udivsi3.S \
 	   $(srcdir)/config/ia16/gtsf2.S \
 	   $(srcdir)/config/ia16/nedf2-ltdf2-ledf2.S \
 	   $(srcdir)/config/ia16/gtdf2.S \
-	   $(srcdir)/config/ia16/ia16-far-call-thunks.S \
-	   $(srcdir)/config/ia16/ia16-far-call-pop-thunks.S
+	   $(srcdir)/config/ia16/ia16-far-call-thunks-nonimm.S \
+	   $(srcdir)/config/ia16/ia16-far-call-thunk-0.S \
+	   $(srcdir)/config/ia16/ia16-far-call-thunk-2.S \
+	   $(srcdir)/config/ia16/ia16-far-call-thunk-4.S \
+	   $(srcdir)/config/ia16/ia16-far-call-thunk-6.S \
+	   $(srcdir)/config/ia16/ia16-far-call-thunk-8.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunks-nonimm.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunk-0.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunk-2.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunk-4.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunk-6.S \
+	   $(srcdir)/config/ia16/ia16-far-call-pop-thunk-8.S
 
 $(patsubst $(srcdir)/config/ia16/%.S,%$(objext),$(LIB2ADD)) : \
 	%.o: $(srcdir)/config/ia16/%.S \
 	     $(srcdir)/config/ia16/ia16-preamble.h \
-	     $(srcdir)/config/ia16/ia16-divmodsi.h
+	     $(srcdir)/config/ia16/ia16-divmodsi.h \
+	     $(srcdir)/config/ia16/ia16-far-call-thunks-imm.h \
+	     $(srcdir)/config/ia16/ia16-far-call-pop-thunks-imm.h
