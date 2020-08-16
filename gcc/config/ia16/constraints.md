@@ -162,6 +162,12 @@
    (and (match_code "const_int")
 	(match_test "ival == 257")))
 
+; Supported immediate byte argument counts for specialized far -> near
+; function call thunks.
+(define_constraint	"Ifa"	"Used internally for calling near functions from far functions."
+   (and (match_code "const_int")
+	(match_test "ival >= 0 && ival <= 8 && ival % 2 == 0")))
+
 ; Supported immediate operands for "in" and "out".
 (define_constraint	"N"	"Unsigned 8-bit integer constant (for @code{in} and @code{out} instructions."
    (and (match_code "const_int")

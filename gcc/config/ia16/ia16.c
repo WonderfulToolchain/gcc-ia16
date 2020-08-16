@@ -3928,7 +3928,7 @@ const char * const ia16_immediate_prefix[] = {
    'X': Print the name of E as a 16-bit operand.
    'W': Print the value of the constant E unsigned-divided by 2 (for loading
 	%cx before a `rep; movsw').
-   'R': Don't print any register prefix before E.
+   'R': Don't print any register prefix or immediate prefix before E.
    'O': Print the low 16 bits of the 32-bit constant E (for immediate
 	`lcall' and `ljmp').
    'S': Print the high 16 bits of the 32-bit constant E.
@@ -4015,7 +4015,7 @@ ia16_print_operand (FILE *file, rtx e, int code)
       case CONST:
       case SYMBOL_REF:
       case LABEL_REF:
-      if (code != 'Z')
+      if (code != 'Z' && code != 'R')
 	{
 	  switch (ia16_asm_dialect)
 	    {
