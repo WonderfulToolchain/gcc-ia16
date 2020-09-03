@@ -3926,6 +3926,7 @@ const char * const ia16_immediate_prefix[] = {
    'L': Print the name of the lower 8-bits of E.
    'H': Print the name of the upper 8-bits of E.
    'X': Print the name of E as a 16-bit operand.
+   'Y': Print the memory reference E as a 32-bit operand.  Used in -masm=intel.
    'W': Print the value of the constant E unsigned-divided by 2 (for loading
 	%cx before a `rep; movsw').
    'R': Don't print any register prefix or immediate prefix before E.
@@ -3952,6 +3953,11 @@ ia16_print_operand (FILE *file, rtx e, int code)
    */
   if (code == 'X')
     x = simplify_gen_subreg (HImode, e, QImode, 0);
+  else if (code == 'Y')
+    {
+      gcc_assert (MEM_P (e));
+      x = adjust_address (e, SImode, 0);
+    }
   else if (code == 'L')
     if (GET_MODE (e) == VOIDmode)
       x = simplify_gen_subreg (QImode, e, HImode, 0);

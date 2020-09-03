@@ -294,7 +294,7 @@
 	(match_operand:SEG 3 "memory_operand" "m"))]
   "reload_completed
    && ia16_move_multiple_mem_p (HImode, operands[1], operands[3])"
-  "l%R2{w\t%1,\t%0|\t%0,\t%1}"
+  "l%R2{w\t%1,\t%0|\t%0,\t%Y1}"
 )
 
 ;; Misc peepholes.
