@@ -4831,16 +4831,24 @@ ia16_expand_epilogue (bool sibcall)
 
 /* GNU as does not like
 	lcall	$foo@OZSEG16,	$foo
-   and says "Error: can't handle non absolute segment in `lcall'".  */
+   and says "Error: can't handle non absolute segment in `lcall'".
+
+   Furthermore, in segelf mode, GNU as has a bug that makes it barf on
+	.reloc	.+3, R_386_SEG16, "foo!"
+   --- it says "Error: invalid offset expression".  FIXME.  */
 #define LCALL_TEMPLATE(dest) \
 			(TARGET_ABI_SEGELF \
-			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
+			   ?    ".set\t.LSEG%=, .+3\n" \
+			      "\t.reloc\t.LSEG%=, R_386_SEG16, " \
+						 "\"" dest "!\"\n" \
 			     "\t{lcall\t$0,\t$" dest "|call\t0:" dest "}" \
 			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
 			     "\t{lcall\t$0,\t$" dest "|call\t0:" dest "}")
 #define LJMP_TEMPLATE(dest) \
 			(TARGET_ABI_SEGELF \
-			   ?    ".reloc\t.+3, R_386_SEG16, \"" dest "!\"\n" \
+			   ?    ".set\t.LSEG%=, .+3\n" \
+			      "\t.reloc\t.LSEG%=, R_386_SEG16, " \
+						 "\"" dest "!\"\n" \
 			     "\t{ljmp\t$0,\t$" dest "|jmp\t0:" dest "}" \
 			   :    ".reloc\t.+3, R_386_OZSEG16, " dest "\n" \
 			     "\t{ljmp\t$0,\t$" dest "|jmp\t0:" dest "}")

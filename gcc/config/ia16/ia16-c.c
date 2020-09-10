@@ -59,7 +59,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20200816L");
+  def_macro ("__ia16__=20200910L");
   def_macro ("__FAR");
   def_macro ("__SEG_SS");
 
@@ -241,7 +241,8 @@ ia16_cpu_cpp_builtins (void)
     rv = asprintf (&defn, "__IA16___CRT_CALL_STATIC_FUNCTION(o,f)"
 			  "=__asm(\".pushsection .text; "
 				   "\" o \"; "
-				   ".reloc .+3, R_386_SEG16, "
+				   ".set __ia16_crt_call, .+3; "
+				   ".reloc __ia16_crt_call, R_386_SEG16, "
 					  "\\\"%s\" #f \"!\\\"; "
 				   "lcall $0, $%s\" #f \"; "
 				   ".text; "
