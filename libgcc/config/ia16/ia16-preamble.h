@@ -49,7 +49,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 # define NT_(insn...)		insn
 #endif
 #ifdef __IA16_ABI_SEGELF
-# define SR__(place, aux)	.reloc (place), R_386_SEG16, #aux
+	/*
+	 * FIXME: we should be able to just say
+	 *	.reloc (place), R_386_SEG16, #aux
+	 * here but binutils-ia16 gas says "Error: invalid offset expression".
+	 * In the long term I hope to figure out how to solve this.  -- tkchia
+	 */
+# define SR__(place, aux)	__ia16_tmp_place = (place); \
+				.reloc __ia16_tmp_place, R_386_SEG16, #aux
 # define SR_(place, sym)	SR__(place, sym##!)
 #else
 # define SR_(place, sym)	.reloc (place), R_386_OZSEG16, sym

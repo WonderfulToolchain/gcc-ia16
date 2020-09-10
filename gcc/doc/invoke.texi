@@ -757,12 +757,12 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} @gol
--mmsdos -mmsdos-handle-v1 -melks -melks-libc @gol
+-mmsdos -mmsdos-handle-v1 -@gol
 -maout-stack=@var{stack-size} -mstack-size=@var{stack-size} @gol
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mshort-jumps @gol
 -mrtd -mstdcall -mregparmcall @gol
--mno-callee-assume-ds-data-segment -mprotected-mode @gol
+-mno-callee-assume-ds-data-segment -mprotected-mode -melks -melks-libc @gol
 -mcmodel=medium -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
 -mdpmiable -msegelf -mno-callee-assume-ss-data-segment -masm=intel @gol
 -maout-total=@var{total} -maout-chmem=@var{chmem} @gol
@@ -16579,31 +16579,6 @@ at startup, whether the code is indeed running on an 80186-capable system.
 This requires support from the C library, and currently only works when
 targeting MS-DOS.
 
-@item -melks
-@opindex melks
-@item -melks-libc
-@opindex melks-libc
-Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
-system.  In addition, link against ELKS's own C runtime library---which must
-be built with GCC, and installed---instead of the Newlib C library.
-
-This option also turns on @option{-mprotected-mode} and
-@option{-mcmodel=small}.
-@c
-@c Before December 2019, -melks used to link ELKS programs with an
-@c ELKS-ified Newlib, while -melks-libc would link with elks-libc.  Since,
-@c to my knowledge, nobody has been actually using Newlib to build ELKS
-@c programs, I have decided to unify the two options.  -- tkchia
-
-@item -maout-stack=@var{stack-size}
-@item -mstack-size=@var{stack-size}
-@opindex maout-stack
-@opindex mstack-size
-When building an ELKS program (@option{-melks}), set it to request the
-operating system to reserve at least @var{stack-size} bytes in the data
-segment for the stack.  This requires support from the linker back-end and
-from the linker script which comes with the C library.
-
 @item -maout-heap=@var{heap-size}
 @opindex maout-heap
 When building an ELKS program (@option{-melks}), set it to request the
@@ -16765,6 +16740,31 @@ code against library routines that are built to work with protected mode.
 @subsubsection Experimental IA-16 Options
 
 @table @gcctabopt
+@item -melks
+@opindex melks
+@item -melks-libc
+@opindex melks-libc
+Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
+system.  In addition, link against ELKS's own C runtime library---which must
+be built with GCC, and installed---instead of the Newlib C library.
+
+This option also turns on @option{-mprotected-mode},
+@option{-mcmodel=small}, @option{-msegelf}, and @option{-fuse-ld=gold}.
+@c
+@c Before December 2019, -melks used to link ELKS programs with an
+@c ELKS-ified Newlib, while -melks-libc would link with elks-libc.  Since,
+@c to my knowledge, nobody has been actually using Newlib to build ELKS
+@c programs, I have decided to unify the two options.  -- tkchia
+
+@item -maout-stack=@var{stack-size}
+@item -mstack-size=@var{stack-size}
+@opindex maout-stack
+@opindex mstack-size
+When building an ELKS program (@option{-melks}), set it to request the
+operating system to reserve at least @var{stack-size} bytes in the data
+segment for the stack.  This requires support from the linker back-end and
+from the linker script which comes with the C library.
+
 @item -mcmodel=medium
 @opindex mcmodel=medium
 Generate code for the medium code model, with one data segment and multiple
@@ -16804,6 +16804,7 @@ requires support from the linker script which comes with the C library.
 Generate object files which follow H.@: Peter Anvin's proposed 16-bit
 segmented code ABI,
 @url{https://git.zytor.com/users/hpa/segelf/abi.git/plain/segelf.txt}.
+This is now (September 2020) the default for ELKS (@option{-melks}).
 
 @strong{Warning:} The @option{-msegelf} switch causes GCC
 to generate code that is not binary compatible with code generated

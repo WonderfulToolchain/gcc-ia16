@@ -23,7 +23,10 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 #define DRIVER_SELF_SPECS \
-  "%{melks-libc:-nostdinc}", \
+  "%{melks-libc:"	\
+    "-nostdinc "	\
+    "%{mno-segelf:;:-msegelf} " \
+    "%{fuse-ld=*:;:-fuse-ld=gold}}", \
   "%{melks-libc|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
@@ -97,11 +100,10 @@
   "} "			\
   "%{melks-libc:"	\
     "-m i386elks "	\
-    "%{mcmodel=tiny:--tiny} " \
-    "%{maout-total=*:--total-data %* --defsym=_total=%*} " \
-    "%{maout-chmem=*:--chmem %* --defsym=_chmem=%*} " \
-    "%{maout-stack=*:--stack %* --defsym=_stack=%*} " \
-    "%{maout-heap=*:--heap %* --defsym=_heap=%*}}"
+    "%{maout-total=*:--defsym=_total=%*} " \
+    "%{maout-chmem=*:--defsym=_chmem=%*} " \
+    "%{maout-stack=*:--defsym=_stack=%*} " \
+    "%{maout-heap=*:--defsym=_heap=%*}}"
 
 #define STARTFILE_SPEC	\
   "%{melks-libc:-l:crt0.o}"
@@ -138,3 +140,13 @@
   { "cmodel_l_ld", "%{mcmodel=medium:ml.ld;mcmodel=small:sl.ld;:tl.ld}" }, \
   { "cmodel_sl_ld", "%{mcmodel=medium:msl.ld;mcmodel=small:ssl.ld;:tsl.ld}" },\
   { "cmodel_long_ld", "%{mcmodel=*:%*.ld;:tiny.ld}" }
+
+#define POST_LINK_SPEC	\
+  "%{melks-libc:"	\
+    "elf2elks %{v} "	\
+	     "%{mcmodel=tiny:--tiny} " \
+	     "%{maout-total=*:--total-data %*} " \
+	     "%{maout-chmem=*:--chmem %*} " \
+	     "%{maout-stack=*:--stack %*} " \
+	     "%{maout-heap=*:--heap %*} " \
+	     "%{o*:%*} %{!o*:a.out}}"
