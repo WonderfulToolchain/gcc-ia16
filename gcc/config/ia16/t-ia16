@@ -21,6 +21,9 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/frame-pointer \
 	  -o -e \
 	  "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/frame-pointer\
+	  -o -e "$(prefix)"/ia16-elf/lib/size \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/size \
+	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/size \
 	  -o -e "$(prefix)"/ia16-elf/lib/rtd/elkslibc \
 	  -o -e "$(prefix)"/ia16-elf/lib/regparmcall/elkslibc; \
 	then \
@@ -46,6 +49,9 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  find "$(prefix)"/ia16-elf/lib -name frame-pointer -ls; \
 	  find "$(prefix)"/lib/gcc/ia16-elf -name frame-pointer -ls; \
 	  find "$(prefix)"/ia16-elf/include -name frame-pointer -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name size -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name size -ls; \
+	  find "$(prefix)"/ia16-elf/include -name size -ls; \
 	  find "$(prefix)"/ia16-elf/lib -name elkslibc -ls; \
 	  echo 'and arrange to rebuild GCC.'; \
 	  echo; \
@@ -66,8 +72,8 @@ ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.c \
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
 MULTILIB_OPTIONS=mprotected-mode melks-libc \
-	mcmodel=medium mrtd/mregparmcall march=any_186 Os
-MULTILIB_DIRNAMES=pmode elkslibc medium rtd regparmcall any_186 size
+	mcmodel=medium mrtd/mregparmcall march=any_186
+MULTILIB_DIRNAMES=pmode elkslibc medium rtd regparmcall any_186
 MULTILIB_MATCHES=mprotected-mode=melks \
 	march?any_186=march?i80186 march?any_186=march?i80188 \
 	march?any_186=march?v20 march?any_186=march?v30 \
@@ -81,32 +87,23 @@ ia16_all_multilibs=$(strip \
 	    $(foreach mm,- mcmodel=medium,\
 	      $(foreach cc,- mrtd mregparmcall,\
 		$(foreach ar,- march=any_186, \
-		  $(foreach op,- Os, \
-		    $(pm)/$(el)/$(mm)/$(cc)/$(ar)/$(op)))))))))))
+		  $(pm)/$(el)/$(mm)/$(cc)/$(ar))))))))))
 #
 # (1) `-mprotected-mode -melks-libc' is the same as just `-melks-libc'.
 # (2) Build 80186+ multilibs only for the `regparmcall' convention.
 # (3) For now, do not build 186+-specific multilibs at all for -melks-libc,
 #     -mprotected-mode, or -mcmodel=medium.
-# (4) Assume that -melks-libc and -mprotected-mode multilibs are always size-
-#     -optimized.  Do not build size-optimized multilibs for the medium model.
 #	-- tkchia
 #
 ia16_multilib_map=$(strip \
   $(filter-out march=any_186,\
-    $(patsubst march=any_186/%,%,\
-      $(subst mrtd/march=any_186,mrtd,\
-	$(subst mprotected-mode/march=any_186,mprotected-mode,\
-	  $(subst melks-libc/march=any_186,melks-libc,\
-	    $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
-	      $(subst /mregparmcall/march=any_186,/mregparmcall,\
-		$(patsubst mprotected-mode%/Os,mprotected-mode%,\
-		  $(patsubst melks-libc%/Os,melks-libc%,\
-		    $(patsubst mcmodel=medium%/Os,mcmodel=medium%,\
-		      $(patsubst mprotected-mode/mcmodel=medium%/Os,\
-				 mprotected-mode/mcmodel=medium%,\
-			$(subst mprotected-mode/melks-libc,melks-libc,\
-			  $1)))))))))))))
+    $(subst mrtd/march=any_186,mrtd,\
+      $(subst mprotected-mode/march=any_186,mprotected-mode,\
+	$(subst melks-libc/march=any_186,melks-libc,\
+	  $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
+	    $(subst /mregparmcall/march=any_186,/mregparmcall,\
+	      $(subst mprotected-mode/melks-libc,melks-libc,\
+		$1))))))))
 MULTILIB_REQUIRED=$(strip \
 	$(foreach ml,$(ia16_all_multilibs),\
 	  $(filter $(call ia16_multilib_map,$(ml)),$(ml))))
