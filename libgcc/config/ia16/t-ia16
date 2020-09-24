@@ -1,8 +1,6 @@
 # 16.1 Target Makefile Fragments
 
-ifneq ($(filter -Os -mprotected-mode -melks%,$(CC) $(CFLAGS)),)
-  HOST_LIBGCC2_CFLAGS += -Os
-endif
+HOST_LIBGCC2_CFLAGS += -Os
 FPBIT_CFLAGS = -DSMALL_MACHINE
 DPBIT_CFLAGS = -DSMALL_MACHINE
 
