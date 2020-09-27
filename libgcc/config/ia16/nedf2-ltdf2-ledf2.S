@@ -33,6 +33,5 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 __nedf2:
 __ltdf2:
 __ledf2:
-NT_(	jmp	__eqdf2			)
-FT_(	SR_(.+3, __eqdf2)		)
-FT_(	ljmp	$0,	$__eqdf2	)
+NT_(	jmp	__eqdf2				)
+FT_(	ljmp	$ SR_ (__eqdf2), $__eqdf2	)

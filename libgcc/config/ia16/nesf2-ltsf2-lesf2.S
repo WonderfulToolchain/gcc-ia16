@@ -38,6 +38,5 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 __nesf2:
 __ltsf2:
 __lesf2:
-NT_(	jmp	__eqsf2			)
-FT_(	SR_(.+3, __eqsf2)		)
-FT_(	ljmp	$0,	$__eqsf2	)
+NT_(	jmp	__eqsf2				)
+FT_(	ljmp	$ SR_ (__eqsf2), $__eqsf2	)

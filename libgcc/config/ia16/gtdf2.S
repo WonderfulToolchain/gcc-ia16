@@ -27,6 +27,5 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	.global	__gtdf2
 	.type	__gtdf2, @function
 __gtdf2:
-NT_(	jmp	__gedf2			)
-FT_(	SR_(.+3, __gedf2)		)
-FT_(	ljmp	$0,	$__gedf2	)
+NT_(	jmp	__gedf2				)
+FT_(	ljmp	$ SR_ (__gedf2), $__gedf2	)
