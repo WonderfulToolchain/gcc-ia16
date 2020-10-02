@@ -51,6 +51,17 @@ assert_or_unassert (const char *predicate, bool assert_p)
     cpp_unassert (parse_in, predicate);
 }
 
+/* Whether to support the __far & __seg_ss address space qualifiers.
+
+   As of writing, these qualifiers are really only recognized when
+   processing the C language specifically, not Objective-C or C++, & only if
+   GNU language extensions are enabled.  -- tkchia 20201002 */
+static bool
+have_addr_spaces_p (void)
+{
+  return ! c_dialect_cxx () && ! c_dialect_objc () && ! flag_no_asm;
+}
+
 /* Implements TARGET_CPU_CPP_BUILTINS.  */
 void
 ia16_cpu_cpp_builtins (void)
@@ -60,8 +71,12 @@ ia16_cpu_cpp_builtins (void)
   int rv;
 
   def_macro ("__ia16__=20200927L");
-  def_macro ("__FAR");
-  def_macro ("__SEG_SS");
+
+  if (have_addr_spaces_p ())
+    {
+      def_macro ("__FAR");
+      def_macro ("__SEG_SS");
+    }
 
   /* Define macros corresponding to features supported in the chosen -march=
      architecture.  Here I follow the ARM convention of defining macros with
@@ -260,6 +275,9 @@ ia16_cpu_cpp_builtins (void)
 void
 ia16_register_pragmas (void)
 {
-  c_register_addr_space ("__far", ADDR_SPACE_FAR);
-  c_register_addr_space ("__seg_ss", ADDR_SPACE_SEG_SS);
+  if (have_addr_spaces_p ())
+    {
+      c_register_addr_space ("__far", ADDR_SPACE_FAR);
+      c_register_addr_space ("__seg_ss", ADDR_SPACE_SEG_SS);
+    }
 }
