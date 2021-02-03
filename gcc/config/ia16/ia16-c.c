@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20201106L");
+  def_macro ("__ia16__=20210203L");
 
   if (have_addr_spaces_p ())
     {
@@ -220,12 +220,19 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ASM_INTEL", ia16_asm_dialect == ASM_INTEL);
 
   /* Define macros corresponding to the chosen target operating system.
+
      Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
-     either __MSDOS__ or __ELKS__.  */
+     either __MSDOS__ or __ELKS__.
+
+     Open Watcom defines (!) __DOS__, _DOS, & MSDOS.  The last macro may
+     pollute the user namespace, so it is probably not a good idea (yet) to
+     define it here.  -- tkchia */
   def_or_undef_macro ("__ELKS__", TARGET_SYS_ELKS);
   def_or_undef_macro ("__IA16_SYS_ELKS", TARGET_SYS_ELKS);
   assert_or_unassert ("system=elks", TARGET_SYS_ELKS);
   def_or_undef_macro ("__MSDOS__", TARGET_SYS_MSDOS);
+  def_or_undef_macro ("__DOS__", TARGET_SYS_MSDOS);
+  def_or_undef_macro ("_DOS", TARGET_SYS_MSDOS);
   def_or_undef_macro ("__IA16_SYS_MSDOS", TARGET_SYS_MSDOS);
   assert_or_unassert ("system=msdos", TARGET_SYS_MSDOS);
 
