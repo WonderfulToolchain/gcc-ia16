@@ -78,6 +78,35 @@ ia16_cpu_cpp_builtins (void)
       def_macro ("__SEG_SS");
     }
 
+  /* These are for compatibility with programs that check for Open Watcom
+     macros.  __X86__ & _M_IX86 indicate an Intel x86 target, while the
+     other macros specifically indicate a 16-bit Intel x86 target.
+
+     On _M_IX86, the _Open Watcom C/C++ User's Guide_ says,
+	"The _M_IX86 macro is identically equal to 100 times the
+	 architecture compiler option value (-0, -1, -2, -3, -4, -5, etc.)."
+
+     (Open Watcom actually also defines M_I86, but this intrudes into the
+     user namespace.)  -- tkchia */
+  def_macro ("__X86__");
+  def_macro ("__I86__");
+  def_macro ("_M_I86");
+  switch (target_arch)
+    {
+    default:
+      def_macro ("_M_IX86=0");
+      break;
+    case PROCESSOR_ANY_186:
+    case PROCESSOR_NEC_V30:
+    case PROCESSOR_NEC_V20:
+    case PROCESSOR_I80186:
+    case PROCESSOR_I80188:
+      def_macro ("_M_IX86=100");
+      break;
+    case PROCESSOR_I80286:
+      def_macro ("_M_IX86=200");
+    }
+
   /* Define macros corresponding to features supported in the chosen -march=
      architecture.  Here I follow the ARM convention of defining macros with
      names __*_FEATURE_*, since it seems clearer than the i386 convention of
@@ -159,25 +188,34 @@ ia16_cpu_cpp_builtins (void)
   /* Define macros corresponding to the chosen memory model.  I define both
      an AArch64-style macro __IA16_CMODEL_{TINY | SMALL | ...}__, and a
      simple __{TINY | SMALL | ...}__ macro as used in the classical Borland
-     C and Open Watcom compilers (and others).  -- tkchia */
+     C and Open Watcom compilers (and others).
+
+     Open Watcom and Digital Mars also define _M_I86...M macros, so do that
+     here too.  -- tkchia */
   def_p = (target_cmodel == CMODEL_TINY);
   def_or_undef_macro ("__IA16_CMODEL_TINY__", def_p);
   def_or_undef_macro ("__TINY__", def_p);
+  def_or_undef_macro ("_M_I86TM", def_p);
   def_p = (target_cmodel == CMODEL_SMALL);
   def_or_undef_macro ("__IA16_CMODEL_SMALL__", def_p);
   def_or_undef_macro ("__SMALL__", def_p);
+  def_or_undef_macro ("_M_I86SM", def_p);
   def_p = (target_cmodel == CMODEL_MEDIUM);
   def_or_undef_macro ("__IA16_CMODEL_MEDIUM__", def_p);
   def_or_undef_macro ("__MEDIUM__", def_p);
+  def_or_undef_macro ("_M_I86MM", def_p);
   def_p = (target_cmodel == CMODEL_COMPACT);
   def_or_undef_macro ("__IA16_CMODEL_COMPACT__", def_p);
   def_or_undef_macro ("__COMPACT__", def_p);
+  def_or_undef_macro ("_M_I86CM", def_p);
   def_p = (target_cmodel == CMODEL_LARGE);
   def_or_undef_macro ("__IA16_CMODEL_LARGE__", def_p);
   def_or_undef_macro ("__LARGE__", def_p);
+  def_or_undef_macro ("_M_I86LM", def_p);
   def_p = (target_cmodel == CMODEL_HUGE);
   def_or_undef_macro ("__IA16_CMODEL_HUGE__", def_p);
   def_or_undef_macro ("__HUGE__", def_p);
+  def_or_undef_macro ("_M_I86HM", def_p);
 
   /* Convenience macro.  */
   def_or_undef_macro ("__IA16_CMODEL_IS_FAR_TEXT", TARGET_CMODEL_IS_FAR_TEXT);
@@ -224,9 +262,9 @@ ia16_cpu_cpp_builtins (void)
      Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
      either __MSDOS__ or __ELKS__.
 
-     Open Watcom defines (!) __DOS__, _DOS, & MSDOS.  The last macro may
-     pollute the user namespace, so it is probably not a good idea (yet) to
-     define it here.  -- tkchia */
+     For the MS-DOS target , Open Watcom defines (!) __DOS__, _DOS, & MSDOS. 
+     The last macro may pollute the user namespace, so it is probably not a
+     good idea (yet) to define it here.  -- tkchia */
   def_or_undef_macro ("__ELKS__", TARGET_SYS_ELKS);
   def_or_undef_macro ("__IA16_SYS_ELKS", TARGET_SYS_ELKS);
   assert_or_unassert ("system=elks", TARGET_SYS_ELKS);
