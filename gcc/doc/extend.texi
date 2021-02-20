@@ -4274,10 +4274,10 @@ entry.  It has no effect if @code{ds} is a call-saved register.
 Note that, if @code{ds} is a call-used register (the default), this also
 means that the function may clobber @code{ds}---and callers cannot assume
 that the function will preserve it---unless you also specify the
-@code{restore_ds} attribute.
+@code{save_ds} attribute.
 
-@item restore_ds
-@cindex @code{restore_ds} function attribute, IA-16
+@item save_ds
+@cindex @code{save_ds} function attribute, IA-16
 This attribute, attached to a function, means that the function should
 preserve the @code{ds} register value and restore it on function return.
 This is mostly useful in conjunction with the @code{no_assume_ds_data}
