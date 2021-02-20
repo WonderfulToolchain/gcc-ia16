@@ -299,6 +299,8 @@ ia16_get_call_parm_cvt (const_tree type)
 #define IA16_CALLCVT_FAR_SECTION	0x0100
 
 static bool ia16_far_function_type_p (const_tree funtype);
+static rtx ia16_seg16_reloc (rtx thang);
+static void ia16_error_seg_reloc (location_t loc, const char *msg);
 
 static unsigned
 ia16_get_callcvt (const_tree type)
@@ -345,11 +347,6 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_ss_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_SS_DATA;
-
-  if ((callcvt & (IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA)) == 0)
-    error_at (type && TYPE_NAME (type)
-		? DECL_SOURCE_LOCATION (TYPE_NAME (type)) : UNKNOWN_LOCATION,
-	      "unsupported: function with both %%ds and %%ss != .data");
 
   return callcvt;
 }
@@ -421,6 +418,9 @@ ia16_far_function_type_p (const_tree funtype)
     return TYPE_ADDR_SPACE (funtype) == ADDR_SPACE_FAR;
 }
 
+#define LABEL_IN_DATA_SEG	"__ia16_near_data_seg_label"
+static bool need_label_in_data_seg = false;
+
 /* Determine the current function's calling convention.  Also obtain an RTX
    for the initial %ds value, if necessary --- this is used if the current
    function has %ss != .data.
@@ -440,10 +440,28 @@ ia16_cache_function_info (bool need_data_seg_rtx_p)
 
   if (need_data_seg_rtx_p && ! machine->data_seg_rtx_cached_p)
     {
-      if ((machine->cached_callcvt & IA16_CALLCVT_SS_DATA) != 0)
+      unsigned callcvt = machine->cached_callcvt;
+      if ((callcvt & IA16_CALLCVT_SS_DATA) != 0)
 	machine->data_seg_rtx = NULL_RTX;
-      else
+      else if ((callcvt & IA16_CALLCVT_DS_DATA) != 0)
 	machine->data_seg_rtx = get_hard_reg_initial_val (SEGmode, DS_REG);
+      else if (TARGET_CMODEL_IS_TINY && ! TARGET_PROTECTED_MODE)
+	machine->data_seg_rtx = gen_rtx_REG (SEGmode, CS_REG);
+      else
+	{
+	  rtx x;
+	  if (! TARGET_SEG_RELOC_STUFF)
+	    ia16_error_seg_reloc (input_location,
+				  "function with both %ds and %ss != .data "
+				  "needs relocations to reach .data");
+
+	  need_label_in_data_seg = true;
+	  x = gen_rtx_SYMBOL_REF (Pmode, LABEL_IN_DATA_SEG);
+	  x = ia16_seg16_reloc (x);
+	  x = copy_to_reg (x);
+	  emit_use (x);
+	  machine->data_seg_rtx = x;
+	}
       machine->data_seg_rtx_cached_p = true;
     }
 }
@@ -1315,7 +1333,8 @@ ia16_function_attribute_inlinable_p (const_tree fndecl)
   their_cvt &= ~(IA16_CALLCVT_FAR | IA16_CALLCVT_NEAR_SECTION);
 
   if (their_cvt == our_cvt
-      || their_cvt == (our_cvt & ~IA16_CALLCVT_SS_DATA))
+      || their_cvt == (our_cvt
+		       & ~(IA16_CALLCVT_DS_DATA | IA16_CALLCVT_SS_DATA)))
     return true;
 
   return false;
@@ -3722,6 +3741,8 @@ ia16_asm_file_end (void)
 	fputs (	"\t.weak\t__ia16_use_scanf_float.v1\n"
 		"\t.set\t__ia16_use_scanf_float.v1,1\n", asm_out_file);
     }
+  if (need_label_in_data_seg)
+    fputs ("\t.lcomm\t" LABEL_IN_DATA_SEG ",0\n", asm_out_file);
 }
 
 #undef	TARGET_ASM_FUNCTION_SECTION
