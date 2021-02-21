@@ -73,7 +73,7 @@ struct target_rtl *ia16_ss_data_target_rtl = NULL,
 	 to `(use)' the <data-seg-rtx> whenever it is `(set)' (near the
 	 function entry); and
 
-      b) I add insns
+      b) For functions that assume %ds == .data != %ss, I add insns
 		(set (reg:SEG DS_REG) <data-seg-rtx>)
 		(use (reg:SEG DS_REG))
 	 at every place where the function may exit.
@@ -244,7 +244,8 @@ ia16_lra_p (void)
 	    }
 	}
 
-      add_ds_resets ();
+      if (ia16_in_ds_data_function_p ())
+	add_ds_resets ();
     }
 
   return true;
