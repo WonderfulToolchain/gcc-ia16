@@ -1,11 +1,11 @@
 /* { dg-options "-std=gnu11 --save-temps" } */
 /* { dg-do run } */
 
-/* Test that the restore_ds function attribute works.  */
+/* Test that the no_save_ds function attribute works.  */
 
 void abort (void);
 
-__attribute__ ((noinline, no_assume_ds_data, restore_ds)) static unsigned
+__attribute__ ((noinline, no_assume_ds_data)) static unsigned
 foo (void)
 {
   unsigned v;
@@ -14,7 +14,7 @@ foo (void)
   return v;
 }
 
-__attribute__ ((noinline, no_assume_ds_data)) static unsigned
+__attribute__ ((noinline, no_assume_ds_data, no_save_ds)) static unsigned
 bar (void)
 {
   unsigned v;
