@@ -1,5 +1,5 @@
 /* Subroutines used during code generation for Intel 16-bit x86.
-   Copyright (C) 2005-2020 Free Software Foundation, Inc.
+   Copyright (C) 2005-2021 Free Software Foundation, Inc.
    Contributed by Rask Ingemann Lambertsen <rask@sygehus.dk>
    Changes by Andrew Jenner <andrew@codesourcery.com>
    Very preliminary IA-16 far pointer support and other changes by TK Chia
@@ -486,16 +486,14 @@ ia16_in_far_function_p (void)
 }
 
 /* Return true iff TYPE is a type for a function which assumes that %ds
-   points to the program's data segment on function entry.
-
-   If %ds is a call-saved register (-fcall-saved-ds), this is always false.  */
+   points to the program's data segment on function entry. */
 int
 ia16_ds_data_function_type_p (const_tree funtype)
 {
   tree attrs;
 
   if (! call_used_regs[DS_REG])
-    return 0;
+    return 1;
 
   attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
 
@@ -522,27 +520,38 @@ ia16_in_ds_data_function_p (void)
 }
 
 /* Return true iff TYPE is a type for a function which correctly restores the
-   value of %ds on function exit.
+   value of %ds to its value on entry, upon function exit.
 
-   If the function assume %ds == .data on entry, this is always true.
-
-   If %ds is a call-saved register (-fcall-saved-ds), this is always false.  */
+   If the function assume %ds == .data on entry, this is always true. */
 int
 ia16_save_ds_function_type_p (const_tree funtype)
 {
   tree attrs;
 
   if (! call_used_regs[DS_REG])
-    return 0;
+    return 1;
 
   attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
 
   if (TARGET_ASSUME_DS_DATA)
-    return ! attrs || ! lookup_attribute ("no_assume_ds_data", attrs)
-		   || lookup_attribute ("save_ds", attrs);
+    {
+      if (! attrs)
+	return 1;
+      if (lookup_attribute ("no_assume_ds_data", attrs)
+	  && lookup_attribute ("no_save_ds", attrs))
+	return 0;
+    }
   else
-    return attrs && (lookup_attribute ("assume_ds_data", attrs)
-		     || lookup_attribute ("save_ds", attrs));
+    {
+      if (! attrs)
+	return 0;
+      if (lookup_attribute ("assume_ds_data", attrs))
+	return 1;
+      if (lookup_attribute ("no_save_ds", attrs))
+	return 0;
+    }
+
+  return 1;
 }
 
 int
@@ -1220,14 +1229,21 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (is_attribute_p ("save_ds", name))
+  if (is_attribute_p ("no_save_ds", name))
     {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("assume_ds_data", attrs))
+	{
+	  error ("assume_ds_data and no_save_ds attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+
       if (fixed_regs[DS_REG])
 	{
 	  warning (OPT_Wattributes, "%qE attribute directive ignored as "
 				    "%%ds is a fixed register", name);
 	  *no_add_attrs = true;
-	  return NULL_TREE;
 	}
     }
 
@@ -1248,7 +1264,8 @@ static const struct attribute_spec ia16_attribute_table[] =
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ss_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "save_ds", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "no_save_ds",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "far_section",

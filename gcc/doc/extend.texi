@@ -4269,22 +4269,24 @@ This attribute has no effect if @code{ds} is a call-saved register
 @cindex @code{no_assume_ds_data} function attribute, IA-16
 This attribute, attached to a function, causes the compiler @emph{not} to
 assume that @code{ds} points to the program's data segment on function
-entry.  It has no effect if @code{ds} is a call-saved register.
+entry.  It has no effect if @option{-ffixed-ds} or @option{-fcall-saved-ds}
+is used.
 
-Note that, if @code{ds} is a call-used register (the default), this also
-means that the function may clobber @code{ds}---and callers cannot assume
-that the function will preserve it---unless you also specify the
-@code{save_ds} attribute.
+By default, @code{no_assume_ds_data} also means the function will save the
+value of @code{ds} on entry, and restore it on exit.  To allow the function
+to clobber @code{ds}, you can specify the @code{no_save_ds} attribute as
+well.
 
-@item save_ds
-@cindex @code{save_ds} function attribute, IA-16
-This attribute, attached to a function, means that the function should
-preserve the @code{ds} register value and restore it on function return.
+@item no_save_ds
+@cindex @code{no_save_ds} function attribute, IA-16
+This attribute, attached to a function, means that the function is allowed
+to clobber @code{ds}, and callers cannot assume that the function will
+preserve it.
 This is mostly useful in conjunction with the @code{no_assume_ds_data}
 attribute.
 
-This attribute has no effect if @code{ds} is a fixed or call-saved register
-(@option{-ffixed-ds} or @option{-fcall-saved-ds}).
+This attribute has no effect if @option{-ffixed-ds} or
+@option{-fcall-saved-ds} is used.
 
 @item no_assume_ss_data
 @cindex @code{no_assume_ss_data} function attribute, IA-16
