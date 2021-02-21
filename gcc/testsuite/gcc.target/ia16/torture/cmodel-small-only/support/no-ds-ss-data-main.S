@@ -38,19 +38,30 @@ main:
 	sti
 	pushw	%cx			/* remember old %ss:%sp */
 	pushw	%bx
+#ifndef __IA16_FEATURE_PROTECTED_MODE
 	movw	$0x6bd4, %ax
+#else
+	xorw	%ax,	%ax
+#endif
 	movw	%ax,	%ds
 	call	do_stuff
 	testw	%ax,	%ax
 	jnz	.fail
-	popw	%bx
+	popw	%bx			/* restore %ss:%sp */
 	cli
 	popw	%ss
 	movw	%bx,	%sp
 	sti
 	movw	%ds,	%ax
+#ifndef __IA16_FEATURE_PROTECTED_MODE
 	cmpw	$0x6bd4, %ax
 	jnz	.fail
+#else
+	cmpw	$3,	%ax
+	ja	.fail
+#endif
+	pushw	%ss
+	popw	%ds
 	jmp	check_stuff
 .fail:
 	call	abort
