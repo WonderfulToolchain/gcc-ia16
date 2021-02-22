@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20210221L");
+  def_macro ("__ia16__=20210222L");
 
   if (have_addr_spaces_p ())
     {
@@ -138,7 +138,9 @@ ia16_cpu_cpp_builtins (void)
        * function calling conventions available through __attribute__ ((.))
        * calling near functions from __attribute__ ((far_section)) functions
        * __builtin_ia16_... (.) functions
-       * etc.  */
+       * etc.
+     __attribute__ ((__interrupt__)) is recognized but not fully supported
+     yet, so for now the corresponding macro is defined, but set to 0.  */
   def_or_undef_macro ("__IA16_FEATURE_FAR_STATIC_STORAGE",
 		      ! TARGET_CMODEL_IS_TINY);
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
@@ -152,6 +154,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_FAR_SECTION");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_INTERRUPT=0");
   def_macro ("__IA16_FEATURE_FAR_SECTION_TO_NEAR_CALLS");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
