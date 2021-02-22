@@ -16936,11 +16936,15 @@ This macro is defined only if static storage variables can be placed in
 @itemx __IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_NO_SAVE_DS
+@itemx __IA16_FEATURE_ATTRIBUTE_ASSUME_SS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_NEAR_SECTION
 @itemx __IA16_FEATURE_ATTRIBUTE_FAR_SECTION
+@itemx __IA16_FEATURE_ATTRIBUTE_INTERRUPT
 Each of these macros is defined only if the corresponding function attribute
-is supported (@pxref{IA-16 Function Attributes}).
+is recognized (@pxref{IA-16 Function Attributes}).  If the compiler knows
+about an attribute but does not fully support it, the macro will be defined
+with a value of 0.
 
 @item __BUILTIN_IA16_SELECTOR
 @itemx __BUILTIN_IA16_FP_OFF

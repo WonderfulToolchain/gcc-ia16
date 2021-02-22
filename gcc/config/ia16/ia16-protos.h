@@ -31,6 +31,7 @@ extern int		ia16_in_far_function_p (void);
 extern int		ia16_ds_data_function_type_p (const_tree funtype);
 extern int		ia16_save_ds_function_type_p (const_tree funtype);
 extern int		ia16_ss_data_function_type_p (const_tree funtype);
+extern int		ia16_interrupt_function_type_p (const_tree funtype);
 extern int		ia16_ds_data_function_rtx_p (rtx);
 extern int		ia16_save_ds_function_rtx_p (rtx);
 extern int		ia16_in_ds_data_function_p (void);

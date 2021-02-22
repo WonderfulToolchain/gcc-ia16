@@ -295,8 +295,9 @@ ia16_get_call_parm_cvt (const_tree type)
 #define IA16_CALLCVT_DS_DATA		0x0010
 #define IA16_CALLCVT_SS_DATA		0x0020
 #define IA16_CALLCVT_SAVE_DS		0x0040
-#define IA16_CALLCVT_NEAR_SECTION	0x0080
-#define IA16_CALLCVT_FAR_SECTION	0x0100
+#define IA16_CALLCVT_INTERRUPT		0x0080
+#define IA16_CALLCVT_NEAR_SECTION	0x0100
+#define IA16_CALLCVT_FAR_SECTION	0x0200
 
 static bool ia16_far_function_type_p (const_tree funtype);
 static rtx ia16_seg16_reloc (rtx thang);
@@ -347,6 +348,9 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_ss_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_SS_DATA;
+
+  if (ia16_interrupt_function_type_p (type))
+    callcvt |= IA16_CALLCVT_INTERRUPT;
 
   return callcvt;
 }
@@ -434,8 +438,11 @@ ia16_cache_function_info (bool need_data_seg_rtx_p)
   if (! machine->callcvt_cached_p)
     {
       tree type = cfun->decl ? TREE_TYPE (cfun->decl) : NULL_TREE;
-      machine->cached_callcvt = ia16_get_callcvt (type);
+      unsigned callcvt = ia16_get_callcvt (type);
+      machine->cached_callcvt = callcvt;
       machine->callcvt_cached_p = true;
+      if ((callcvt & IA16_CALLCVT_INTERRUPT) != 0)
+	error ("unsupported: defining an interrupt function in C code");
     }
 
   if (need_data_seg_rtx_p && ! machine->data_seg_rtx_cached_p)
@@ -498,9 +505,22 @@ ia16_ds_data_function_type_p (const_tree funtype)
   attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
 
   if (TARGET_ASSUME_DS_DATA)
-    return ! attrs || ! lookup_attribute ("no_assume_ds_data", attrs);
+    {
+      if (! attrs)
+	return 1;
+      if (lookup_attribute ("no_assume_ds_data", attrs)
+	  || lookup_attribute ("interrupt", attrs))
+	return 0;
+      return 1;
+    }
   else
-    return attrs && lookup_attribute ("assume_ds_data", attrs);
+    {
+      if (! attrs)
+	return 0;
+      if (lookup_attribute ("assume_ds_data", attrs))
+	return 1;
+      return 0;
+    }
 }
 
 int
@@ -545,8 +565,6 @@ ia16_save_ds_function_type_p (const_tree funtype)
     {
       if (! attrs)
 	return 0;
-      if (lookup_attribute ("assume_ds_data", attrs))
-	return 1;
       if (lookup_attribute ("no_save_ds", attrs))
 	return 0;
     }
@@ -578,9 +596,22 @@ ia16_ss_data_function_type_p (const_tree funtype)
   tree attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
 
   if (TARGET_ASSUME_SS_DATA)
-    return ! attrs || ! lookup_attribute ("no_assume_ss_data", attrs);
+    {
+      if (! attrs)
+	return 1;
+      if (lookup_attribute ("no_assume_ss_data", attrs)
+	  || lookup_attribute ("interrupt", attrs))
+	return 0;
+      return 1;
+    }
   else
-    return attrs && lookup_attribute ("assume_ss_data", attrs);
+    {
+      if (! attrs)
+	return 0;
+      if (lookup_attribute ("assume_ss_data", attrs))
+	return 1;
+      return 0;
+    }
 }
 
 int
@@ -590,6 +621,20 @@ ia16_in_ss_data_function_p (void)
     return TARGET_ASSUME_SS_DATA;
   ia16_cache_function_info (false);
   return (cfun->machine->cached_callcvt & IA16_CALLCVT_SS_DATA) != 0;
+}
+
+/* Return true iff TYPE is a type for a function which is meant to serve as
+   an interrupt service routine (ISR).  */
+int
+ia16_interrupt_function_type_p (const_tree funtype)
+{
+  tree attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
+
+  if (! attrs)
+    return 0;
+  if (lookup_attribute ("interrupt", attrs))
+    return 1;
+  return 0;
 }
 
 /* Re-recognize INSN: match PATTERN (INSN), which has likely just been
@@ -1142,14 +1187,21 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (! ia16_far_function_type_p (*node)
-      && (is_attribute_p ("near_section", name)
-	  || is_attribute_p ("far_section", name)))
+  if (! ia16_far_function_type_p (*node))
     {
-      warning (OPT_Wattributes, "%qE attribute directive ignored for "
-				"non-far function", name);
-      *no_add_attrs = true;
-      return NULL_TREE;
+      if (is_attribute_p ("near_section", name)
+	  || is_attribute_p ("far_section", name))
+	{
+	  warning (OPT_Wattributes, "%qE attribute directive ignored for "
+				    "non-far function", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+      else if (is_attribute_p ("interrupt", name))
+	{
+	  error ("cannot use %qE attribute with non-far function", name);
+	  *no_add_attrs = true;
+	}
     }
   /* The following attributes are ignored for non-far functions.  */
   else if (is_attribute_p ("near_section", name))
@@ -1196,14 +1248,16 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (! call_used_regs[DS_REG]
-      && (is_attribute_p ("assume_ds_data", name)
-	  || is_attribute_p ("no_assume_ds_data", name)))
+  if (! call_used_regs[DS_REG])
     {
-      warning (OPT_Wattributes, "%qE attribute directive ignored as %%ds is "
-				"a call-saved register", name);
-      *no_add_attrs = true;
-      return NULL_TREE;
+      if (is_attribute_p ("assume_ds_data", name)
+	  || is_attribute_p ("no_assume_ds_data", name))
+	{
+	  warning (OPT_Wattributes, "%qE attribute directive ignored as "
+				    "%%ds is a call-saved register", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
     }
   /* The following attributes are ignored if %ds is a call-saved register.  */
   else if (is_attribute_p ("assume_ds_data", name))
@@ -1269,6 +1323,8 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "far_section",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "interrupt",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { NULL,      0, 0, false, false, false, NULL,			     false }
 };
