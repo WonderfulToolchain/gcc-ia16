@@ -637,6 +637,16 @@ ia16_interrupt_function_type_p (const_tree funtype)
   return 0;
 }
 
+/* Return true iff we are currently compiling an interrupt function.  */
+int
+ia16_in_interrupt_function_p (void)
+{
+  if (! cfun)
+    return 0;
+  ia16_cache_function_info (false);
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_INTERRUPT) != 0;
+}
+
 /* Re-recognize INSN: match PATTERN (INSN), which has likely just been
    modified, to the corresponding instruction pattern in the machine
    description, and update INSN_CODE (INSN).  */
@@ -1077,15 +1087,30 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
     return false;
 
   /* If the current function is a far function, but the callee is not a far
-     function, then do not allow a sibcall.  */
-  if (ia16_in_far_function_p ()
-      && ! ia16_far_function_type_p (TREE_TYPE (decl)))
-    return false;
+     function, then do not allow a sibcall.  Ditto if the current function
+     is a near function but not the callee.  Also check whether both the
+     caller and callee are interrupt functions or not interrupt functions. */
+  if (ia16_in_far_function_p ())
+    {
+      if (! ia16_far_function_type_p (TREE_TYPE (decl)))
+	return false;
 
-  /* Ditto if the current function is a near function but not the callee.  */
-  if (! ia16_in_far_function_p ()
-      && ia16_far_function_type_p (TREE_TYPE (decl)))
-    return false;
+      if (ia16_in_interrupt_function_p ())
+	{
+	  if (! ia16_interrupt_function_type_p (TREE_TYPE (decl)))
+	    return false;
+	}
+      else
+	{
+	  if (ia16_interrupt_function_type_p (TREE_TYPE (decl)))
+	    return false;
+	}
+    }
+  else
+    {
+      if (ia16_far_function_type_p (TREE_TYPE (decl)))
+	return false;
+    }
 
   return true;
 }
@@ -4978,18 +5003,20 @@ ia16_expand_epilogue (bool sibcall)
 const char *
 ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 {
-  tree fndecl, fntype;
+  tree fndecl = ia16_get_decl_for_addr (addr);
+  tree fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (mode == SImode)
     {
+      if (ia16_interrupt_function_type_p (fntype))
+	error ("unsupported: directly calling an interrupt function in "
+	       "C code");
+
       if (CONST_INT_P (addr))
 	return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
       else
 	return P ("lcall\t*%", "call\t%");
     }
-
-  fndecl = ia16_get_decl_for_addr (addr);
-  fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (! ia16_far_function_type_p (fntype))
     {
@@ -5073,18 +5100,20 @@ const char *
 ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
 			    unsigned which_is_addr)
 {
-  tree fndecl, fntype = NULL_TREE;
+  tree fndecl = ia16_get_decl_for_addr (addr);
+  tree fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (mode == SImode)
     {
+      if (ia16_interrupt_function_type_p (fntype))
+	error ("unsupported: directly calling an interrupt function in "
+	       "C code");
+
       if (CONST_INT_P (addr))
 	return P2 ("ljmp\t%S", ",\t%O", "jmp\t%S", ":%O");
       else
 	return P ("ljmp\t*%", "jmp\t%");
     }
-
-  fndecl = ia16_get_decl_for_addr (addr);
-  fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (! ia16_far_function_type_p (fntype))
     {
