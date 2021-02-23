@@ -37,6 +37,7 @@ extern int		ia16_save_ds_function_rtx_p (rtx);
 extern int		ia16_in_ds_data_function_p (void);
 extern int		ia16_in_save_ds_function_p (void);
 extern int		ia16_in_ss_data_function_p (void);
+extern int		ia16_in_interrupt_function_p (void);
 extern void		ia16_recog (rtx_insn *insn);
 extern bool		ia16_have_seg_override_p (rtx x);
 extern rtx		ia16_bless_selector (rtx seg);
