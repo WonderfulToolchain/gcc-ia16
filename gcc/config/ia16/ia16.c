@@ -247,12 +247,17 @@ ia16_save_reg_p (unsigned int r)
 
       return frame_pointer_needed;
     }
+  if (ia16_in_save_regs_function_p ())
+    return ! ia16_regno_in_class_p (r, UP_QI_REGS)
+	   && df_regs_ever_live_p (r);
   /* Note: assume_ds_data functions will also correctly restore %ds on
      return, but they are handled separately (e.g. we might be able to
      restore %ds from %ss).  */
   if (r == DS_REG)
     return (df_regs_ever_live_p (r) && ! ia16_in_ds_data_function_p ()
 				    && ia16_in_save_ds_function_p ());
+  if (r == CC_REG)
+    return 0;
   if (! ia16_regno_in_class_p (r, QI_REGS))
     return (df_regs_ever_live_p (r) && !call_used_regs[r]);
   if (ia16_regno_in_class_p (r, UP_QI_REGS))
@@ -295,9 +300,10 @@ ia16_get_call_parm_cvt (const_tree type)
 #define IA16_CALLCVT_DS_DATA		0x0010
 #define IA16_CALLCVT_SS_DATA		0x0020
 #define IA16_CALLCVT_SAVE_DS		0x0040
-#define IA16_CALLCVT_INTERRUPT		0x0080
-#define IA16_CALLCVT_NEAR_SECTION	0x0100
-#define IA16_CALLCVT_FAR_SECTION	0x0200
+#define IA16_CALLCVT_SAVE_REGS		0x0080
+#define IA16_CALLCVT_INTERRUPT		0x0100
+#define IA16_CALLCVT_NEAR_SECTION	0x0200
+#define IA16_CALLCVT_FAR_SECTION	0x0400
 
 static bool ia16_far_function_type_p (const_tree funtype);
 static rtx ia16_seg16_reloc (rtx thang);
@@ -345,6 +351,9 @@ ia16_get_callcvt (const_tree type)
 
   if (ia16_save_ds_function_type_p (type))
     callcvt |= IA16_CALLCVT_SAVE_DS;
+
+  if (ia16_save_regs_function_type_p (type))
+    callcvt |= IA16_CALLCVT_SAVE_REGS;
 
   if (ia16_ss_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_SS_DATA;
@@ -588,6 +597,25 @@ ia16_in_save_ds_function_p (void)
   return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_DS) != 0;
 }
 
+/* Return true iff TYPE is a type for a function which saves and restores
+   all registers. */
+int
+ia16_save_regs_function_type_p (const_tree funtype)
+{
+  tree attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
+  return attrs && (lookup_attribute ("save_regs", attrs)
+		   || lookup_attribute ("interrupt", attrs));
+}
+
+int
+ia16_in_save_regs_function_p (void)
+{
+  if (! cfun)
+    return 0;
+  ia16_cache_function_info (false);
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_REGS) != 0;
+}
+
 /* Return true iff TYPE is a type for a function which assumes that %ss
    points to the program's data segment on function entry.  */
 int
@@ -777,6 +805,9 @@ ia16_initial_arg_pointer_offset (void)
       if (ia16_save_reg_p (i))
 	offset += GET_MODE_SIZE (HImode);
     }
+  /* Remember to take the flags into account. */
+  if (ia16_save_reg_p (CC_REG))
+    offset += GET_MODE_SIZE (HImode);
   return offset;
 }
 
@@ -1211,6 +1242,69 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	}
       return NULL_TREE;
     }
+  else if (is_attribute_p ("assume_ss_data", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("no_assume_ss_data", attrs))
+	{
+	  error ("assume_ss_data and no_assume_ss_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("no_assume_ss_data", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("assume_ss_data", attrs))
+	{
+	  error ("assume_ss_data and no_assume_ss_data attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("no_save_ds", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("assume_ds_data", attrs))
+	{
+	  error ("assume_ds_data and no_save_ds attributes are not "
+		 "compatible");
+	  *no_add_attrs = true;
+	}
+      else if (lookup_attribute ("save_regs", attrs))
+	{
+	  error ("save_regs and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+
+      if (fixed_regs[DS_REG])
+	{
+	  warning (OPT_Wattributes, "%qE attribute directive ignored as "
+				    "%%ds is a fixed register", name);
+	  *no_add_attrs = true;
+	}
+
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("save_regs", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("no_save_ds", attrs))
+	{
+	  error ("save_regs and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+
+      if (! VOID_TYPE_P (TREE_TYPE (*node)))
+	{
+	  error ("non-void function cannot save all registers");
+	  *no_add_attrs = true;
+	}
+
+      return NULL_TREE;
+    }
 
   if (! ia16_far_function_type_p (*node))
     {
@@ -1250,28 +1344,6 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (is_attribute_p ("assume_ss_data", name))
-    {
-      tree attrs = TYPE_ATTRIBUTES (*node);
-      if (attrs && lookup_attribute ("no_assume_ss_data", attrs))
-	{
-	  error ("assume_ss_data and no_assume_ss_data attributes are not "
-		 "compatible");
-	  *no_add_attrs = true;
-	}
-      return NULL_TREE;
-    }
-  else if (is_attribute_p ("no_assume_ss_data", name))
-    {
-      tree attrs = TYPE_ATTRIBUTES (*node);
-      if (lookup_attribute ("assume_ss_data", attrs))
-	{
-	  error ("assume_ss_data and no_assume_ss_data attributes are not "
-		 "compatible");
-	  *no_add_attrs = true;
-	}
-      return NULL_TREE;
-    }
 
   if (! call_used_regs[DS_REG])
     {
@@ -1308,24 +1380,6 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
       return NULL_TREE;
     }
 
-  if (is_attribute_p ("no_save_ds", name))
-    {
-      tree attrs = TYPE_ATTRIBUTES (*node);
-      if (lookup_attribute ("assume_ds_data", attrs))
-	{
-	  error ("assume_ds_data and no_save_ds attributes are not "
-		 "compatible");
-	  *no_add_attrs = true;
-	}
-
-      if (fixed_regs[DS_REG])
-	{
-	  warning (OPT_Wattributes, "%qE attribute directive ignored as "
-				    "%%ds is a fixed register", name);
-	  *no_add_attrs = true;
-	}
-    }
-
   return NULL_TREE;
 }
 
@@ -1344,6 +1398,8 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "no_assume_ss_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_save_ds",
+	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "save_regs",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
@@ -4392,8 +4448,10 @@ ia16_push_reg (unsigned int regno)
 {
   if (TARGET_PROTECTED_MODE && REGNO_OK_FOR_SEGMENT_P (regno))
     return gen__pushphi1_prologue (gen_rtx_REG (PHImode, regno));
-
-  return gen__pushhi1_prologue (gen_rtx_REG (HImode, regno));
+  else if (regno == CC_REG)
+    return gen__pushhi1_hicc_prologue ();
+  else
+    return gen__pushhi1_prologue (gen_rtx_REG (HImode, regno));
 }
 
 /* Helper function for gen_epilogue().  Generates RTL to pop REGNO, which
@@ -4403,6 +4461,8 @@ ia16_pop_reg (unsigned int regno)
 {
   if (TARGET_PROTECTED_MODE && REGNO_OK_FOR_SEGMENT_P (regno))
     return gen__popphi1 (gen_rtx_REG (PHImode, regno));
+  else if (regno == CC_REG)
+    return gen__pophi1_hicc ();
   else
     return gen__pophi1 (gen_rtx_REG (HImode, regno));
 }
@@ -4865,6 +4925,11 @@ ia16_expand_prologue (void)
   HOST_WIDE_INT size = get_frame_size ();
 
   /* Save used registers which are not call clobbered. */
+  if (ia16_save_reg_p (CC_REG))
+    {
+      insn = emit_insn (ia16_push_reg (CC_REG));
+      RTX_FRAME_RELATED_P (insn) = 1;
+    }
   for (i = 0; i <= LAST_ALLOCABLE_REG; ++i)
     {
       if (i != BP_REG && ia16_save_reg_p (i))
@@ -4943,6 +5008,8 @@ ia16_expand_epilogue (bool sibcall)
       if (i != BP_REG && ia16_save_reg_p (i))
 	emit_insn (ia16_pop_reg (i));
     }
+  if (ia16_save_reg_p (CC_REG))
+    emit_insn (ia16_pop_reg (CC_REG));
   if (!sibcall)
     emit_jump_insn (gen_simple_return ());
 }
