@@ -589,10 +589,12 @@ ia16_rewrite_bp_as_bx (void)
 
   /* Bail out early if we are not supposed to eliminate the frame pointer,
      or if the function does not use %bp anyway, or if the user has asked to
-     make %bx not a call-used register, or in the unlikely future case that
-     we actually pass function arguments via %bx.  */
+     make %bx not a call-used register, or if the function should save all
+     registers, or in the unlikely future case that we actually pass function
+     arguments via %bx.  */
   if (! global_options.x_flag_omit_frame_pointer
       || ! ia16_save_reg_p (BP_REG)
+      || ia16_in_save_regs_function_p ()
       || ! call_used_regs[B_REG] || ! call_used_regs[BH_REG]
       || fixed_regs[B_REG] || fixed_regs[BH_REG]
       || FUNCTION_ARG_REGNO_P (B_REG)
