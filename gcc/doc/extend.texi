@@ -4288,6 +4288,17 @@ attribute.
 This attribute has no effect if @option{-ffixed-ds} or
 @option{-fcall-saved-ds} is used.
 
+@item save_regs
+@cindex @code{save_regs} function attribute, IA-16
+Use this attribute to indicate that all registers that the function
+modifies---including possibly the flags register---should be saved in the
+prologue.
+
+This attribute is only supported for void functions.
+
+@strong{Warning:} This feature is experimental, and may produce broken code.
+Use with caution.
+
 @item no_assume_ss_data
 @cindex @code{no_assume_ss_data} function attribute, IA-16
 This attribute, attached to a function, causes the compiler @emph{not} to
