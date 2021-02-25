@@ -278,6 +278,22 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_SYS_MSDOS", TARGET_SYS_MSDOS);
   assert_or_unassert ("system=msdos", TARGET_SYS_MSDOS);
 
+  /* For further Open Watcom compatibility, map the words __interrupt,
+     __saveregs, etc. to their corresponding GCC attributes.
+
+     While at it, also define macros __INTERRUPT, __SAVEREGS, etc. to
+     advertise which of the (lowercase) words we support.  */
+  def_macro ("__cdecl=__attribute__ ((__cdecl__))");
+  def_macro ("__stdcall=__attribute__ ((__stdcall__))");
+  def_macro ("__interrupt=__attribute__ ((__interrupt__))");
+  def_macro ("__loadds=__attribute__ ((__no_assume_ds_data__))");
+  def_macro ("__saveregs=__attribute__ ((__save_regs__))");
+  def_macro ("__CDECL");
+  def_macro ("__STDCALL");
+  def_macro ("__INTERRUPT");
+  def_macro ("__LOADDS");
+  def_macro ("__SAVEREGS");
+
   /* If the user says -mnewlib-nano-stdio, try to pretend that <newlib.h>
      defines _NANO_FORMATTED_IO (actually this just defines the macro whether
      or not <newlib.h> is used).
