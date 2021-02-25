@@ -4310,6 +4310,18 @@ Spaces}.
 @strong{Warning:} This feature is experimental, and may produce broken code.
 Use with caution.
 
+@item interrupt
+@cindex @code{interrupt} function attribute, IA-16
+Use this attribute to indicate
+that the specified function is an interrupt handler.  The compiler generates
+function entry and exit sequences suitable for use in an interrupt handler
+when this attribute is present.
+
+This attribute is only supported for void functions.
+
+@strong{Warning:} This feature is experimental, and may produce broken code.
+Use with caution.
+
 @item near_section
 @cindex @code{near_section} function attribute, IA-16
 This attribute, attached to a far function declaration, tells GCC that

@@ -450,8 +450,6 @@ ia16_cache_function_info (bool need_data_seg_rtx_p)
       unsigned callcvt = ia16_get_callcvt (type);
       machine->cached_callcvt = callcvt;
       machine->callcvt_cached_p = true;
-      if ((callcvt & IA16_CALLCVT_INTERRUPT) != 0)
-	error ("unsupported: defining an interrupt function in C code");
     }
 
   if (need_data_seg_rtx_p && ! machine->data_seg_rtx_cached_p)
@@ -736,9 +734,16 @@ ia16_first_parm_offset (tree fundecl)
   /* Start off with 2 bytes to skip over the saved pc register.  */
   HOST_WIDE_INT offset = GET_MODE_SIZE (Pmode);
 
-  /* Add 2 bytes if this is a far function.  */
+  /*
+   * Add 2 bytes if this is a far function.  Add a further 2 if this is an
+   * interrupt function.
+   */
   if (ia16_far_function_type_p (TREE_TYPE (fundecl)))
-    offset += GET_MODE_SIZE (Pmode);
+    {
+      offset += GET_MODE_SIZE (Pmode);
+      if (ia16_interrupt_function_type_p (TREE_TYPE (fundecl)))
+	offset += GET_MODE_SIZE (Pmode);
+    }
 
   return (offset);
 }
@@ -806,7 +811,7 @@ ia16_initial_arg_pointer_offset (void)
 	offset += GET_MODE_SIZE (HImode);
     }
   /* Remember to take the flags into account. */
-  if (ia16_save_reg_p (CC_REG))
+  if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
     offset += GET_MODE_SIZE (HImode);
   return offset;
 }
@@ -1278,6 +1283,11 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  error ("save_regs and no_save_ds attributes are not compatible");
 	  *no_add_attrs = true;
 	}
+      else if (lookup_attribute ("interrupt", attrs))
+	{
+	  error ("interrupt and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
 
       if (fixed_regs[DS_REG])
 	{
@@ -1301,6 +1311,42 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	{
 	  error ("non-void function cannot save all registers");
 	  *no_add_attrs = true;
+	}
+
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("interrupt", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      tree types;
+
+      if (lookup_attribute ("no_save_ds", attrs))
+	{
+	  error ("interrupt and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+
+      if (! VOID_TYPE_P (TREE_TYPE (*node)))
+	{
+	  error ("unsupported: non-void interrupt function");
+	  *no_add_attrs = true;
+	}
+
+      /*
+       * For now, only allow
+       *	void (void) __attribute__ ((__interrupt__));
+       * and
+       *	void ([...]) __attribute__ ((__interrupt__));
+       */
+      for (types = TYPE_ARG_TYPES (*node); types; types = TREE_CHAIN (types))
+	{
+	  tree arg_type = TREE_VALUE (types);
+	  if (! VOID_TYPE_P (arg_type))
+	    {
+	      error ("unsupported: interrupt function with named arguments");
+	      *no_add_attrs = true;
+	      break;
+	    }
 	}
 
       return NULL_TREE;
@@ -4925,7 +4971,7 @@ ia16_expand_prologue (void)
   HOST_WIDE_INT size = get_frame_size ();
 
   /* Save used registers which are not call clobbered. */
-  if (ia16_save_reg_p (CC_REG))
+  if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
     {
       insn = emit_insn (ia16_push_reg (CC_REG));
       RTX_FRAME_RELATED_P (insn) = 1;
@@ -5008,7 +5054,7 @@ ia16_expand_epilogue (bool sibcall)
       if (i != BP_REG && ia16_save_reg_p (i))
 	emit_insn (ia16_pop_reg (i));
     }
-  if (ia16_save_reg_p (CC_REG))
+  if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
     emit_insn (ia16_pop_reg (CC_REG));
   if (!sibcall)
     emit_jump_insn (gen_simple_return ());
@@ -5020,6 +5066,12 @@ ia16_expand_epilogue (bool sibcall)
 			      "|call\t(\"" dest "!\"@SEG):" dest "}" \
 			   : "{lcall\t$" dest "@OZSEG16,\t$" dest \
 			      "|call\t(" dest "@OZSEG16):" dest "}")
+#define PUSHF_LCALL_TEMPLATE(dest) \
+			(TARGET_ABI_SEGELF \
+			   ? "pushf{w\n\tlcall\t$\"" dest "!\"@SEG,\t$" dest \
+				    "|\n\tcall\t(\"" dest "!\"@SEG):" dest "}"\
+			   : "pushf{w\n\tlcall\t$" dest "@OZSEG16,\t$" dest \
+				    "|\n\tcall\t(" dest "@OZSEG16):" dest "}")
 #define LJMP_TEMPLATE(dest) \
 			(TARGET_ABI_SEGELF \
 			   ? "{ljmp\t$\"" dest "!\"@SEG,\t$" dest \
@@ -5038,7 +5090,7 @@ ia16_expand_epilogue (bool sibcall)
 				part_a_intel "0" part_b_intel "0}" \
 			  : "{" part_a_att "1" part_b_att "1|" \
 				part_a_intel "1" part_b_intel "1}")
-/* MACRO is either LCALL_TEMPLATE or LJMP_TEMPLATE.  */
+/* MACRO is either LCALL_TEMPLATE, PUSHF_LCALL_TEMPLATE, or LJMP_TEMPLATE.  */
 #define PM(macro)	(which_is_addr == 0 ? macro ("%c0") : macro ("%c1"))
 
 /* Return the insn template for a normal call to a subroutine at address
@@ -5076,13 +5128,20 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
   if (mode == SImode)
     {
       if (ia16_interrupt_function_type_p (fntype))
-	error ("unsupported: directly calling an interrupt function in "
-	       "C code");
-
-      if (CONST_INT_P (addr))
-	return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
+	{
+	  if (CONST_INT_P (addr))
+	    return P2 ("pushfw\n\tlcall\t%S", ",\t%O",
+		       "pushf\n\tcall\t%S", ":%O");
+	  else
+	    return P ("pushfw\n\tlcall\t*", "pushf\n\tcall\t%");
+	}
       else
-	return P ("lcall\t*%", "call\t%");
+	{
+	  if (CONST_INT_P (addr))
+	    return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
+	  else
+	    return P ("lcall\t*%", "call\t%");
+	}
     }
 
   if (! ia16_far_function_type_p (fntype))
@@ -5104,17 +5163,32 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 		&& ! DECL_COMDAT_GROUP (cfun->decl))
 	       || ia16_near_section_function_type_p (fntype)))
     {
-      if (MEM_P (addr) || ! CONSTANT_P (addr))
-	return P ("pushw\t%%cs\n\tcall\t*%", "push\tcs\n\tcall\t%");
+      if (ia16_interrupt_function_type_p (fntype))
+	{
+	  if (MEM_P (addr) || ! CONSTANT_P (addr))
+	    return P ("pushfw\n\tpushw\t%%cs\n\tcall\t*%",
+		      "pushf\n\tpush\tcs\n\tcall\t%");
+	  else
+	    return P ("pushfw\n\tpushw\t%%cs\n\tcall\t%c",
+		      "pushf\n\tpush\tcs\n\tcall\t%c");
+	}
       else
-	return P ("pushw\t%%cs\n\tcall\t%c", "push\tcs\n\tcall\t%c");
+	{
+	  if (MEM_P (addr) || ! CONSTANT_P (addr))
+	    return P ("pushw\t%%cs\n\tcall\t*%", "push\tcs\n\tcall\t%");
+	  else
+	    return P ("pushw\t%%cs\n\tcall\t%c", "push\tcs\n\tcall\t%c");
+	}
     }
   else
     {
       if (! TARGET_SEG_RELOC_STUFF)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
 					      "to far function");
-      return PM (LCALL_TEMPLATE);
+      if (ia16_interrupt_function_type_p (fntype))
+	return PM (PUSHF_LCALL_TEMPLATE);
+      else
+	return PM (LCALL_TEMPLATE);
     }
 }
 
@@ -5172,10 +5246,6 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
 
   if (mode == SImode)
     {
-      if (ia16_interrupt_function_type_p (fntype))
-	error ("unsupported: directly calling an interrupt function in "
-	       "C code");
-
       if (CONST_INT_P (addr))
 	return P2 ("ljmp\t%S", ",\t%O", "jmp\t%S", ":%O");
       else
