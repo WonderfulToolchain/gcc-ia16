@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20210226L");
+  def_macro ("__ia16__=20210228L");
 
   if (have_addr_spaces_p ())
     {
@@ -149,8 +149,10 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_SAVE_DS");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_SAVE_DS");
-  def_macro ("__IA16_FEATURE_ATTRIBUTE_SAVE_REGS");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_SAVE_ES");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_SAVE_ALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
@@ -282,12 +284,15 @@ ia16_cpu_cpp_builtins (void)
      __saveregs, etc. to their corresponding GCC attributes.
 
      While at it, also define macros __INTERRUPT, __SAVEREGS, etc. to
-     advertise which of the (lowercase) words we support.  */
+     advertise which of the (lowercase) words we support.
+
+     Note that __saveregs only means to save the segment registers!  See
+     https://github.com/open-watcom/open-watcom-v2/issues/667 .  */
   def_macro ("__cdecl=__attribute__ ((__cdecl__))");
   def_macro ("__stdcall=__attribute__ ((__stdcall__))");
   def_macro ("__interrupt=__attribute__ ((__interrupt__))");
   def_macro ("__loadds=__attribute__ ((__no_assume_ds_data__))");
-  def_macro ("__saveregs=__attribute__ ((__save_regs__))");
+  def_macro ("__saveregs=__attribute__ ((__save_ds__, __save_es__))");
   def_macro ("__CDECL");
   def_macro ("__STDCALL");
   def_macro ("__INTERRUPT");

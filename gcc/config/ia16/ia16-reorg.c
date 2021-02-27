@@ -594,7 +594,7 @@ ia16_rewrite_bp_as_bx (void)
      arguments via %bx.  */
   if (! global_options.x_flag_omit_frame_pointer
       || ! ia16_save_reg_p (BP_REG)
-      || ia16_in_save_regs_function_p ()
+      || ia16_in_save_all_function_p ()
       || ! call_used_regs[B_REG] || ! call_used_regs[BH_REG]
       || fixed_regs[B_REG] || fixed_regs[BH_REG]
       || FUNCTION_ARG_REGNO_P (B_REG)

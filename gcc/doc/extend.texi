@@ -4288,8 +4288,16 @@ attribute.
 This attribute has no effect if @option{-ffixed-ds} or
 @option{-fcall-saved-ds} is used.
 
-@item save_regs
-@cindex @code{save_regs} function attribute, IA-16
+@item save_es
+@cindex @code{save_es} function attribute, IA-16
+This attribute, attached to a function, means that the function is not
+allowed to clobber @code{es}.
+
+Specifying this function attribute is useful to override the effects of a
+@option{-fcall-used-es} switch.
+
+@item save_all
+@cindex @code{save_all} function attribute, IA-16
 Use this attribute to indicate that all registers that the function
 modifies---including possibly the flags register---should be saved in the
 prologue.
