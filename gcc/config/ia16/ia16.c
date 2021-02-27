@@ -765,7 +765,7 @@ ia16_frame_pointer_required (void)
      stack arguments, even if it does not actually read them.  We should fix
      this, as an optimization.  The fix may involve scanning the insn stream.
 	-- tkchia  */
-  return crtl->args.info >= 4 || cfun->stdarg || get_frame_size () != 0;
+  return crtl->args.info.hwords >= 4 || cfun->stdarg || get_frame_size () != 0;
 }
 
 #undef	TARGET_CAN_ELIMINATE
@@ -896,7 +896,7 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
     case HImode:
     case PHImode:
     case V2QImode:
-      switch (*cum)
+      switch (cum->hwords)
 	{
 	case 0:
 	  return gen_rtx_REG (mode, A_REG);
@@ -910,7 +910,7 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
 
     case SImode:
     case SFmode:
-      switch (*cum)
+      switch (cum->hwords)
       {
       case 0:				/* %dx:%ax */
 	return gen_rtx_REG (mode, A_REG);
@@ -925,6 +925,21 @@ ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
       default:
 	return NULL;
       }
+
+    case VOIDmode:
+      /*
+       * Use the "hidden" operand in the "call", "call_pop", "call_value",
+       * or "call_value_pop" insn pattern, to tell the insn pattern whether
+       * the function is an interrupt function.
+       *
+       * Unfortunately we cannot fish this information out from, say, the
+       * MEM_EXPR of the "call" address.  The actual function type may be
+       * lost at that point --- the (mem ...) may end up being an
+       * artificially created spill slot with an "underlying" void type.
+       *
+       * Hence this hackery.  -- tkchia
+       */
+      return cum->interrupt_p ? const1_rtx : const0_rtx;
 
     default:
       return NULL;
@@ -967,9 +982,11 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
     }
 
   if (! ia16_regparmcall_function_type_p (fntype))
-    *cum = 3;
+    cum->hwords = 3;
   else
-    *cum = 0;
+    cum->hwords = 0;
+
+  cum->interrupt_p = ia16_interrupt_function_type_p (fntype);
 }
 
 #undef  TARGET_FUNCTION_ARG_ADVANCE
@@ -982,9 +999,9 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  if (*cum >= 3 || ! named)
+  if (cum->hwords >= 3 || ! named)
     {
-      *cum = 4;
+      cum->hwords = 4;
       return;
     }
 
@@ -994,26 +1011,26 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     case HImode:
     case PHImode:
     case V2QImode:
-      ++*cum;
+      ++cum->hwords;
       return;
 
     case SImode:
     case SFmode:
-      switch (*cum)
+      switch (cum->hwords)
 	{
 	case 0:
-	  *cum = 2;
+	  cum->hwords = 2;
 	  return;
 	case 1:
-	  *cum = 3;
+	  cum->hwords = 3;
 	  return;
 	default:
-	  *cum = 4;
+	  cum->hwords = 4;
 	  return;
 	}
 
     default:
-      *cum = 4;
+      cum->hwords = 4;
       return;
     }
 }
@@ -1734,6 +1751,21 @@ ia16_error_seg_reloc (location_t loc, const char *msg)
 	  TARGET_CMODEL_IS_TINY ? "cmodel=small" : "segment-relocation-stuff");
 }
 
+/* Say whether we can reach the function given by FNDECL and FNTYPE via the
+   current function's %cs.  */
+static bool
+ia16_can_reach_function_via_cs_p (tree fndecl, tree fntype)
+{
+  return ! ia16_in_far_section_function_p ()
+	 && ((! DECL_EXTERNAL (fndecl)
+	      && ! DECL_WEAK (fndecl)
+	      && ! flag_function_sections
+	      && ! ia16_far_section_function_type_p (fntype)
+	      && ! DECL_COMDAT_GROUP (fndecl)
+	      && ! DECL_COMDAT_GROUP (cfun->decl))
+	     || ia16_near_section_function_type_p (fntype));
+}
+
 rtx
 ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 				      addr_space_t as,
@@ -1799,15 +1831,14 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 	    return x;
 
 	  case SYMBOL_REF:
-	    /* Address of a far static variable.  */
+	    /* Address of a far function or far static variable.  */
 
 	    /* If we are inside a function which will go in the default text
 	       section, and X refers to an __attribute__ ((near_section))
-	       function, we can use %cs as the segment component of the far
-	       pointer.  This let us avoid emitting an unneeded segment
-	       relocation.  */
-	    if (! TARGET_CMODEL_IS_FAR_TEXT
-		&& cfun && ! ia16_in_far_section_function_p ())
+	       function, or X is known to be in the near text segment, then
+	       we can use %cs as the segment component of the far pointer.
+	       This let us avoid emitting an unneeded segment relocation.  */
+	    if (! TARGET_CMODEL_IS_FAR_TEXT && cfun)
 	      {
 		decl = ia16_get_decl_for_addr (x);
 		if (decl)
@@ -1816,7 +1847,7 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 		    if (type
 			&& (TREE_CODE (type) == FUNCTION_TYPE
 			    || TREE_CODE (type) == METHOD_TYPE)
-			&& ia16_near_section_function_type_p (type))
+			&& ia16_can_reach_function_via_cs_p (decl, type))
 		      {
 			r9 = gen_rtx_REG (SEGmode, CS_REG);
 			break;
@@ -1827,8 +1858,8 @@ ia16_as_convert_weird_memory_address (machine_mode to_mode, rtx x,
 	    if (! TARGET_SEG_RELOC_STUFF)
 	      {
 		ia16_error_seg_reloc (input_location,
-				      "cannot take address of far static "
-				      "variable");
+				      "cannot take address of far function "
+				      "or far static variable");
 		/* continue after that... */
 	      }
 
@@ -5117,32 +5148,26 @@ ia16_expand_epilogue (bool sibcall)
      * None of the above --- use `lcall' and do not assume that the function
        resides in the default text section.
 
+   The case where the callee is an __attribute__ ((__interrupt__)) function
+   is handled by ia16_get_isr_call_expansion (...) below.
+
    The case where a far_section function tries to call a near function is
    handled by ia16_get_far_thunked_call_expansion (...) below.  */
 const char *
 ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
 {
-  tree fndecl = ia16_get_decl_for_addr (addr);
-  tree fntype = ia16_get_function_type_for_decl (fndecl);
+  tree fndecl, fntype;
 
   if (mode == SImode)
     {
-      if (ia16_interrupt_function_type_p (fntype))
-	{
-	  if (CONST_INT_P (addr))
-	    return P2 ("pushfw\n\tlcall\t%S", ",\t%O",
-		       "pushf\n\tcall\t%S", ":%O");
-	  else
-	    return P ("pushfw\n\tlcall\t*", "pushf\n\tcall\t%");
-	}
+      if (CONST_INT_P (addr))
+	return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
       else
-	{
-	  if (CONST_INT_P (addr))
-	    return P2 ("lcall\t%S", ",\t%O", "call\t%S", ":%O");
-	  else
-	    return P ("lcall\t*%", "call\t%");
-	}
+	return P ("lcall\t*%", "call\t%");
     }
+
+  fndecl = ia16_get_decl_for_addr (addr);
+  fntype = ia16_get_function_type_for_decl (fndecl);
 
   if (! ia16_far_function_type_p (fntype))
     {
@@ -5153,42 +5178,55 @@ ia16_get_call_expansion (rtx addr, machine_mode mode, unsigned which_is_addr)
       else
 	return PC ("call\t%c");
     }
-  else if (fntype
-	   && ! ia16_in_far_section_function_p ()
-	   && ((! DECL_EXTERNAL (fndecl)
-		&& ! DECL_WEAK (fndecl)
-		&& ! flag_function_sections
-		&& ! ia16_far_section_function_type_p (fntype)
-		&& ! DECL_COMDAT_GROUP (fndecl)
-		&& ! DECL_COMDAT_GROUP (cfun->decl))
-	       || ia16_near_section_function_type_p (fntype)))
+  else if (fntype && ia16_can_reach_function_via_cs_p (fndecl, fntype))
     {
-      if (ia16_interrupt_function_type_p (fntype))
-	{
-	  if (MEM_P (addr) || ! CONSTANT_P (addr))
-	    return P ("pushfw\n\tpushw\t%%cs\n\tcall\t*%",
-		      "pushf\n\tpush\tcs\n\tcall\t%");
-	  else
-	    return P ("pushfw\n\tpushw\t%%cs\n\tcall\t%c",
-		      "pushf\n\tpush\tcs\n\tcall\t%c");
-	}
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
+	return P ("pushw\t%%cs\n\tcall\t*%", "push\tcs\n\tcall\t%");
       else
-	{
-	  if (MEM_P (addr) || ! CONSTANT_P (addr))
-	    return P ("pushw\t%%cs\n\tcall\t*%", "push\tcs\n\tcall\t%");
-	  else
-	    return P ("pushw\t%%cs\n\tcall\t%c", "push\tcs\n\tcall\t%c");
-	}
+	return P ("pushw\t%%cs\n\tcall\t%c", "push\tcs\n\tcall\t%c");
     }
   else
     {
       if (! TARGET_SEG_RELOC_STUFF)
 	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
 					      "to far function");
-      if (ia16_interrupt_function_type_p (fntype))
-	return PM (PUSHF_LCALL_TEMPLATE);
+      return PM (LCALL_TEMPLATE);
+    }
+}
+
+const char *
+ia16_get_isr_call_expansion (rtx addr, machine_mode mode,
+			     unsigned which_is_addr)
+{
+  tree fndecl, fntype;
+
+  if (mode == SImode)
+    {
+      if (CONST_INT_P (addr))
+	return P2 ("pushfw\n\tlcall\t%S", ",\t%O",
+		   "pushf\n\tcall\t%S", ":%O");
       else
-	return PM (LCALL_TEMPLATE);
+	return P ("pushfw\n\tlcall\t*%", "pushf\n\tcall\t%");
+    }
+
+  fndecl = ia16_get_decl_for_addr (addr);
+  fntype = ia16_get_function_type_for_decl (fndecl);
+
+  if (fntype && ia16_can_reach_function_via_cs_p (fndecl, fntype))
+    {
+      if (MEM_P (addr) || ! CONSTANT_P (addr))
+	return P ("pushfw\n\tpushw\t%%cs\n\tcall\t*%",
+		  "pushf\n\tpush\tcs\n\tcall\t%");
+      else
+	return P ("pushfw\n\tpushw\t%%cs\n\tcall\t%c",
+		  "pushf\n\tpush\tcs\n\tcall\t%c");
+    }
+  else
+    {
+      if (! TARGET_SEG_RELOC_STUFF)
+	ia16_error_seg_reloc (input_location, "cannot create relocatable call "
+					      "to interrupt function");
+      return PM (PUSHF_LCALL_TEMPLATE);
     }
 }
 
