@@ -1332,6 +1332,45 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 
       return NULL_TREE;
     }
+
+  if (! ia16_far_function_type_p (*node))
+    {
+      if (is_attribute_p ("near_section", name)
+	  || is_attribute_p ("far_section", name))
+	{
+	  warning (OPT_Wattributes, "%qE attribute directive ignored for "
+				    "non-far function", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+      else if (is_attribute_p ("interrupt", name))
+	{
+	  error ("cannot use %qE attribute with non-far function", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+    }
+  /* The following attributes are ignored or invalid for non-far functions. */
+  else if (is_attribute_p ("near_section", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("far_section", attrs))
+	{
+	  error ("near_section and far_section attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
+  else if (is_attribute_p ("far_section", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && lookup_attribute ("near_section", attrs))
+	{
+	  error ("near_section and far_section attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
   else if (is_attribute_p ("interrupt", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
@@ -1368,45 +1407,6 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 
       return NULL_TREE;
     }
-
-  if (! ia16_far_function_type_p (*node))
-    {
-      if (is_attribute_p ("near_section", name)
-	  || is_attribute_p ("far_section", name))
-	{
-	  warning (OPT_Wattributes, "%qE attribute directive ignored for "
-				    "non-far function", name);
-	  *no_add_attrs = true;
-	  return NULL_TREE;
-	}
-      else if (is_attribute_p ("interrupt", name))
-	{
-	  error ("cannot use %qE attribute with non-far function", name);
-	  *no_add_attrs = true;
-	}
-    }
-  /* The following attributes are ignored for non-far functions.  */
-  else if (is_attribute_p ("near_section", name))
-    {
-      tree attrs = TYPE_ATTRIBUTES (*node);
-      if (attrs && lookup_attribute ("far_section", attrs))
-	{
-	  error ("near_section and far_section attributes are not compatible");
-	  *no_add_attrs = true;
-	}
-      return NULL_TREE;
-    }
-  else if (is_attribute_p ("far_section", name))
-    {
-      tree attrs = TYPE_ATTRIBUTES (*node);
-      if (attrs && lookup_attribute ("near_section", attrs))
-	{
-	  error ("near_section and far_section attributes are not compatible");
-	  *no_add_attrs = true;
-	}
-      return NULL_TREE;
-    }
-
 
   if (! call_used_regs[DS_REG])
     {
