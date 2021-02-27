@@ -24,7 +24,9 @@
 VECTOR_MODE (INT, QI, 2);
 
 /* PHImode has the same range as HImode, but under -mprotected-mode it is
-   used to "mark" RTXs which can be loaded into segment registers.  */
+   used to "mark" RTXs which can be loaded into segment registers.  With or
+   without -mprotected-mode, it is also used to "mark" (call ...) and
+   (call_value ...) callees which are interrupt routines. */
 PARTIAL_INT_MODE (HI, 16, PHI);
 
 /* Comparison modes.  The basic CCmode contains all of the Sign,

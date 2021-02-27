@@ -99,6 +99,8 @@ extern void	ia16_expand_reset_ds_for_return (void);
 extern void	ia16_expand_epilogue (bool sibcall);
 extern const char *
 		ia16_get_call_expansion (rtx, machine_mode, unsigned);
+extern const char *
+		ia16_get_isr_call_expansion (rtx, machine_mode, unsigned);
 extern bool	ia16_use_far_thunked_call_p (rtx, machine_mode);
 extern const char *
 		ia16_get_far_thunked_call_expansion (unsigned, bool);

@@ -391,7 +391,13 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define PUSH_ROUNDING(BYTES)	(((BYTES) + 1) & ~1)
 
 /* Passing Arguments in Registers */
-#define CUMULATIVE_ARGS		int
+typedef struct ia16_args
+  {
+    int hwords;				/* number of words passed so far */
+    int interrupt_p;			/* whether dealing with an
+					   interrupt function */
+  }
+CUMULATIVE_ARGS;
 #define OVERRIDE_ABI_FORMAT(fndecl) ia16_override_abi_format (fndecl)
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, FNDECL, N_NAMED_ARGS) \
 	ia16_init_cumulative_args (&(CUM), (FNTYPE), (LIBNAME), (FNDECL), \
@@ -618,6 +624,7 @@ extern const char * const ia16_register_prefix[],
 #define STORE_FLAG_VALUE		(-1)
 #define Pmode				HImode
 #define FUNCTION_MODE			QImode
+#define NO_IMPLICIT_EXTERN_C
 
 /* Index codes for machine-specific built-in functions.  */
 enum ia16_builtin
