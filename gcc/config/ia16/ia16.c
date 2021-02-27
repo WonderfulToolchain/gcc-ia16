@@ -247,7 +247,7 @@ ia16_save_reg_p (unsigned int r)
 
       return frame_pointer_needed;
     }
-  if (ia16_in_save_regs_function_p ())
+  if (ia16_in_save_all_function_p ())
     return ! ia16_regno_in_class_p (r, UP_QI_REGS)
 	   && df_regs_ever_live_p (r);
   /* Note: assume_ds_data functions will also correctly restore %ds on
@@ -256,6 +256,8 @@ ia16_save_reg_p (unsigned int r)
   if (r == DS_REG)
     return (df_regs_ever_live_p (r) && ! ia16_in_ds_data_function_p ()
 				    && ia16_in_save_ds_function_p ());
+  if (r == ES_REG)
+    return (df_regs_ever_live_p (r) && ia16_in_save_es_function_p ());
   if (r == CC_REG)
     return 0;
   if (! ia16_regno_in_class_p (r, QI_REGS))
@@ -300,10 +302,11 @@ ia16_get_call_parm_cvt (const_tree type)
 #define IA16_CALLCVT_DS_DATA		0x0010
 #define IA16_CALLCVT_SS_DATA		0x0020
 #define IA16_CALLCVT_SAVE_DS		0x0040
-#define IA16_CALLCVT_SAVE_REGS		0x0080
-#define IA16_CALLCVT_INTERRUPT		0x0100
-#define IA16_CALLCVT_NEAR_SECTION	0x0200
-#define IA16_CALLCVT_FAR_SECTION	0x0400
+#define IA16_CALLCVT_SAVE_ES		0x0080
+#define IA16_CALLCVT_SAVE_ALL		0x0100
+#define IA16_CALLCVT_INTERRUPT		0x0200
+#define IA16_CALLCVT_NEAR_SECTION	0x0400
+#define IA16_CALLCVT_FAR_SECTION	0x0800
 
 static bool ia16_far_function_type_p (const_tree funtype);
 static rtx ia16_seg16_reloc (rtx thang);
@@ -352,8 +355,11 @@ ia16_get_callcvt (const_tree type)
   if (ia16_save_ds_function_type_p (type))
     callcvt |= IA16_CALLCVT_SAVE_DS;
 
-  if (ia16_save_regs_function_type_p (type))
-    callcvt |= IA16_CALLCVT_SAVE_REGS;
+  if (ia16_save_es_function_type_p (type))
+    callcvt |= IA16_CALLCVT_SAVE_ES;
+
+  if (ia16_save_all_function_type_p (type))
+    callcvt |= IA16_CALLCVT_SAVE_ALL;
 
   if (ia16_ss_data_function_type_p (type))
     callcvt |= IA16_CALLCVT_SS_DATA;
@@ -555,7 +561,7 @@ ia16_save_ds_function_type_p (const_tree funtype)
 {
   tree attrs;
 
-  if (! call_used_regs[DS_REG])
+  if (! call_used_regs[DS_REG] || fixed_regs[DS_REG])
     return 1;
 
   attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
@@ -590,28 +596,64 @@ int
 ia16_in_save_ds_function_p (void)
 {
   if (! cfun)
-    return TARGET_ASSUME_DS_DATA && call_used_regs[DS_REG];
+    {
+      if (! call_used_regs[DS_REG] || fixed_regs[DS_REG])
+	return 1;
+      return TARGET_ASSUME_DS_DATA;
+    }
   ia16_cache_function_info (false);
   return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_DS) != 0;
+}
+
+/* Return true iff TYPE is a type for a function which correctly restores the
+   value of %es to its value on entry, upon function exit. */
+int
+ia16_save_es_function_type_p (const_tree funtype)
+{
+  tree attrs;
+
+  if (! call_used_regs[ES_REG] || fixed_regs[ES_REG])
+    return 1;
+
+  attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
+
+  if (! attrs)
+    return 0;
+
+  if (lookup_attribute ("save_es", attrs)
+      || lookup_attribute ("save_all", attrs)
+      || lookup_attribute ("interrupt", attrs))
+    return 1;
+
+  return 0;
+}
+
+int
+ia16_in_save_es_function_p (void)
+{
+  if (! cfun)
+    return ! call_used_regs[ES_REG] || fixed_regs[ES_REG];
+  ia16_cache_function_info (false);
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_ES) != 0;
 }
 
 /* Return true iff TYPE is a type for a function which saves and restores
    all registers. */
 int
-ia16_save_regs_function_type_p (const_tree funtype)
+ia16_save_all_function_type_p (const_tree funtype)
 {
   tree attrs = funtype ? TYPE_ATTRIBUTES (funtype) : NULL_TREE;
-  return attrs && (lookup_attribute ("save_regs", attrs)
+  return attrs && (lookup_attribute ("save_all", attrs)
 		   || lookup_attribute ("interrupt", attrs));
 }
 
 int
-ia16_in_save_regs_function_p (void)
+ia16_in_save_all_function_p (void)
 {
   if (! cfun)
     return 0;
   ia16_cache_function_info (false);
-  return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_REGS) != 0;
+  return (cfun->machine->cached_callcvt & IA16_CALLCVT_SAVE_ALL) != 0;
 }
 
 /* Return true iff TYPE is a type for a function which assumes that %ss
@@ -1286,6 +1328,16 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	}
       return NULL_TREE;
     }
+  else if (is_attribute_p ("save_ds", name))
+    {
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (lookup_attribute ("no_save_ds", attrs))
+	{
+	  error ("save_ds and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+      return NULL_TREE;
+    }
   else if (is_attribute_p ("no_save_ds", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
@@ -1295,9 +1347,14 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 		 "compatible");
 	  *no_add_attrs = true;
 	}
-      else if (lookup_attribute ("save_regs", attrs))
+      else if (lookup_attribute ("save_ds", attrs))
 	{
-	  error ("save_regs and no_save_ds attributes are not compatible");
+	  error ("save_ds and no_save_ds attributes are not compatible");
+	  *no_add_attrs = true;
+	}
+      else if (lookup_attribute ("save_all", attrs))
+	{
+	  error ("save_all and no_save_ds attributes are not compatible");
 	  *no_add_attrs = true;
 	}
       else if (lookup_attribute ("interrupt", attrs))
@@ -1315,12 +1372,12 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 
       return NULL_TREE;
     }
-  else if (is_attribute_p ("save_regs", name))
+  else if (is_attribute_p ("save_all", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
       if (lookup_attribute ("no_save_ds", attrs))
 	{
-	  error ("save_regs and no_save_ds attributes are not compatible");
+	  error ("save_all and no_save_ds attributes are not compatible");
 	  *no_add_attrs = true;
 	}
 
@@ -1460,9 +1517,11 @@ static const struct attribute_spec ia16_attribute_table[] =
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ss_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "save_ds", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_save_ds",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "save_regs",
+  { "save_es", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "save_all",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "near_section",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
