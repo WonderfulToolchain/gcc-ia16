@@ -71,8 +71,7 @@ ia16_init_builtins (void)
       intSEG_type_node = build_distinct_type_copy (unsigned_intHI_type_node);
       SET_TYPE_MODE (intSEG_type_node, PHImode);
     }
-  (*lang_hooks.types.register_builtin_type) (intSEG_type_node,
-					     "__builtin_ia16_segment_t");
+  (*lang_hooks.types.register_builtin_type) (intSEG_type_node, "__segment");
   const_void_far_type_node
     = build_qualified_type (void_type_node,
 			    TYPE_QUAL_CONST
