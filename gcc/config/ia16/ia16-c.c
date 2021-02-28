@@ -138,9 +138,7 @@ ia16_cpu_cpp_builtins (void)
        * function calling conventions available through __attribute__ ((.))
        * calling near functions from __attribute__ ((far_section)) functions
        * __builtin_ia16_... (.) functions
-       * etc.
-     __attribute__ ((__interrupt__)) is recognized but not fully supported
-     yet, so for now the corresponding macro is defined, but set to 0.  */
+       * etc.  */
   def_or_undef_macro ("__IA16_FEATURE_FAR_STATIC_STORAGE",
 		      ! TARGET_CMODEL_IS_TINY);
   def_macro ("__IA16_FEATURE_FAR_FUNCTION_SYNTAX");
@@ -298,6 +296,9 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__INTERRUPT");
   def_macro ("__LOADDS");
   def_macro ("__SAVEREGS");
+
+  /* Also advertise that we support the __segment type name.  */
+  def_macro ("__SEGMENT");
 
   /* If the user says -mnewlib-nano-stdio, try to pretend that <newlib.h>
      defines _NANO_FORMATTED_IO (actually this just defines the macro whether
