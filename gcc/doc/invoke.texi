@@ -16873,6 +16873,17 @@ corresponding lowercase Watcom-compatible type qualifier, e.g.,
 @code{__cdecl}.  The type qualifiers may themselves be macros defined in
 terms of function attributes (@pxref{IA-16 Function Attributes}).
 
+Regarding the @code{__saveregs} qualifier, note that Open Watcom and Borland
+C++ 4.0 define it to mean different things:
+@itemize
+@item
+Under Watcom, @code{__saveregs} means to save only segment registers.
+@item
+Under Borland C++, @code{__saveregs} means to save all registers, except
+possibly registers which hold return values.
+@end itemize
+GCC currently follows Borland's stricter meaning.
+
 @item __IA16_CMODEL_TINY__
 @itemx __TINY__
 @itemx __IA16_CMODEL_SMALL__

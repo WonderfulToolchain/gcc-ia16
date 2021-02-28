@@ -284,13 +284,22 @@ ia16_cpu_cpp_builtins (void)
      While at it, also define macros __INTERRUPT, __SAVEREGS, etc. to
      advertise which of the (lowercase) words we support.
 
-     Note that __saveregs only means to save the segment registers!  See
-     https://github.com/open-watcom/open-watcom-v2/issues/667 .  */
+     Note that apparently Open Watcom & Borland C++ have different ideas on
+     what the word __saveregs means.  _The Borland C++ 4.0 Programmers
+     Guide_ (https://archive.org/details/bitsavers_borlandborn4.0Programmers
+     GuideOct93_13237599/) says,
+	"The __saveregs modifier causes the function to preserve all register
+	 values and restore them before returning (except for explicit return
+	 values passed in registers such as AX or DX)."
+     As for OW, Jiří Malák says (https://github.com/open-watcom/open-watcom-
+     v2/issues/667),
+	"__saveregs means to save all segment registers."
+     Here GCC follows Borland's stricter meaning.  */
   def_macro ("__cdecl=__attribute__ ((__cdecl__))");
   def_macro ("__stdcall=__attribute__ ((__stdcall__))");
   def_macro ("__interrupt=__attribute__ ((__interrupt__))");
   def_macro ("__loadds=__attribute__ ((__no_assume_ds_data__))");
-  def_macro ("__saveregs=__attribute__ ((__save_ds__, __save_es__))");
+  def_macro ("__saveregs=__attribute__ ((__save_all__))");
   def_macro ("__CDECL");
   def_macro ("__STDCALL");
   def_macro ("__INTERRUPT");
