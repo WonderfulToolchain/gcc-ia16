@@ -16859,6 +16859,20 @@ systems.
 Each of these macros is defined only if the compiler supports the named
 address space specifier (@pxref{IA-16 Named Address Spaces}).
 
+@item __SEGMENT
+This macro is defined only if the compiler supports the Watcom-compatible
+@code{__segment} type name.
+
+@item __CDECL
+@itemx __STDCALL
+@itemx __INTERRUPT
+@itemx __LOADDS
+@itemx __SAVEREGS
+Each of these macros is defined only if the compiler supports the
+corresponding lowercase Watcom-compatible type qualifier, e.g.,
+@code{__cdecl}.  The type qualifiers may themselves be macros defined in
+terms of function attributes (@pxref{IA-16 Function Attributes}).
+
 @item __IA16_CMODEL_TINY__
 @itemx __TINY__
 @itemx __IA16_CMODEL_SMALL__

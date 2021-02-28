@@ -13178,7 +13178,7 @@ or not.
 
 @table @code
 
-@item __builtin_ia16_segment_t __builtin_ia16_selector (unsigned @var{sel})
+@item __segment __builtin_ia16_selector (unsigned @var{sel})
 With @option{-mprotected-mode} (@pxref{IA-16 Options}), internally flag
 @var{sel} as a segment selector value which can be loaded into a segment
 register, and return the flagged value.  Without @option{-mprotected-mode},
@@ -13191,10 +13191,10 @@ conditions@footnote{Currently, this is allowed if @var{fp} is a pointer to
 a locally defined variable or function, or if @var{fp} points to an external
 variable or function and LTO is not in effect.}.
 
-@item __builtin_ia16_segment_t __builtin_ia16_near_data_segment (void)
+@item __segment __builtin_ia16_near_data_segment (void)
 Return the segment value for the generic (near) data address space.
 
-@item __builtin_ia16_segment_t __builtin_ia16_ss (void)
+@item __segment __builtin_ia16_ss (void)
 Return the value of the stack segment register @code{ss}.
 
 This should return the same value as @code{__builtin_ia16_near_data_segment
