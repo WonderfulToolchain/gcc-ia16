@@ -234,6 +234,8 @@ ia16_regno_in_class_p (unsigned r, unsigned c)
 	 && TEST_HARD_REG_BIT (reg_class_contents[c], r);
 }
 
+static rtx ia16_function_value (const_tree, const_tree, bool);
+
 /* Returns non-zero if register r must be saved by a function, zero if not.  */
 /* Always returns zero for upper halves of 16-bit registers
  * (i.e. ah, dh, bh or ch).  */
@@ -248,24 +250,48 @@ ia16_save_reg_p (unsigned int r)
       return frame_pointer_needed;
     }
   if (ia16_in_save_all_function_p ())
-    return ! ia16_regno_in_class_p (r, UP_QI_REGS)
-	   && df_regs_ever_live_p (r);
+    {
+      tree decl, ret_type;
+      rtx ret_rtx;
+
+      if (ia16_regno_in_class_p (r, UP_QI_REGS)
+	  || ! df_regs_ever_live_p (r))
+	return 0;
+
+      decl = cfun->decl;
+      if (! decl)
+	return 1;
+
+      ret_type = TREE_TYPE (TREE_TYPE (decl));
+      if (VOID_TYPE_P (ret_type))
+	return 1;
+
+      ret_rtx = ia16_function_value (ret_type, decl, true);
+      if (ia16_regno_in_class_p (r, QI_REGS))
+	return ! refers_to_regno_p (r, r + 2, ret_rtx, NULL);
+      else
+	return ! refers_to_regno_p (r, r + 1, ret_rtx, NULL);
+    }
   /* Note: assume_ds_data functions will also correctly restore %ds on
      return, but they are handled separately (e.g. we might be able to
      restore %ds from %ss).  */
-  if (r == DS_REG)
-    return (df_regs_ever_live_p (r) && ! ia16_in_ds_data_function_p ()
-				    && ia16_in_save_ds_function_p ());
-  if (r == ES_REG)
-    return (df_regs_ever_live_p (r) && ia16_in_save_es_function_p ());
-  if (r == CC_REG)
-    return 0;
-  if (! ia16_regno_in_class_p (r, QI_REGS))
-    return (df_regs_ever_live_p (r) && !call_used_regs[r]);
-  if (ia16_regno_in_class_p (r, UP_QI_REGS))
-    return (0);
-  return ((df_regs_ever_live_p (r + 0) && !call_used_regs[r + 0]) ||
-	  (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
+  switch (r)
+    {
+    case DS_REG:
+      return (df_regs_ever_live_p (r) && ! ia16_in_ds_data_function_p ()
+				      && ia16_in_save_ds_function_p ());
+    case ES_REG:
+      return (df_regs_ever_live_p (r) && ia16_in_save_es_function_p ());
+    case CC_REG:
+      return 0;
+    default:
+      if (! ia16_regno_in_class_p (r, QI_REGS))
+	return (df_regs_ever_live_p (r) && !call_used_regs[r]);
+      if (ia16_regno_in_class_p (r, UP_QI_REGS))
+	return (0);
+      return ((df_regs_ever_live_p (r + 0) && !call_used_regs[r + 0]) ||
+	      (df_regs_ever_live_p (r + 1) && !call_used_regs[r + 1]));
+    }
 }
 
 static enum call_parm_cvt_type
@@ -1381,12 +1407,6 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	  *no_add_attrs = true;
 	}
 
-      if (! VOID_TYPE_P (TREE_TYPE (*node)))
-	{
-	  error ("non-void function cannot save all registers");
-	  *no_add_attrs = true;
-	}
-
       return NULL_TREE;
     }
 
@@ -1591,12 +1611,13 @@ ia16_function_attribute_inlinable_p (const_tree fndecl)
      Do not inline FNDECL if its caling convention makes more assumptions on
      function entry than CFUN.
 
-     And, do not inline __attribute__ ((far_section)) functions.  There will
-     probably be special reasons why these functions are marked as such.  */
+     And, do not inline __attribute__ ((far_section)) or __attribute__
+     ((interrupt)) functions.  There will probably be special reasons why
+     these functions are marked as such.  */
   unsigned their_cvt = ia16_get_callcvt (TREE_TYPE (fndecl));
   unsigned our_cvt;
 
-  if ((their_cvt & IA16_CALLCVT_FAR_SECTION) != 0)
+  if ((their_cvt & (IA16_CALLCVT_FAR_SECTION | IA16_CALLCVT_INTERRUPT)) != 0)
     return false;
 
   ia16_cache_function_info (false);
