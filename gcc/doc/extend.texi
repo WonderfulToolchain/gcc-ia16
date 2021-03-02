@@ -4298,11 +4298,10 @@ Specifying this function attribute is useful to override the effects of a
 
 @item save_all
 @cindex @code{save_all} function attribute, IA-16
-Use this attribute to indicate that all registers that the function
+Use this attribute to indicate that, except for registers which hold the
+function's return values, all registers that the function
 modifies---including possibly the flags register---should be saved in the
 prologue.
-
-This attribute is only supported for void functions.
 
 @strong{Warning:} This feature is experimental, and may produce broken code.
 Use with caution.
