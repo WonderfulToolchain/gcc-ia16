@@ -16976,6 +16976,7 @@ with a value of 0.
 
 @item __BUILTIN_IA16_SELECTOR
 @itemx __BUILTIN_IA16_FP_OFF
+@itemx __BUILTIN_IA16_STATIC_FAR_CAST
 @itemx __BUILTIN_IA16_NEAR_DATA_SEGMENT
 @itemx __BUILTIN_IA16_SS
 Each of these macros is defined only if the corresponding

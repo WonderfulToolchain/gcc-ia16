@@ -13190,6 +13190,15 @@ conditions@footnote{Currently, this is allowed if @var{fp} is a pointer to
 a locally defined variable or function, or if @var{fp} points to an external
 variable or function and LTO is not in effect.}.
 
+@item void __far *__builtin_ia16_static_far_cast (@var{type} *@var{p})
+Convert @var{p} to a far pointer.  If @var{p} is already a far pointer, just
+return it.
+
+This function can be used within a static initializer, under certain
+conditions@footnote{Currently, this is allowed if @var{p} is a far pointer,
+or if @var{p} is a pointer to a locally defined near variable, or if
+@var{p} points to an external near variable and LTO is not in effect.}.
+
 @item __segment __builtin_ia16_near_data_segment (void)
 Return the segment value for the generic (near) data address space.
 
