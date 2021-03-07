@@ -4831,6 +4831,7 @@ extern void ia16_machine_dependent_reorg (void);
 
 /* In ia16-builtins.c .  */
 extern GTY (()) tree ia16_builtin_decls[IA16_BUILTIN_MAX];
+extern GTY (()) tree ia16_void_far_ptr_type_node;
 extern void ia16_init_builtins (void);
 
 #undef	TARGET_BUILTIN_DECL
@@ -4845,6 +4846,13 @@ extern tree ia16_builtin_decl (unsigned code, bool initialize_p);
 /* In ia16-builtins.c .  */
 extern rtx ia16_expand_builtin (tree expr, rtx target, rtx subtarget,
 				machine_mode mode, int ignore);
+
+#undef	TARGET_RESOLVE_OVERLOADED_BUILTIN
+#define	TARGET_RESOLVE_OVERLOADED_BUILTIN ia16_resolve_overloaded_builtin
+
+/* In ia16-builtins.c .  */
+extern tree ia16_resolve_overloaded_builtin (unsigned loc, tree fndecl,
+					     void *arglist);
 
 #undef	TARGET_FOLD_BUILTIN
 #define	TARGET_FOLD_BUILTIN	ia16_fold_builtin
