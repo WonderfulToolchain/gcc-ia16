@@ -54,14 +54,16 @@
 #include "recog.h"
 
 tree ia16_builtin_decls[IA16_BUILTIN_MAX];
+tree ia16_void_far_ptr_type_node;
 
 void
 ia16_init_builtins (void)
 {
-  tree intSEG_type_node = unsigned_intHI_type_node, const_void_far_type_node,
-       const_void_far_ptr_type_node,
+  tree intSEG_type_node = unsigned_intHI_type_node,
+       const_void_far_type_node, const_void_far_ptr_type_node,
+       void_far_type_node,
        intSEG_ftype_intHI, unsigned_intHI_ftype_const_void_far_ptr,
-       intSEG_ftype_void, func;
+       intSEG_ftype_void, void_far_ptr_ftype_const_void_ptr, func;
 
   /* With -mprotected-mode, we need a type node for PHImode for use with
      __builtin_ia16_selector (), but there is no such existing node.  So
@@ -77,6 +79,10 @@ ia16_init_builtins (void)
 			    TYPE_QUAL_CONST
 			    | ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_FAR));
   const_void_far_ptr_type_node = build_pointer_type (const_void_far_type_node);
+  void_far_type_node
+    = build_qualified_type (void_type_node,
+			    ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_FAR));
+  ia16_void_far_ptr_type_node = build_pointer_type (void_far_type_node);
 
   intSEG_ftype_intHI = build_function_type_list (intSEG_type_node,
 						 unsigned_intHI_type_node,
@@ -85,7 +91,9 @@ ia16_init_builtins (void)
     = build_function_type_list (unsigned_intHI_type_node,
 				const_void_far_ptr_type_node, NULL_TREE);
   intSEG_ftype_void = build_function_type (intSEG_type_node, void_list_node);
-
+  void_far_ptr_ftype_const_void_ptr
+    = build_function_type_list (ia16_void_far_ptr_type_node,
+				const_ptr_type_node, NULL_TREE);
   func = add_builtin_function ("__builtin_ia16_selector", intSEG_ftype_intHI,
 			       IA16_BUILTIN_SELECTOR, BUILT_IN_MD, NULL,
 			       NULL_TREE);
@@ -95,6 +103,13 @@ ia16_init_builtins (void)
   func = add_builtin_function ("__builtin_ia16_FP_OFF",
 			       unsigned_intHI_ftype_const_void_far_ptr,
 			       IA16_BUILTIN_FP_OFF, BUILT_IN_MD, NULL,
+			       NULL_TREE);
+  TREE_READONLY (func) = 1;
+  ia16_builtin_decls[IA16_BUILTIN_FP_OFF] = func;
+
+  func = add_builtin_function ("__builtin_ia16_static_far_cast",
+			       void_far_ptr_ftype_const_void_ptr,
+			       IA16_BUILTIN_STATIC_FAR_CAST, BUILT_IN_MD, NULL,
 			       NULL_TREE);
   TREE_READONLY (func) = 1;
   ia16_builtin_decls[IA16_BUILTIN_FP_OFF] = func;
@@ -164,6 +179,45 @@ ia16_fp_off_foldable_for_as (addr_space_t as)
   return as == ADDR_SPACE_FAR || as == ADDR_SPACE_GENERIC;
 }
 
+static bool
+ia16_static_far_cast_foldable_for_as (addr_space_t as)
+{
+  return as == ADDR_SPACE_GENERIC;
+}
+
+static tree
+ia16_fallback_far_cast (tree op)
+{
+  return fold_build1 (ADDR_SPACE_CONVERT_EXPR, ia16_void_far_ptr_type_node,
+		      op);
+}
+
+tree
+ia16_resolve_overloaded_builtin (unsigned loc ATTRIBUTE_UNUSED,
+				 tree fndecl, void *arglist)
+{
+  unsigned fcode = DECL_FUNCTION_CODE (fndecl);
+  vec<tree, va_gc>& args = * (vec<tree, va_gc> *) arglist;
+  tree op;
+
+  switch (fcode)
+    {
+    case IA16_BUILTIN_STATIC_FAR_CAST:
+      gcc_assert (args.length () == 1);
+      /* If the argument is already a far pointer, just return the pointer
+	 (with a suitable dummy cast).  Otherwise let ia16_fold_builtin (...)
+	 below process this built-in call.  */
+      op = args[0];
+      if (POINTER_TYPE_P (TREE_TYPE (op))
+	  && TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (op))) == ADDR_SPACE_FAR)
+	return fold_build1 (NOP_EXPR, ia16_void_far_ptr_type_node, op);
+      return NULL_TREE;
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
 tree
 ia16_fold_builtin (tree fndecl, int n_args, tree *args,
 		   bool ignore ATTRIBUTE_UNUSED)
@@ -230,7 +284,7 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       faketype = build_qualified_type (TREE_TYPE (op), TYPE_UNQUALIFIED);
       fake = build_decl (UNKNOWN_LOCATION,
 			 VAR_P (op) ? VAR_DECL : FUNCTION_DECL,
-			 create_tmp_var_name ("__ia16_alias"), faketype);
+			 create_tmp_var_name ("__ia16_near_alias"), faketype);
       DECL_ATTRIBUTES (fake) = tree_cons (get_identifier ("weakref"), NULL,
 					  DECL_ATTRIBUTES (fake));
       DECL_ATTRIBUTES (fake)
@@ -245,6 +299,65 @@ ia16_fold_builtin (tree fndecl, int n_args, tree *args,
       op = build_fold_addr_expr_with_type_loc (UNKNOWN_LOCATION, fake,
 					       ptrtype);
       op = fold_build1 (NOP_EXPR, unsigned_intHI_type_node, op);
+      return op;
+
+    case IA16_BUILTIN_STATIC_FAR_CAST:
+      gcc_assert (n_args == 1);
+      /* If the argument is not a constant, then turn this into a normal
+	 far cast.  */
+      op = args[0];
+      if (! TREE_CONSTANT (op))
+	return ia16_fallback_far_cast (op);
+
+      /* Check if we are taking the address of a public, external, or static
+	 near variable; if not, just do a normal pointer cast.  First strip
+	 away layers of NOP_EXPR.  */
+      while (TREE_CODE (op) == NOP_EXPR
+	     && POINTER_TYPE_P (TREE_TYPE (op))
+	     && ia16_static_far_cast_foldable_for_as
+		  (TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (op)))))
+	op = TREE_OPERAND (op, 0);
+
+      if (TREE_CODE (op) != ADDR_EXPR
+	  || ! POINTER_TYPE_P (TREE_TYPE (op))
+	  || ! ia16_static_far_cast_foldable_for_as
+		 (TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (op)))))
+	return ia16_fallback_far_cast (op);
+
+      op = TREE_OPERAND (op, 0);
+      if (! VAR_P (op))
+	return ia16_fallback_far_cast (op);
+      if (! DECL_EXTERNAL (op) && ! TREE_PUBLIC (op) && ! TREE_STATIC (op))
+	return ia16_fallback_far_cast (op);
+      if (DECL_EXTERNAL (op) && flag_lto)
+	return ia16_fallback_far_cast (op);
+
+      /* Mark the original declaration as addressable.  */
+      mark_addressable (op);
+
+      /* Create a fake "declaration" which aliases to the same assembler
+	 name, but which is placed in the far address space.  Then take the
+	 address of that.  */
+      name = DECL_ASSEMBLER_NAME (op);
+      faketype = build_qualified_type
+		   (TREE_TYPE (op), ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_FAR));
+      fake = build_decl (UNKNOWN_LOCATION,
+			 VAR_P (op) ? VAR_DECL : FUNCTION_DECL,
+			 create_tmp_var_name ("__ia16_far_alias"), faketype);
+      DECL_ATTRIBUTES (fake) = tree_cons (get_identifier ("weakref"), NULL,
+					  DECL_ATTRIBUTES (fake));
+      DECL_ATTRIBUTES (fake)
+	= tree_cons (get_identifier ("alias"), tree_cons (NULL, name, NULL),
+		     DECL_ATTRIBUTES (fake));
+      TREE_STATIC (fake) = 1;
+      DECL_ARTIFICIAL (fake) = 1;
+      TREE_USED (fake) = 1;
+      assemble_alias (fake, name);
+
+      ptrtype = build_pointer_type_for_mode (faketype, SImode, true);
+      op = build_fold_addr_expr_with_type_loc (UNKNOWN_LOCATION, fake,
+					       ptrtype);
+      op = fold_build1 (NOP_EXPR, ia16_void_far_ptr_type_node, op);
       return op;
 
     case IA16_BUILTIN_NEAR_DATA_SEGMENT:
