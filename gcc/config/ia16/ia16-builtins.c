@@ -214,7 +214,7 @@ ia16_resolve_overloaded_builtin (unsigned loc ATTRIBUTE_UNUSED,
       return NULL_TREE;
 
     default:
-      gcc_unreachable ();
+      return NULL_TREE;
     }
 }
 
