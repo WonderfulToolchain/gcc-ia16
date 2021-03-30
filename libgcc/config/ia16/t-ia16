@@ -1,6 +1,9 @@
 # 16.1 Target Makefile Fragments
 
 HOST_LIBGCC2_CFLAGS += -Os
+ifeq (-mcmodel=medium,$(filter -mcmodel=%,$(MULTIFLAGS)))
+HOST_LIBGCC2_CFLAGS += -ffunction-sections
+endif
 FPBIT_CFLAGS = -DSMALL_MACHINE
 DPBIT_CFLAGS = -DSMALL_MACHINE
 
