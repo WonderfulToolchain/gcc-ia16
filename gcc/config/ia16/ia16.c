@@ -5385,10 +5385,7 @@ ia16_get_sibcall_expansion (rtx addr, machine_mode mode,
       else
 	return PC ("jmp\t%c");
     }
-  else if (! ia16_in_far_section_function_p ()
-	   && ((! DECL_EXTERNAL (fndecl)
-		&& ! ia16_far_section_function_type_p (fntype))
-	       || ia16_near_section_function_type_p (fntype)))
+  else if (fntype && ia16_can_reach_function_via_cs_p (fndecl, fntype))
     {
       if (MEM_P (addr) || ! CONSTANT_P (addr))
 	return P ("jmp\t*%", "jmp\t%");
