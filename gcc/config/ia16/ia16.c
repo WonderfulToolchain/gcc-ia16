@@ -1332,6 +1332,13 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
 	}
       return NULL_TREE;
     }
+  else if (is_attribute_p ("pascal", name))
+    {
+      error ("unsupported: pascal calling convention");
+      *no_add_attrs = true;
+
+      return NULL_TREE;
+    }
   else if (is_attribute_p ("assume_ss_data", name))
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
@@ -1529,6 +1536,7 @@ static const struct attribute_spec ia16_attribute_table[] =
   { "cdecl",   0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "regparmcall",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "pascal",  0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "assume_ds_data",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "no_assume_ds_data",
