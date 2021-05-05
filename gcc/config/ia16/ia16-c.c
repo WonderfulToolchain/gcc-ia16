@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20210307L");
+  def_macro ("__ia16__=20210505L");
 
   if (have_addr_spaces_p ())
     {
@@ -309,6 +309,10 @@ ia16_cpu_cpp_builtins (void)
 
   /* Also advertise that we support the __segment type name.  */
   def_macro ("__SEGMENT");
+
+  /* Open Watcom defines _STDCALL_SUPPORTED "for compatibility with
+     Microsoft". */
+  def_macro ("_STDCALL_SUPPORTED");
 
   /* If the user says -mnewlib-nano-stdio, try to pretend that <newlib.h>
      defines _NANO_FORMATTED_IO (actually this just defines the macro whether
