@@ -1304,6 +1304,8 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
 {
   CUMULATIVE_ARGS *args_so_far_pnt = get_cumulative_args (args_so_far);
   location_t loc = EXPR_LOCATION (exp);
+  /* 1 if scanning parms front to back, -1 if scanning back to front.  */
+  int inc;
 
   /* Count arg position in order args appear.  */
   int argpos;
@@ -1314,9 +1316,22 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
   args_size->var = 0;
 
   /* In this loop, we consider args in the order they are written.
-     We fill up ARGS from the back.  */
+     We fill up ARGS from the front or from the back if necessary
+     so that in any case the first arg to be pushed ends up at the front.  */
 
-  i = num_actuals - 1;
+  if (PUSH_ARGS_REVERSED)
+    {
+      i = num_actuals - 1, inc = -1;
+      /* In this case, must reverse order of args
+	 so that we compute and push the last arg first.  */
+    }
+  else
+    {
+      i = 0, inc = 1;
+    }
+
+  /* First fill in the actual arguments in the ARGS array, splitting
+     complex arguments if necessary.  */
   {
     int j = i;
     call_expr_arg_iterator iter;
@@ -1325,7 +1340,22 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
     if (struct_value_addr_value)
       {
 	args[j].tree_value = struct_value_addr_value;
-	j--;
+	j += inc;
+
+	/* If we pass structure address then we need to
+	   create bounds for it.  Since created bounds is
+	   a call statement, we expand it right here to avoid
+	   fixing all other places where it may be expanded.  */
+	if (CALL_WITH_BOUNDS_P (exp))
+	  {
+	    args[j].value = gen_reg_rtx (targetm.chkp_bound_mode ());
+	    args[j].tree_value
+	      = chkp_make_bounds_for_struct_addr (struct_value_addr_value);
+	    expand_expr_real (args[j].tree_value, args[j].value, VOIDmode,
+			      EXPAND_NORMAL, 0, false);
+	    args[j].pointer_arg = j - inc;
+	    j += inc;
+	  }
       }
     argpos = 0;
     FOR_EACH_CALL_EXPR_ARG (arg, iter, exp)
@@ -1339,18 +1369,18 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
 	  {
 	    tree subtype = TREE_TYPE (argtype);
 	    args[j].tree_value = build1 (REALPART_EXPR, subtype, arg);
-	    j--;
+	    j += inc;
 	    args[j].tree_value = build1 (IMAGPART_EXPR, subtype, arg);
 	  }
 	else
 	  args[j].tree_value = arg;
-	j--;
+	j += inc;
 	argpos++;
       }
   }
 
   /* I counts args in order (to be) pushed; ARGPOS counts in order written.  */
-  for (argpos = 0; argpos < num_actuals; i--, argpos++)
+  for (argpos = 0; argpos < num_actuals; i += inc, argpos++)
     {
       tree type = TREE_TYPE (args[i].tree_value);
       int unsignedp;
@@ -3404,7 +3434,7 @@ expand_call (tree exp, rtx target, int ignore)
       OK_DEFER_POP;
 
       /* Perform stack alignment before the first push (the last arg).  */
-      if (argblock == 0
+      if (PUSH_ARGS_REVERSED && argblock == 0
 	  && maybe_gt (adjusted_args_size.constant, reg_parm_stack_space)
 	  && maybe_ne (adjusted_args_size.constant, unadjusted_args_size))
 	{
@@ -3567,6 +3597,23 @@ expand_call (tree exp, rtx target, int ignore)
 	    }
 	}
 
+      /* Store all bounds not passed in registers.  */
+      for (i = 0; i < num_actuals; i++)
+	{
+	  if (POINTER_BOUNDS_P (args[i].tree_value)
+	      && !args[i].reg)
+	    store_bounds (&args[i],
+			  args[i].pointer_arg == -1
+			  ? NULL
+			  : &args[args[i].pointer_arg]);
+	}
+
+      /* If we pushed args in forward order, perform stack alignment
+	 after pushing the last arg.  */
+      if (!PUSH_ARGS_REVERSED && argblock == 0)
+	anti_adjust_stack (GEN_INT (adjusted_args_size.constant
+				    - unadjusted_args_size));
+
       /* If register arguments require space on the stack and stack space
 	 was not preallocated, allocate stack space here for arguments
 	 passed in registers.  */
@@ -3614,7 +3661,8 @@ expand_call (tree exp, rtx target, int ignore)
       if (pass == 1 && (return_flags & ERF_RETURNS_ARG))
 	{
 	  int arg_nr = return_flags & ERF_RETURN_ARG_MASK;
-	  arg_nr = num_actuals - arg_nr - 1;
+	  if (PUSH_ARGS_REVERSED)
+	    arg_nr = num_actuals - arg_nr - 1;
 	  if (arg_nr >= 0
 	      && arg_nr < num_actuals
 	      && args[arg_nr].reg
@@ -4081,6 +4129,7 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
      isn't present here, so we default to native calling abi here.  */
   tree fndecl ATTRIBUTE_UNUSED = NULL_TREE; /* library calls default to host calling abi ? */
   tree fntype ATTRIBUTE_UNUSED = NULL_TREE; /* library calls default to host calling abi ? */
+  int inc;
   int count;
   rtx argblock = 0;
   CUMULATIVE_ARGS args_so_far_v;
@@ -4441,14 +4490,23 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 	argblock = push_block (gen_int_mode (args_size.constant, Pmode), 0, 0);
     }
 
-  /* We push args individually in reverse order, perform stack alignment
+  /* If we push args individually in reverse order, perform stack alignment
      before the first push (the last arg).  */
-  if (argblock == 0)
+  if (argblock == 0 && PUSH_ARGS_REVERSED)
     anti_adjust_stack (gen_int_mode (args_size.constant
 				     - original_args_size.constant,
 				     Pmode));
 
-  argnum = nargs - 1;
+  if (PUSH_ARGS_REVERSED)
+    {
+      inc = -1;
+      argnum = nargs - 1;
+    }
+  else
+    {
+      inc = 1;
+      argnum = 0;
+    }
 
 #ifdef REG_PARM_STACK_SPACE
   if (ACCUMULATE_OUTGOING_ARGS)
@@ -4479,7 +4537,7 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 
   /* ARGNUM indexes the ARGVEC array in the order in which the arguments
      are to be pushed.  */
-  for (count = 0; count < nargs; count++, argnum--)
+  for (count = 0; count < nargs; count++, argnum += inc)
     {
       machine_mode mode = argvec[argnum].mode;
       rtx val = argvec[argnum].value;
@@ -4585,7 +4643,16 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 	}
     }
 
-  argnum = nargs - 1;
+  /* If we pushed args in forward order, perform stack alignment
+     after pushing the last arg.  */
+  if (argblock == 0 && !PUSH_ARGS_REVERSED)
+    anti_adjust_stack (GEN_INT (args_size.constant
+				- original_args_size.constant));
+
+  if (PUSH_ARGS_REVERSED)
+    argnum = nargs - 1;
+  else
+    argnum = 0;
 
   fun = prepare_call_address (NULL, fun, NULL, &call_fusage, 0, 0);
 
@@ -4593,7 +4660,7 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 
   /* ARGNUM indexes the ARGVEC array in the order in which the arguments
      are to be pushed.  */
-  for (count = 0; count < nargs; count++, argnum--)
+  for (count = 0; count < nargs; count++, argnum += inc)
     {
       machine_mode mode = argvec[argnum].mode;
       rtx val = argvec[argnum].value;
