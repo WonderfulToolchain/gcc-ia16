@@ -461,6 +461,7 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
   location_t loc = cp_expr_loc_or_input_loc (*expr_p);
   enum tree_code code = TREE_CODE (*expr_p);
   enum gimplify_status ret;
+  tree fntype;
 
   if (STATEMENT_CODE_P (code))
     {
@@ -634,7 +635,9 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
 
     case CALL_EXPR:
       ret = GS_OK;
+      fntype = TREE_TYPE (CALL_EXPR_FN (*expr_p));
       if (flag_strong_eval_order == 2
+          && FUNCTION_PUSH_ARGS_REVERSED (fntype)
 	  && CALL_EXPR_FN (*expr_p)
 	  && !CALL_EXPR_OPERATOR_SYNTAX (*expr_p)
 	  && cp_get_callee_fndecl_nofold (*expr_p) == NULL_TREE)

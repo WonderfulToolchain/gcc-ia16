@@ -96,6 +96,9 @@ struct die_struct;
 /* Nonzero if this is a cold function.  */
 #define ECF_COLD		  (1 << 15)
 
+/* Nonzero if function arguments are pushed from last to first.  */
+#define ECF_PUSH_ARGS_REVERSED	  (1 << 13)
+
 /* Call argument flags.  */
 
 /* Nonzero if the argument is not used by the function.  */
