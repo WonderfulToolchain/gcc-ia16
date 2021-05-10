@@ -4116,7 +4116,7 @@ bool
 emit_push_insn (rtx x, machine_mode mode, tree type, rtx size,
 		unsigned int align, int partial, rtx reg, int extra,
 		rtx args_addr, rtx args_so_far, int reg_parm_stack_space,
-		rtx alignment_pad, bool sibcall_p)
+		rtx alignment_pad, bool sibcall_p, bool push_args_reversed)
 {
   rtx xinner;
   enum direction stack_direction = STACK_GROWS_DOWNWARD ? downward : upward;
@@ -4357,18 +4357,17 @@ emit_push_insn (rtx x, machine_mode mode, tree type, rtx size,
       /* Loop over all the words allocated on the stack for this arg.  */
       /* We can do it by words, because any scalar bigger than a word
 	 has a size a multiple of a word.  */
-#if ! PUSH_ARGS_REVERSED
-      for (i = not_stack; i < size; i++)
-#else
-      for (i = size - 1; i >= not_stack; i--)
-#endif
+      for (i = (push_args_reversed ? size - 1 : not_stack);
+	   push_args_reversed ? i >= not_stack : i < size; 
+	   push_args_reversed ? i-- : i++)
 	if (i >= not_stack + offset)
 	  if (!emit_push_insn (operand_subword_force (x, i, mode),
 			  word_mode, NULL_TREE, NULL_RTX, align, 0, NULL_RTX,
 			  0, args_addr,
 			  GEN_INT (args_offset + ((i - not_stack + skip)
 						  * UNITS_PER_WORD)),
-			  reg_parm_stack_space, alignment_pad, sibcall_p))
+			  reg_parm_stack_space, alignment_pad, sibcall_p,
+			  push_args_reversed))
 	    return false;
     }
   else

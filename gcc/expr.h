@@ -221,7 +221,7 @@ extern rtx push_block (rtx, int, int);
 
 /* Generate code to push something onto the stack, given its mode and type.  */
 extern bool emit_push_insn (rtx, machine_mode, tree, rtx, unsigned int,
-			    int, rtx, int, rtx, rtx, int, rtx, bool);
+			    int, rtx, int, rtx, rtx, int, rtx, bool, bool);
 
 /* Expand an assignment that stores the value of FROM into TO.  */
 extern void expand_assignment (tree, tree, bool);

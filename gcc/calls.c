@@ -744,6 +744,9 @@ flags_from_decl_or_type (const_tree exp)
 
   if (DECL_P (exp))
     {
+      if (FUNCTION_PUSH_ARGS_REVERSED (TREE_TYPE (exp)))
+	flags |= ECF_PUSH_ARGS_REVERSED;
+
       /* The function exp may have the `malloc' attribute.  */
       if (DECL_IS_MALLOC (exp))
 	flags |= ECF_MALLOC;
@@ -782,6 +785,9 @@ flags_from_decl_or_type (const_tree exp)
     }
   else if (TYPE_P (exp))
     {
+      if (FUNCTION_PUSH_ARGS_REVERSED (exp))
+	flags |= ECF_PUSH_ARGS_REVERSED;
+
       if (TYPE_READONLY (exp))
 	flags |= ECF_CONST;
 
@@ -1189,7 +1195,7 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
      We fill up ARGS from the front or from the back if necessary
      so that in any case the first arg to be pushed ends up at the front.  */
 
-  if (PUSH_ARGS_REVERSED)
+  if (FUNCTION_PUSH_ARGS_REVERSED (fntype))
     {
       i = num_actuals - 1, inc = -1;
       /* In this case, must reverse order of args
@@ -2413,6 +2419,8 @@ expand_call (tree exp, rtx target, int ignore)
   tree fntype;
   bool try_tail_call = CALL_EXPR_TAILCALL (exp);
   int pass;
+  /* Whether arguments are pushed from last to first.  */
+  bool push_args_reversed;
 
   /* Register in which non-BLKmode value will be returned,
      or 0 if no value or if value is BLKmode.  */
@@ -2532,6 +2540,8 @@ expand_call (tree exp, rtx target, int ignore)
       flags |= flags_from_decl_or_type (fntype);
     }
   rettype = TREE_TYPE (exp);
+
+  push_args_reversed = !! FUNCTION_PUSH_ARGS_REVERSED (fntype);
 
   struct_value = targetm.calls.struct_value_rtx (fntype, 0);
 
@@ -3163,7 +3173,7 @@ expand_call (tree exp, rtx target, int ignore)
 
       /* If we push args individually in reverse order, perform stack alignment
 	 before the first push (the last arg).  */
-      if (PUSH_ARGS_REVERSED && argblock == 0
+      if (push_args_reversed && argblock == 0
           && adjusted_args_size.constant > reg_parm_stack_space
 	  && adjusted_args_size.constant != unadjusted_args_size)
 	{
@@ -3350,7 +3360,7 @@ expand_call (tree exp, rtx target, int ignore)
 
       /* If we pushed args in forward order, perform stack alignment
 	 after pushing the last arg.  */
-      if (!PUSH_ARGS_REVERSED && argblock == 0)
+      if (!push_args_reversed && argblock == 0)
 	anti_adjust_stack (GEN_INT (adjusted_args_size.constant
 				    - unadjusted_args_size));
 
@@ -3404,7 +3414,7 @@ expand_call (tree exp, rtx target, int ignore)
       if (pass == 1 && (return_flags & ERF_RETURNS_ARG))
 	{
 	  int arg_nr = return_flags & ERF_RETURN_ARG_MASK;
-	  if (PUSH_ARGS_REVERSED)
+	  if (push_args_reversed)
 	    arg_nr = num_actuals - arg_nr - 1;
 	  if (arg_nr >= 0
 	      && arg_nr < num_actuals
@@ -3865,6 +3875,7 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
      isn't present here, so we default to native calling abi here.  */
   tree fndecl ATTRIBUTE_UNUSED = NULL_TREE; /* library calls default to host calling abi ? */
   tree fntype ATTRIBUTE_UNUSED = NULL_TREE; /* library calls default to host calling abi ? */
+  bool push_args_reversed = !! FUNCTION_PUSH_ARGS_REVERSED (fntype);
   int inc;
   int count;
   rtx argblock = 0;
@@ -4216,11 +4227,11 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 
   /* If we push args individually in reverse order, perform stack alignment
      before the first push (the last arg).  */
-  if (argblock == 0 && PUSH_ARGS_REVERSED)
+  if (argblock == 0 && push_args_reversed)
     anti_adjust_stack (GEN_INT (args_size.constant
 				- original_args_size.constant));
 
-  if (PUSH_ARGS_REVERSED)
+  if (push_args_reversed)
     {
       inc = -1;
       argnum = nargs - 1;
@@ -4338,7 +4349,8 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 			  partial, reg, 0, argblock,
 			  GEN_INT (argvec[argnum].locate.offset.constant),
 			  reg_parm_stack_space,
-			  ARGS_SIZE_RTX (argvec[argnum].locate.alignment_pad), false);
+			  ARGS_SIZE_RTX (argvec[argnum].locate.alignment_pad),
+			  false, push_args_reversed);
 
 	  /* Now mark the segment we just used.  */
 	  if (ACCUMULATE_OUTGOING_ARGS)
@@ -4373,11 +4385,11 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 
   /* If we pushed args in forward order, perform stack alignment
      after pushing the last arg.  */
-  if (argblock == 0 && !PUSH_ARGS_REVERSED)
+  if (argblock == 0 && !push_args_reversed)
     anti_adjust_stack (GEN_INT (args_size.constant
 				- original_args_size.constant));
 
-  if (PUSH_ARGS_REVERSED)
+  if (push_args_reversed)
     argnum = nargs - 1;
   else
     argnum = 0;
@@ -4765,6 +4777,7 @@ store_one_arg (struct arg_data *arg, rtx argblock, int flags,
   int used = 0;
   int i, lower_bound = 0, upper_bound = 0;
   int sibcall_failure = 0;
+  bool push_args_reversed = (flags & ECF_PUSH_ARGS_REVERSED) != 0;
 
   if (TREE_CODE (pval) == ERROR_MARK)
     return 1;
@@ -4960,7 +4973,8 @@ store_one_arg (struct arg_data *arg, rtx argblock, int flags,
       if (!emit_push_insn (arg->value, arg->mode, TREE_TYPE (pval), NULL_RTX,
 		      parm_align, partial, reg, used - size, argblock,
 		      ARGS_SIZE_RTX (arg->locate.offset), reg_parm_stack_space,
-		      ARGS_SIZE_RTX (arg->locate.alignment_pad), true))
+		      ARGS_SIZE_RTX (arg->locate.alignment_pad), true,
+		      push_args_reversed))
 	sibcall_failure = 1;
 
       /* Unless this is a partially-in-register argument, the argument is now
@@ -5073,7 +5087,8 @@ store_one_arg (struct arg_data *arg, rtx argblock, int flags,
       emit_push_insn (arg->value, arg->mode, TREE_TYPE (pval), size_rtx,
 		      parm_align, partial, reg, excess, argblock,
 		      ARGS_SIZE_RTX (arg->locate.offset), reg_parm_stack_space,
-		      ARGS_SIZE_RTX (arg->locate.alignment_pad), false);
+		      ARGS_SIZE_RTX (arg->locate.alignment_pad), false,
+		      push_args_reversed);
 
       /* Unless this is a partially-in-register argument, the argument is now
 	 in the stack.
