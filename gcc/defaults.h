@@ -422,7 +422,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 /* Offsets recorded in opcodes are a multiple of this alignment factor.  */
 #ifndef DWARF_CIE_DATA_ALIGNMENT
-#ifdef STACK_GROWS_DOWNWARD
+#if STACK_GROWS_DOWNWARD - 0
 #define DWARF_CIE_DATA_ALIGNMENT (-((int) UNITS_PER_WORD))
 #else
 #define DWARF_CIE_DATA_ALIGNMENT ((int) UNITS_PER_WORD)
@@ -832,16 +832,22 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #ifdef PUSH_ROUNDING
 
-#ifndef PUSH_ARGS_REVERSED
-#if defined (STACK_GROWS_DOWNWARD) != defined (ARGS_GROW_DOWNWARD)
-#define PUSH_ARGS_REVERSED  PUSH_ARGS
+#ifndef FUNCTION_PUSH_ARGS_REVERSED
+#if defined (PUSH_ARGS_REVERSED)
+#define FUNCTION_PUSH_ARGS_REVERSED(FNTYPE) PUSH_ARGS_REVERSED
+#elif ! PUSH_ARGS
+#define FUNCTION_PUSH_ARGS_REVERSED(FNTYPE) 0
+#elif STACK_GROWS_DOWNWARD - 0
+#define FUNCTION_PUSH_ARGS_REVERSED(FNTYPE) (! ARGS_GROW_DOWNWARD)
+#else
+#define FUNCTION_PUSH_ARGS_REVERSED(FNTYPE) ARGS_GROW_DOWNWARD
 #endif
 #endif
 
 #endif
 
-#ifndef PUSH_ARGS_REVERSED
-#define PUSH_ARGS_REVERSED 0
+#ifndef FUNCTION_PUSH_ARGS_REVERSED
+#define FUNCTION_PUSH_ARGS_REVERSED(FNTYPE) 0
 #endif
 
 /* Default value for the alignment (in bits) a C conformant malloc has to

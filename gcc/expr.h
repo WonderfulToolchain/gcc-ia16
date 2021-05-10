@@ -221,7 +221,7 @@ extern rtx push_block (rtx, int, int);
 
 /* Generate code to push something onto the stack, given its mode and type.  */
 extern bool emit_push_insn (rtx, machine_mode, tree, rtx, unsigned int,
-			    int, rtx, int, rtx, rtx, int, rtx, bool);
+			    int, rtx, int, rtx, rtx, int, rtx, bool, bool);
 
 /* Extract the accessible bit-range from a COMPONENT_REF.  */
 extern void get_bit_range (unsigned HOST_WIDE_INT *, unsigned HOST_WIDE_INT *,

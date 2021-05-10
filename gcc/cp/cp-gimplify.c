@@ -566,6 +566,7 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
   int saved_stmts_are_full_exprs_p = 0;
   enum tree_code code = TREE_CODE (*expr_p);
   enum gimplify_status ret;
+  tree fntype;
 
   if (STATEMENT_CODE_P (code))
     {
@@ -759,7 +760,9 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
 	 order and there's more than one argument other than 'this', gimplify
 	 them in order.  */
       ret = GS_OK;
-      if (PUSH_ARGS_REVERSED && CALL_EXPR_LIST_INIT_P (*expr_p)
+      fntype = TREE_TYPE (CALL_EXPR_FN (*expr_p));
+      if (FUNCTION_PUSH_ARGS_REVERSED (fntype)
+	  && CALL_EXPR_LIST_INIT_P (*expr_p)
 	  && call_expr_nargs (*expr_p) > 2)
 	{
 	  int nargs = call_expr_nargs (*expr_p);
