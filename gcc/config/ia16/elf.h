@@ -142,11 +142,12 @@
   { "cmodel_long_ld", "%{mcmodel=*:%*.ld;:tiny.ld}" }
 
 #define POST_LINK_SPEC	\
-  "%{melks-libc:"	\
-    "elf2elks %{v} "	\
-	     "%{mcmodel=tiny:--tiny} " \
-	     "%{maout-total=*:--total-data %*} " \
-	     "%{maout-chmem=*:--chmem %*} " \
-	     "%{maout-stack=*:--stack %*} " \
-	     "%{maout-heap=*:--heap %*} " \
-	     "%{o*:%*} %{!o*:a.out}}"
+  "%{!mno-post-link:"	\
+    "%{melks-libc:"	\
+      "elf2elks %{v} "	\
+	       "%{mcmodel=tiny:--tiny} " \
+	       "%{maout-total=*:--total-data %*} " \
+	       "%{maout-chmem=*:--chmem %*} " \
+	       "%{maout-stack=*:--stack %*} " \
+	       "%{maout-heap=*:--heap %*} " \
+	       "%{o*:%*} %{!o*:a.out}}}"

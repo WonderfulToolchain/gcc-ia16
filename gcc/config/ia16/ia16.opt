@@ -242,3 +242,8 @@ Use AT&T assembler dialect (default).
 masm=intel
 Target RejectNegative Var(ia16_asm_dialect, ASM_INTEL)
 Use Intel assembler dialect (experimental).
+
+; Skip post-processing steps (POST_LINK_SPEC) after running linker.  This is
+; mainly for debugging, and is not yet "officially" documented.
+mno-post-link
+Target RejectNegative Undocumented
