@@ -2982,7 +2982,9 @@ are at negative offsets from the frame pointer.
 @end defmac
 
 @defmac ARGS_GROW_DOWNWARD
-Define this macro if successive arguments to a function occupy decreasing
+@defmacx FUNCTION_ARGS_GROW_DOWNWARD (@var{funtype})
+Define this macro to nonzero value
+if successive arguments to a function occupy decreasing
 addresses on the stack.
 @end defmac
 

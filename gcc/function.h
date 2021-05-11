@@ -351,6 +351,9 @@ struct GTY(()) function {
      contribute to the execution of the program can be deleted.  */
   unsigned int can_delete_dead_exceptions : 1;
 
+  /* Nonzero if successive arguments occupy decreasing stack addresses.  */
+  unsigned int args_grow_downward : 1;
+
   /* Fields below this point are not set for abstract functions; see
      allocate_struct_function.  */
 
