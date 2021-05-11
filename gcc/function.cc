@@ -3788,7 +3788,7 @@ assign_parms (tree fndecl)
   crtl->args.size = aligned_upper_bound (crtl->args.size,
 					 PARM_BOUNDARY / BITS_PER_UNIT);
 
-  if (ARGS_GROW_DOWNWARD)
+  if (cfun->args_grow_downward)
     {
       crtl->args.arg_offset_rtx
 	= (all.stack_args_size.var == 0
@@ -4096,7 +4096,7 @@ locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
 	}
     }
 
-  if (ARGS_GROW_DOWNWARD)
+  if (FUNCTION_ARGS_GROW_DOWNWARD (fndecl ? TREE_TYPE (fndecl) : NULL_TREE))
     {
       locate->slot_offset.constant = -initial_offset_ptr->constant;
       if (initial_offset_ptr->var)
@@ -4207,7 +4207,7 @@ pad_to_arg_alignment (struct args_size *offset_ptr, int boundary,
 				    ARGS_SIZE_TREE (*offset_ptr),
 				    sp_offset_tree);
 	  tree rounded;
-	  if (ARGS_GROW_DOWNWARD)
+	  if (cfun->args_grow_downward)
 	    rounded = round_down (offset, boundary / BITS_PER_UNIT);
 	  else
 	    rounded = round_up   (offset, boundary / BITS_PER_UNIT);
@@ -4221,7 +4221,7 @@ pad_to_arg_alignment (struct args_size *offset_ptr, int boundary,
 	}
       else
 	{
-	  if (ARGS_GROW_DOWNWARD)
+	  if (cfun->args_grow_downward)
 	    offset_ptr->constant -= misalign;
 	  else
 	    offset_ptr->constant += -misalign & (boundary_in_bytes - 1);
@@ -4851,6 +4851,7 @@ allocate_struct_function (tree fndecl, bool abstract_p)
 	}
 
       cfun->stdarg = stdarg_p (fntype);
+      cfun->args_grow_downward = !! FUNCTION_ARGS_GROW_DOWNWARD (fntype);
 
       /* Assume all registers in stdarg functions need to be saved.  */
       cfun->va_list_gpr_size = VA_LIST_MAX_GPR_SIZE;
