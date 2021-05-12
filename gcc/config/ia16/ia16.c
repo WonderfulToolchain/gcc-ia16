@@ -775,11 +775,12 @@ ia16_in_far_section_function_p (void)
 
 /* Basic Stack Layout */
 /* Right after the function prologue, before elimination, we have:
-   argument N
-   argument N - 1
+				<-- argument pointer (`pascal')
+   argument N (pascal: 1)
+   argument N - 1 (pascal: 2)
    ...
-   argument 1
-   return address		<-- argument pointer
+   argument 1 (pascal: N)	<-- argument pointer (non-`pascal')
+   return address
    saved reg 1
    saved reg 2
    ...
@@ -790,30 +791,62 @@ ia16_in_far_section_function_p (void)
    function outgoing arguments
 */
 
-/* Calculates the offset from the argument pointer to the first argument.
- * When a frame pointer is needed and bp must be saved, it is saved before the
- * frame is created.  This increases the offset to the parameters by 2 bytes.
- * A __far call would add another 2 bytes.
- * FIXME: Docs: This is called before register allocation.
+/* Calculates the difference between the location storing the current
+ * function's return address, and the argument pointer.
  */
-HOST_WIDE_INT
-ia16_first_parm_offset (tree fundecl)
+static HOST_WIDE_INT
+ia16_return_addr_pointer_to_arg_pointer_offset (void)
 {
   /* Start off with 2 bytes to skip over the saved pc register.  */
   HOST_WIDE_INT offset = GET_MODE_SIZE (Pmode);
 
   /*
-   * Add 2 bytes if this is a far function.  Add a further 2 if this is an
-   * interrupt function.
+   * Add 2 bytes (for saved caller %cs) if this is a far function.  Add a
+   * further 2 (for saved flags) if this is an interrupt function.
    */
-  if (ia16_far_function_type_p (TREE_TYPE (fundecl)))
+  if (ia16_in_far_function_p ())
     {
       offset += GET_MODE_SIZE (Pmode);
-      if (ia16_interrupt_function_type_p (TREE_TYPE (fundecl)))
-	offset += GET_MODE_SIZE (Pmode);
+      if (ia16_in_interrupt_function_p ())
+	offset += GET_MODE_SIZE (HImode);
     }
 
-  return (offset);
+  /*
+   * The offset now points to the topmost argument.  For a `pascal'
+   * function, adjust it to point after the bottommost argument.
+   */
+  if (cfun->args_grow_downward && crtl->args.size != -1)
+    offset += crtl->args.size;
+
+  return offset;
+}
+
+/* Return an RTX for the return address for a particular frame.
+ *
+ * Because we have no way of knowing how many registers are saved between the
+ * return address and the frame pointer, we can't find the return address for
+ * count > 0.
+ * TODO: Make this work by pushing the frame pointer before the saved regs
+ * when not using ENTER.
+ *
+ * For count == 0, set a flag so that ia16_save_reg_p (.) will ultimately
+ * arrange to allocate a frame pointer, even if the function does not
+ * otherwise need one.
+ */
+rtx
+ia16_return_addr_rtx (int count, rtx frame)
+{
+  rtx addr;
+
+  if (count != 0)
+    return NULL_RTX;
+
+  crtl->accesses_prior_frames = true;
+
+  addr = plus_constant (Pmode, arg_pointer_rtx,
+			-ia16_return_addr_pointer_to_arg_pointer_offset ());
+  /* FIXME: maybe return a far pointer (SImode) if this is a far function? */
+  return gen_rtx_MEM (Pmode, addr);
 }
 
 /* Eliminating Frame Pointer and Arg Pointer */
@@ -863,7 +896,7 @@ ia16_can_eliminate (const int from, const int to)
 }
 
 /* Calculates the difference between the argument pointer and the frame
- * pointer immediately after the function prologue.  This should be kept int
+ * pointer immediately after the function prologue.  This should be kept in
  * sync with the prologue pattern.
  */
 static HOST_WIDE_INT
@@ -881,6 +914,13 @@ ia16_initial_arg_pointer_offset (void)
   /* Remember to take the flags into account. */
   if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
     offset += GET_MODE_SIZE (HImode);
+
+  /*
+   * The offset now points to the return address.  Add the distance between
+   * the return address pointer and the argument start.
+   */
+  offset += ia16_return_addr_pointer_to_arg_pointer_offset ();
+
   return offset;
 }
 
