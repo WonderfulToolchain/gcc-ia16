@@ -4329,6 +4329,18 @@ This attribute is only supported for void functions.
 @strong{Warning:} This feature is experimental, and may produce broken code.
 Use with caution.
 
+@item pascal
+@cindex @code{pascal} function attribute, IA-16
+@cindex functions that pop the argument stack on IA-16
+On the IA-16 target, the @code{pascal} attribute causes the compiler to
+assume that the function's caller pushes arguments onto the stack,
+@emph{from first to last}, and the function itself (the callee) pops off the
+stack space used to pass arguments.  A function that takes a variable number
+of arguments cannot use this attribute.
+
+@strong{Warning:} This feature is experimental, and may produce broken code.
+Use with caution.
+
 @item near_section
 @cindex @code{near_section} function attribute, IA-16
 This attribute, attached to a far function declaration, tells GCC that

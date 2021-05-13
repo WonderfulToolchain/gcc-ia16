@@ -16865,6 +16865,7 @@ This macro is defined only if the compiler supports the Watcom-compatible
 
 @item __CDECL
 @itemx __STDCALL
+@itemx __PASCAL
 @itemx __INTERRUPT
 @itemx __LOADDS
 @itemx __SAVEREGS
@@ -16958,6 +16959,7 @@ This macro is defined only if static storage variables can be placed in
 @item __IA16_FEATURE_ATTRIBUTE_CDECL
 @itemx __IA16_FEATURE_ATTRIBUTE_STDCALL
 @itemx __IA16_FEATURE_ATTRIBUTE_REGPARMCALL
+@itemx __IA16_FEATURE_ATTRIBUTE_PASCAL
 @itemx __IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA
 @itemx __IA16_FEATURE_ATTRIBUTE_SAVE_DS

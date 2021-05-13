@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20210510L");
+  def_macro ("__ia16__=20210513L");
 
   if (have_addr_spaces_p ())
     {
@@ -145,6 +145,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_CDECL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_STDCALL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_REGPARMCALL");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_PASCAL");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NO_ASSUME_DS_DATA");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_SAVE_DS");
@@ -176,6 +177,8 @@ ia16_cpu_cpp_builtins (void)
 		      target_call_parm_cvt == CALL_PARM_CVT_STDCALL);
   def_or_undef_macro ("__IA16_CALLCVT_REGPARMCALL",
 		      target_call_parm_cvt == CALL_PARM_CVT_REGPARMCALL);
+  def_or_undef_macro ("__IA16_CALLCVT_PASCAL", /* unlikely, but just in case */
+		      target_call_parm_cvt == CALL_PARM_CVT_PASCAL);
   def_macro ("__IA16_CALLCVT_FAR_FUNCTION_IF_FAR_RETURN_TYPE");
   def_or_undef_macro ("__IA16_CALLCVT_ASSUME_DS_DATA", TARGET_ASSUME_DS_DATA);
   def_or_undef_macro ("__IA16_CALLCVT_NO_ASSUME_DS_DATA",
@@ -298,11 +301,13 @@ ia16_cpu_cpp_builtins (void)
      Here GCC follows Borland's stricter meaning.  */
   def_macro ("__cdecl=__attribute__ ((__cdecl__))");
   def_macro ("__stdcall=__attribute__ ((__stdcall__))");
+  def_macro ("__pascal=__attribute__ ((__pascal__))");
   def_macro ("__interrupt=__attribute__ ((__interrupt__))");
   def_macro ("__loadds=__attribute__ ((__no_assume_ds_data__))");
   def_macro ("__saveregs=__attribute__ ((__save_all__))");
   def_macro ("__CDECL");
   def_macro ("__STDCALL");
+  def_macro ("__PASCAL");
   def_macro ("__INTERRUPT");
   def_macro ("__LOADDS");
   def_macro ("__SAVEREGS");
