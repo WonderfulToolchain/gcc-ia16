@@ -2849,6 +2849,10 @@ expand_call (tree exp, rtx target, int ignore)
 	  != targetm.calls.return_pops_args (current_function_decl,
 					     TREE_TYPE (current_function_decl),
 					     crtl->args.size))
+      /* Sibcalls do not work yet when the caller and callee lay out
+	 arguments in different directions.  -- tkchia 20210513 */
+      || cfun->args_grow_downward
+	 != (!! FUNCTION_ARGS_GROW_DOWNWARD (funtype))
       || !lang_hooks.decls.ok_for_sibcall (fndecl))
     try_tail_call = 0;
 
