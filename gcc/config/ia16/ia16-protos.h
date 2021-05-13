@@ -46,8 +46,8 @@ extern void		ia16_recog (rtx_insn *insn);
 extern bool		ia16_have_seg_override_p (rtx x);
 extern rtx		ia16_bless_selector (rtx seg);
 extern rtx		ia16_seg_override_term (rtx seg);
-extern void		ia16_override_abi_format (tree fndecl);
 extern rtx		ia16_return_addr_rtx (int count, rtx frame);
+extern void		ia16_override_abi_format (tree fndecl);
 extern HOST_WIDE_INT	ia16_initial_frame_pointer_offset (void);
 extern HOST_WIDE_INT
 		ia16_initial_elimination_offset (unsigned int from,

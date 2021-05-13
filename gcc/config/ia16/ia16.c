@@ -309,6 +309,8 @@ ia16_get_call_parm_cvt (const_tree type)
 	    return CALL_PARM_CVT_STDCALL;
 	  else if (lookup_attribute ("regparmcall", attrs))
 	    return CALL_PARM_CVT_REGPARMCALL;
+	  else if (lookup_attribute ("pascal", attrs))
+	    return CALL_PARM_CVT_PASCAL;
 	}
     }
 
@@ -324,15 +326,16 @@ ia16_get_call_parm_cvt (const_tree type)
 #define IA16_CALLCVT_CDECL		0x0001
 #define IA16_CALLCVT_STDCALL		0x0002
 #define IA16_CALLCVT_REGPARMCALL	0x0004
-#define IA16_CALLCVT_FAR		0x0008
-#define IA16_CALLCVT_DS_DATA		0x0010
-#define IA16_CALLCVT_SS_DATA		0x0020
-#define IA16_CALLCVT_SAVE_DS		0x0040
-#define IA16_CALLCVT_SAVE_ES		0x0080
-#define IA16_CALLCVT_SAVE_ALL		0x0100
-#define IA16_CALLCVT_INTERRUPT		0x0200
-#define IA16_CALLCVT_NEAR_SECTION	0x0400
-#define IA16_CALLCVT_FAR_SECTION	0x0800
+#define IA16_CALLCVT_PASCAL		0x0008
+#define IA16_CALLCVT_FAR		0x0010
+#define IA16_CALLCVT_DS_DATA		0x0020
+#define IA16_CALLCVT_SS_DATA		0x0040
+#define IA16_CALLCVT_SAVE_DS		0x0080
+#define IA16_CALLCVT_SAVE_ES		0x0100
+#define IA16_CALLCVT_SAVE_ALL		0x0200
+#define IA16_CALLCVT_INTERRUPT		0x0400
+#define IA16_CALLCVT_NEAR_SECTION	0x0800
+#define IA16_CALLCVT_FAR_SECTION	0x1000
 
 static bool ia16_far_function_type_p (const_tree funtype);
 static rtx ia16_seg16_reloc (rtx thang);
@@ -354,6 +357,9 @@ ia16_get_callcvt (const_tree type)
       break;
     case CALL_PARM_CVT_REGPARMCALL:
       callcvt = IA16_CALLCVT_REGPARMCALL;
+      break;
+    case CALL_PARM_CVT_PASCAL:
+      callcvt = IA16_CALLCVT_PASCAL;
       break;
     default:
       gcc_unreachable ();
@@ -790,6 +796,21 @@ ia16_in_far_section_function_p (void)
    local variables end		<-- stack pointer
    function outgoing arguments
 */
+
+/* Say whether successive arguments to a function of type FNTYPE occupy
+ * decreasing stack addresses.
+ */
+int
+ia16_function_args_grow_downward (const_tree fntype)
+{
+  tree attrs;
+
+  if (! fntype)
+    return 0;
+
+  attrs = TYPE_ATTRIBUTES (fntype);
+  return attrs && lookup_attribute ("pascal", attrs);
+}
 
 /* Calculates the difference between the location storing the current
  * function's return address, and the argument pointer.
@@ -1293,10 +1314,11 @@ ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
 
   switch (ia16_get_callcvt (funtype)
 	  & (IA16_CALLCVT_STDCALL | IA16_CALLCVT_CDECL
-	     | IA16_CALLCVT_REGPARMCALL))
+	     | IA16_CALLCVT_REGPARMCALL | IA16_CALLCVT_PASCAL))
     {
     case IA16_CALLCVT_STDCALL:
     case IA16_CALLCVT_REGPARMCALL:
+    case IA16_CALLCVT_PASCAL:
       return size;
     case IA16_CALLCVT_CDECL:
       return 0;
@@ -1340,9 +1362,10 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
       if (attrs && (lookup_attribute ("cdecl", attrs)
-		    || lookup_attribute ("regparmcall", attrs)))
+		    || lookup_attribute ("regparmcall", attrs)
+		    || lookup_attribute ("pascal", attrs)))
 	{
-	  error ("stdcall, cdecl, and regparmcall attributes are "
+	  error ("stdcall, cdecl, regparmcall, and pascal attributes are "
 		 "not compatible");
 	  *no_add_attrs = true;
 	}
@@ -1352,9 +1375,10 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
       if (attrs && (lookup_attribute ("stdcall", attrs)
-		    || lookup_attribute ("regparmcall", attrs)))
+		    || lookup_attribute ("regparmcall", attrs)
+		    || lookup_attribute ("pascal", attrs)))
 	{
-	  error ("stdcall, cdecl, and regparmcall attributes are "
+	  error ("stdcall, cdecl, regparmcall, and pascal attributes are "
 		 "not compatible");
 	  *no_add_attrs = true;
 	}
@@ -1364,9 +1388,10 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     {
       tree attrs = TYPE_ATTRIBUTES (*node);
       if (attrs && (lookup_attribute ("cdecl", attrs)
-		    || lookup_attribute ("stdcall", attrs)))
+		    || lookup_attribute ("stdcall", attrs)
+		    || lookup_attribute ("pascal", attrs)))
 	{
-	  error ("stdcall, cdecl, and regparmcall attributes are "
+	  error ("stdcall, cdecl, regparmcall, and pascal attributes are "
 		 "not compatible");
 	  *no_add_attrs = true;
 	}
@@ -1374,9 +1399,21 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
     }
   else if (is_attribute_p ("pascal", name))
     {
-      error ("unsupported: pascal calling convention");
-      *no_add_attrs = true;
-
+      tree attrs = TYPE_ATTRIBUTES (*node);
+      if (attrs && (lookup_attribute ("cdecl", attrs)
+		    || lookup_attribute ("stdcall", attrs)
+		    || lookup_attribute ("regparmcall", attrs)))
+	{
+	  error ("stdcall, cdecl, regparmcall, and pascal attributes are "
+		 "not compatible");
+	  *no_add_attrs = true;
+	}
+      if (stdarg_p (*node))
+	{
+	  error ("function with %<pascal%> calling convention cannot be "
+		 "variadic");
+	  *no_add_attrs = true;
+	}
       return NULL_TREE;
     }
   else if (is_attribute_p ("assume_ss_data", name))
