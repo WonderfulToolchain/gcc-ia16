@@ -2598,6 +2598,15 @@ can_implement_as_sibling_call_p (tree exp,
       return false;
     }
 
+  /* Sibcalls do not work yet when the caller and callee lay out
+     arguments in different directions.  -- tkchia 20210513 */
+  if (cfun->args_grow_downward != (!! FUNCTION_ARGS_GROW_DOWNWARD (funtype)))
+    {
+      maybe_complain_about_tail_call (exp, "argument layout directions"
+					   " differ");
+      return false;
+    }
+
   /* If this function requires more stack slots than the current
      function, we cannot change it into a sibling call.
      crtl->args.pretend_args_size is not part of the
