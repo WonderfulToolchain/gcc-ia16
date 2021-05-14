@@ -2093,7 +2093,7 @@ internal_arg_pointer_based_exp (const_rtx rtl, bool toplevel)
 
 static bool
 mem_might_overlap_already_clobbered_arg_p (rtx addr, poly_uint64 size,
-					   bool args_grow_downward)
+					   bool callee_args_grow_downward)
 {
   poly_int64 i;
   unsigned HOST_WIDE_INT start, end;
@@ -2116,8 +2116,18 @@ mem_might_overlap_already_clobbered_arg_p (rtx addr, poly_uint64 size,
   else
     i += crtl->args.pretend_args_size;
 
-  if (args_grow_downward)
-    i = -i - size;
+  if (callee_args_grow_downward)
+    {
+      if (! cfun->args_grow_downward)
+	i -= crtl->args.size - crtl->args.pretend_args_size;
+
+      i = -i - size;
+    }
+  else
+    {
+      if (cfun->args_grow_downward)
+	i += crtl->args.size - crtl->args.pretend_args_size;
+    }
 
   /* We can ignore any references to the function's pretend args,
      which at this point would manifest as negative values of I.  */
@@ -2598,15 +2608,6 @@ can_implement_as_sibling_call_p (tree exp,
       return false;
     }
 
-  /* Sibcalls do not work yet when the caller and callee lay out
-     arguments in different directions.  -- tkchia 20210513 */
-  if (cfun->args_grow_downward != (!! FUNCTION_ARGS_GROW_DOWNWARD (funtype)))
-    {
-      maybe_complain_about_tail_call (exp, "argument layout directions"
-					   " differ");
-      return false;
-    }
-
   /* If this function requires more stack slots than the current
      function, we cannot change it into a sibling call.
      crtl->args.pretend_args_size is not part of the
@@ -2692,7 +2693,7 @@ expand_call (tree exp, rtx target, int ignore)
   /* Whether arguments are pushed from last to first.  */
   bool push_args_reversed;
   /* Whether successive arguments occupy decreasing stack addresses.  */
-  bool args_grow_downward;
+  bool callee_args_grow_downward;
 
   /* Register in which non-BLKmode value will be returned,
      or 0 if no value or if value is BLKmode.  */
@@ -2815,7 +2816,7 @@ expand_call (tree exp, rtx target, int ignore)
   rettype = TREE_TYPE (exp);
 
   push_args_reversed = !! FUNCTION_PUSH_ARGS_REVERSED (fntype);
-  args_grow_downward = !! FUNCTION_ARGS_GROW_DOWNWARD (fntype);
+  callee_args_grow_downward = !! FUNCTION_ARGS_GROW_DOWNWARD (fntype);
 
   struct_value = targetm.calls.struct_value_rtx (fntype, 0);
 
@@ -3243,13 +3244,31 @@ expand_call (tree exp, rtx target, int ignore)
 	 incoming argument block.  */
       if (pass == 0)
 	{
+	  HOST_WIDE_INT argblock_offset_from_ap;
+
 	  argblock = crtl->args.internal_arg_pointer;
+
 	  if (STACK_GROWS_DOWNWARD)
-	    argblock
-	      = plus_constant (Pmode, argblock, crtl->args.pretend_args_size);
+	    argblock_offset_from_ap = crtl->args.pretend_args_size;
 	  else
-	    argblock
-	      = plus_constant (Pmode, argblock, -crtl->args.pretend_args_size);
+	    argblock_offset_from_ap = -crtl->args.pretend_args_size;
+
+	  if (callee_args_grow_downward)
+	    {
+	      if (! cfun->args_grow_downward)
+		argblock_offset_from_ap += crtl->args.size
+					   - crtl->args.pretend_args_size;
+	    }
+	  else
+	    {
+	      if (cfun->args_grow_downward)
+		argblock_offset_from_ap -= crtl->args.size
+					   - crtl->args.pretend_args_size;
+	    }
+
+	  if (argblock_offset_from_ap)
+	    argblock = plus_constant (Pmode, argblock,
+					     argblock_offset_from_ap);
 
 	  HOST_WIDE_INT map_size = constant_lower_bound (args_size.constant);
 	  stored_args_map = sbitmap_alloc (map_size);
@@ -3317,6 +3336,7 @@ expand_call (tree exp, rtx target, int ignore)
 		  if (! OUTGOING_REG_PARM_STACK_SPACE ((!fndecl ? fntype : TREE_TYPE (fndecl))))
 		    needed += reg_parm_stack_space;
 
+<<<<<<< HEAD:gcc/calls.cc
 		  poly_int64 limit = needed;
 		  if (args_grow_downward)
 		    limit += 1;
@@ -3327,6 +3347,14 @@ expand_call (tree exp, rtx target, int ignore)
 		  HOST_WIDE_INT const_limit = constant_lower_bound (limit);
 		  highest_outgoing_arg_in_use
 		    = MAX (initial_highest_arg_in_use, const_limit);
+=======
+		  if (callee_args_grow_downward)
+		    highest_outgoing_arg_in_use
+		      = MAX (initial_highest_arg_in_use, needed + 1);
+		  else
+		    highest_outgoing_arg_in_use
+		      = MAX (initial_highest_arg_in_use, needed);
+>>>>>>> 8f9d2796274 (Now allow sibcall with differing FUNCTION_ARGS_GROW_DOWNWARD (!)):gcc/calls.c
 
 		  free (stack_usage_map_buf);
 		  stack_usage_map_buf = XNEWVEC (char, highest_outgoing_arg_in_use);
@@ -3390,9 +3418,14 @@ expand_call (tree exp, rtx target, int ignore)
 		    argblock = virtual_outgoing_args_rtx;
 		  else
 		    {
+<<<<<<< HEAD:gcc/calls.cc
 		      rtx needed_rtx = gen_int_mode (needed, Pmode);
 		      argblock = push_block (needed_rtx, 0, 0);
 		      if (args_grow_downward)
+=======
+		      argblock = push_block (GEN_INT (needed), 0, 0);
+		      if (callee_args_grow_downward)
+>>>>>>> 8f9d2796274 (Now allow sibcall with differing FUNCTION_ARGS_GROW_DOWNWARD (!)):gcc/calls.c
 			argblock = plus_constant (Pmode, argblock, needed);
 		    }
 
@@ -3526,7 +3559,7 @@ expand_call (tree exp, rtx target, int ignore)
       if (ACCUMULATE_OUTGOING_ARGS && pass)
 	save_area = save_fixed_argument_area (reg_parm_stack_space, argblock,
 					      &low_to_save, &high_to_save,
-					      args_grow_downward);
+					      callee_args_grow_downward);
 #endif
 
       /* Now store (and compute if necessary) all non-register parms.
@@ -3559,9 +3592,9 @@ expand_call (tree exp, rtx target, int ignore)
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
-		      && check_sibcall_argument_overlap (before_arg,
-							 &args[i], 1,
-							 args_grow_downward)))
+		      && check_sibcall_argument_overlap
+			   (before_arg, &args[i], 1,
+			    callee_args_grow_downward)))
 		sibcall_failure = 1;
 	      }
 
@@ -3590,7 +3623,7 @@ expand_call (tree exp, rtx target, int ignore)
 	     /* On targets with weird calling conventions (e.g. PA) it's
 		hard to ensure that all cases of argument overlap between
 		stack and registers work.  Play it safe and bail out.  */
-	      if (args_grow_downward && !STACK_GROWS_DOWNWARD)
+	      if (callee_args_grow_downward && !STACK_GROWS_DOWNWARD)
 		{
 		  sibcall_failure = 1;
 		  break;
@@ -3600,9 +3633,9 @@ expand_call (tree exp, rtx target, int ignore)
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
-		      && check_sibcall_argument_overlap (before_arg,
-							 &args[i], 1,
-							 args_grow_downward)))
+		      && check_sibcall_argument_overlap
+			   (before_arg, &args[i], 1,
+			    callee_args_grow_downward)))
 		sibcall_failure = 1;
 	    }
 
@@ -3752,7 +3785,7 @@ expand_call (tree exp, rtx target, int ignore)
 	 In that case we can't do sibcalls.  */
       if (pass == 0
 	  && check_sibcall_argument_overlap (after_args, 0, 0,
-					     args_grow_downward))
+					     callee_args_grow_downward))
 	sibcall_failure = 1;
 
       /* If a non-BLKmode value is returned at the most significant end
@@ -3963,7 +3996,7 @@ expand_call (tree exp, rtx target, int ignore)
 	  if (save_area)
 	    restore_fixed_argument_area (save_area, argblock,
 					 high_to_save, low_to_save,
-					 args_grow_downward);
+					 callee_args_grow_downward);
 #endif
 
 	  /* If we saved any argument areas, restore them.  */
