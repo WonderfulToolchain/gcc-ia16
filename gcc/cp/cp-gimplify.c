@@ -760,7 +760,9 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
 	 order and there's more than one argument other than 'this', gimplify
 	 them in order.  */
       ret = GS_OK;
-      fntype = TREE_TYPE (CALL_EXPR_FN (*expr_p));
+      fntype = CALL_EXPR_FN (*expr_p);
+      if (fntype)
+	fntype = TREE_TYPE (TREE_TYPE (fntype));
       if (FUNCTION_PUSH_ARGS_REVERSED (fntype)
 	  && CALL_EXPR_LIST_INIT_P (*expr_p)
 	  && call_expr_nargs (*expr_p) > 2)
