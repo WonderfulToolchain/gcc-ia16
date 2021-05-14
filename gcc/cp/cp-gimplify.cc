@@ -635,7 +635,9 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
 
     case CALL_EXPR:
       ret = GS_OK;
-      fntype = TREE_TYPE (CALL_EXPR_FN (*expr_p));
+      fntype = CALL_EXPR_FN (*expr_p);
+      if (fntype)
+	fntype = TREE_TYPE (TREE_TYPE (fntype));
       if (flag_strong_eval_order == 2
           && FUNCTION_PUSH_ARGS_REVERSED (fntype)
 	  && CALL_EXPR_FN (*expr_p)
