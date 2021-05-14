@@ -2016,7 +2016,7 @@ internal_arg_pointer_based_exp (const_rtx rtl, bool toplevel)
 
 static bool
 mem_overlaps_already_clobbered_arg_p (rtx addr, unsigned HOST_WIDE_INT size,
-				      bool args_grow_downward)
+				      bool callee_args_grow_downward)
 {
   HOST_WIDE_INT i;
   rtx val;
@@ -2036,9 +2036,18 @@ mem_overlaps_already_clobbered_arg_p (rtx addr, unsigned HOST_WIDE_INT size,
   else
     i += crtl->args.pretend_args_size;
 
+  if (callee_args_grow_downward)
+    {
+      if (! cfun->args_grow_downward)
+	i -= crtl->args.size - crtl->args.pretend_args_size;
 
-  if (args_grow_downward)
-    i = -i - size;
+      i = -i - size;
+    }
+  else
+    {
+      if (cfun->args_grow_downward)
+	i += crtl->args.size - crtl->args.pretend_args_size;
+    }
 
   if (size > 0)
     {
@@ -2442,7 +2451,7 @@ expand_call (tree exp, rtx target, int ignore)
   /* Whether arguments are pushed from last to first.  */
   bool push_args_reversed;
   /* Whether successive arguments occupy decreasing stack addresses.  */
-  bool args_grow_downward;
+  bool callee_args_grow_downward;
 
   /* Register in which non-BLKmode value will be returned,
      or 0 if no value or if value is BLKmode.  */
@@ -2564,7 +2573,7 @@ expand_call (tree exp, rtx target, int ignore)
   rettype = TREE_TYPE (exp);
 
   push_args_reversed = !! FUNCTION_PUSH_ARGS_REVERSED (fntype);
-  args_grow_downward = !! FUNCTION_ARGS_GROW_DOWNWARD (fntype);
+  callee_args_grow_downward = !! FUNCTION_ARGS_GROW_DOWNWARD (fntype);
 
   struct_value = targetm.calls.struct_value_rtx (fntype, 0);
 
@@ -2849,10 +2858,6 @@ expand_call (tree exp, rtx target, int ignore)
 	  != targetm.calls.return_pops_args (current_function_decl,
 					     TREE_TYPE (current_function_decl),
 					     crtl->args.size))
-      /* Sibcalls do not work yet when the caller and callee lay out
-	 arguments in different directions.  -- tkchia 20210513 */
-      || cfun->args_grow_downward
-	 != (!! FUNCTION_ARGS_GROW_DOWNWARD (funtype))
       || !lang_hooks.decls.ok_for_sibcall (fndecl))
     try_tail_call = 0;
 
@@ -2978,13 +2983,31 @@ expand_call (tree exp, rtx target, int ignore)
 	 incoming argument block.  */
       if (pass == 0)
 	{
+	  HOST_WIDE_INT argblock_offset_from_ap;
+
 	  argblock = crtl->args.internal_arg_pointer;
+
 	  if (STACK_GROWS_DOWNWARD)
-	    argblock
-	      = plus_constant (Pmode, argblock, crtl->args.pretend_args_size);
+	    argblock_offset_from_ap = crtl->args.pretend_args_size;
 	  else
-	    argblock
-	      = plus_constant (Pmode, argblock, -crtl->args.pretend_args_size);
+	    argblock_offset_from_ap = -crtl->args.pretend_args_size;
+
+	  if (callee_args_grow_downward)
+	    {
+	      if (! cfun->args_grow_downward)
+		argblock_offset_from_ap += crtl->args.size
+					   - crtl->args.pretend_args_size;
+	    }
+	  else
+	    {
+	      if (cfun->args_grow_downward)
+		argblock_offset_from_ap -= crtl->args.size
+					   - crtl->args.pretend_args_size;
+	    }
+
+	  if (argblock_offset_from_ap)
+	    argblock = plus_constant (Pmode, argblock,
+					     argblock_offset_from_ap);
 
 	  stored_args_map = sbitmap_alloc (args_size.constant);
 	  bitmap_clear (stored_args_map);
@@ -3050,7 +3073,7 @@ expand_call (tree exp, rtx target, int ignore)
 		  if (! OUTGOING_REG_PARM_STACK_SPACE ((!fndecl ? fntype : TREE_TYPE (fndecl))))
 		    needed += reg_parm_stack_space;
 
-		  if (args_grow_downward)
+		  if (callee_args_grow_downward)
 		    highest_outgoing_arg_in_use
 		      = MAX (initial_highest_arg_in_use, needed + 1);
 		  else
@@ -3118,7 +3141,7 @@ expand_call (tree exp, rtx target, int ignore)
 		  else
 		    {
 		      argblock = push_block (GEN_INT (needed), 0, 0);
-		      if (args_grow_downward)
+		      if (callee_args_grow_downward)
 			argblock = plus_constant (Pmode, argblock, needed);
 		    }
 
@@ -3250,7 +3273,7 @@ expand_call (tree exp, rtx target, int ignore)
       if (ACCUMULATE_OUTGOING_ARGS && pass)
 	save_area = save_fixed_argument_area (reg_parm_stack_space, argblock,
 					      &low_to_save, &high_to_save,
-					      args_grow_downward);
+					      callee_args_grow_downward);
 #endif
 
       /* Now store (and compute if necessary) all non-register parms.
@@ -3281,9 +3304,9 @@ expand_call (tree exp, rtx target, int ignore)
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
-		      && check_sibcall_argument_overlap (before_arg,
-							 &args[i], 1,
-							 args_grow_downward)))
+		      && check_sibcall_argument_overlap
+			   (before_arg, &args[i], 1,
+			    callee_args_grow_downward)))
 		sibcall_failure = 1;
 	      }
 
@@ -3312,7 +3335,7 @@ expand_call (tree exp, rtx target, int ignore)
 	     /* On targets with weird calling conventions (e.g. PA) it's
 		hard to ensure that all cases of argument overlap between
 		stack and registers work.  Play it safe and bail out.  */
-	      if (args_grow_downward && !STACK_GROWS_DOWNWARD)
+	      if (callee_args_grow_downward && !STACK_GROWS_DOWNWARD)
 		{
 		  sibcall_failure = 1;
 		  break;
@@ -3322,9 +3345,9 @@ expand_call (tree exp, rtx target, int ignore)
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
-		      && check_sibcall_argument_overlap (before_arg,
-							 &args[i], 1,
-							 args_grow_downward)))
+		      && check_sibcall_argument_overlap
+			   (before_arg, &args[i], 1,
+			    callee_args_grow_downward)))
 		sibcall_failure = 1;
 	    }
 
@@ -3489,7 +3512,7 @@ expand_call (tree exp, rtx target, int ignore)
 	 In that case we can't do sibcalls.  */
       if (pass == 0
 	  && check_sibcall_argument_overlap (after_args, 0, 0,
-					     args_grow_downward))
+					     callee_args_grow_downward))
 	sibcall_failure = 1;
 
       /* If a non-BLKmode value is returned at the most significant end
@@ -3710,7 +3733,7 @@ expand_call (tree exp, rtx target, int ignore)
 	  if (save_area)
 	    restore_fixed_argument_area (save_area, argblock,
 					 high_to_save, low_to_save,
-					 args_grow_downward);
+					 callee_args_grow_downward);
 #endif
 
 	  /* If we saved any argument areas, restore them.  */
