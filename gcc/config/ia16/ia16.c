@@ -5214,8 +5214,11 @@ ia16_expand_prologue (void)
     }
   if (flag_stack_usage_info)
     {
-      current_function_static_stack_size = size +
-	ia16_initial_arg_pointer_offset () + UNITS_PER_WORD;
+      current_function_static_stack_size
+	= size + ia16_initial_arg_pointer_offset ();
+
+      if (cfun->args_grow_downward && crtl->args.size != -1)
+	current_function_static_stack_size -= crtl->args.size;
     }
 }
 
