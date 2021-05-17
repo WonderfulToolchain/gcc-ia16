@@ -1503,6 +1503,8 @@ int __far baz (void)
 @{
     return 2;
 @}
+int __far qux (long);
+int __far (*quux) (int);
 @end smallexample
 @c
 @c 1) The unwieldy
@@ -1636,6 +1638,7 @@ Also note that, unlike Open Watcom, GCC does not support the
 int (__far *foo) (long);
 @end smallexample
 
+@noindent
 syntax for declaring far function pointers.
 
 @item
