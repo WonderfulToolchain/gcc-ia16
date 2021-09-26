@@ -193,6 +193,10 @@ mhandle-non-i186
 Target RejectNegative
 Generate executables which check if they are running on an 80186-capable CPU.
 
+mtsr
+Target Report Mask(TSR)
+Add code to support terminate-and-stay-resident (TSR) programs (experimental).
+
 ; With the help of elf.h, this also enables -mprotected-mode.
 mdpmiable
 Target Report Mask(DPMIABLE)

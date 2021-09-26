@@ -16791,6 +16791,16 @@ link against the appropriate version of the @code{stdio} code.
 
 If you use this option, specify it at compile time and during the final link.
 
+@item -mtsr
+@opindex mtsr
+Emit and link with extra code to support the writing of MS-DOS
+terminate-and-stay-resident (TSR) programs.
+
+If you use this option, specify it at compile time and during the final link.
+
+This option implies @option{-mmsdos}, and requires support from the linker
+script which comes with the C library.
+
 @item -mdpmiable
 @opindex mdpmiable
 Produce MS-DOS executables which try to use the DOS Protected Mode Interface
