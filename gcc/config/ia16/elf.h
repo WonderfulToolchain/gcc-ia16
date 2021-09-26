@@ -123,7 +123,9 @@
 	  "%{mnewlib-nano-stdio:" \
 	    "%{mnewlib-autofloat-stdio:-lanstdio} -lnstdio;" \
 	    "mnewlib-autofloat-stdio:-lastdio} " \
-	  "%{mdpmiable:" \
+	  "%{mtsr:" \
+	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
+	    "mdpmiable:" \
 	      "%{nostartfiles:%Tdpm-m%(cmodel_l_ld);:%Tdpm-m%(cmodel_sl_ld)};"\
 	    "nostartfiles:" \
 	      "%Tdos-m%(cmodel_l_ld);" \

@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20210513L");
+  def_macro ("__ia16__=20210926L");
 
   if (have_addr_spaces_p ())
     {
@@ -162,6 +162,7 @@ ia16_cpu_cpp_builtins (void)
 		      TARGET_SEG_RELOC_STUFF);
   def_or_undef_macro ("__IA16_FEATURE_NEWLIB_AUTOFLOAT_STDIO",
 		      TARGET_NEWLIB_AUTOFLOAT_STDIO);
+  def_or_undef_macro ("__IA16_FEATURE_TSR", TARGET_TSR);
   def_macro ("__BUILTIN_IA16_SELECTOR");
   def_macro ("__BUILTIN_IA16_FP_OFF");
   def_macro ("__BUILTIN_IA16_STATIC_FAR_CAST");
