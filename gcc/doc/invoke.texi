@@ -16579,13 +16579,6 @@ at startup, whether the code is indeed running on an 80186-capable system.
 This requires support from the C library, and currently only works when
 targeting MS-DOS.
 
-@item -maout-heap=@var{heap-size}
-@opindex maout-heap
-When building an ELKS program (@option{-melks}), set it to request the
-operating system to reserve at least @var{heap-size} bytes in the data
-segment for the heap.  This requires support from the linker back-end and
-from the linker script which comes with the C library.
-
 @item -mcmodel=tiny
 @opindex mcmodel=tiny
 Generate code for the tiny code model, with a single combined data and text
@@ -16765,6 +16758,18 @@ operating system to reserve at least @var{stack-size} bytes in the data
 segment for the stack.  This requires support from the linker back-end and
 from the linker script which comes with the C library.
 
+@item -maout-heap=@var{heap-size}
+@opindex maout-heap
+When building an ELKS program (@option{-melks}), set it to request the
+operating system to reserve at least @var{heap-size} bytes in the data
+segment for the heap.
+
+When building an MS-DOS program, set it to limit the size of the heap to
+@var{heap-size} bytes.
+
+This option requires support from the linker back-end and
+from the linker script which comes with the C library.
+
 @item -mcmodel=medium
 @opindex mcmodel=medium
 Generate code for the medium code model, with one data segment and multiple
@@ -16794,7 +16799,8 @@ If you use this option, specify it at compile time and during the final link.
 @item -mtsr
 @opindex mtsr
 Emit and link with extra code to support the writing of MS-DOS
-terminate-and-stay-resident (TSR) programs.
+terminate-and-stay-resident (TSR) programs.  The @option{-maout-heap=}
+option can be used to adjust the maximum size of the program's resident heap.
 
 If you use this option, specify it at compile time and during the final link.
 

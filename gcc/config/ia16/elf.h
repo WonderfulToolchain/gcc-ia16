@@ -88,7 +88,10 @@
       "%{melks-libc:"	\
 	  "%Telks-%(cmodel_long_ld);" \
 	"nostdlib|nodefaultlibs:" \
-	"%{mdpmiable:"	\
+	"%{mtsr:"	\
+	    "%{nostdlib|nostartfiles:%Tdtr-m%(cmodel_ld);" \
+	      ":%Tdtr-m%(cmodel_s_ld)};" \
+	  "mdpmiable:"	\
 	    "%{nostdlib|nostartfiles:%Tdpm-m%(cmodel_ld);" \
 	      ":%Tdpm-m%(cmodel_s_ld)};" \
 	  "nostdlib|nostartfiles:" \
@@ -103,7 +106,9 @@
     "%{maout-total=*:--defsym=_total=%*} " \
     "%{maout-chmem=*:--defsym=_chmem=%*} " \
     "%{maout-stack=*:--defsym=_stack=%*} " \
-    "%{maout-heap=*:--defsym=_heap=%*}}"
+    "%{maout-heap=*:--defsym=_heap=%*}} " \
+  "%{!melks-libc:"	\
+    "%{maout-heap=*:--defsym=__heaplen_val=%*}}"
 
 #define STARTFILE_SPEC	\
   "%{melks-libc:-l:crt0.o}"
