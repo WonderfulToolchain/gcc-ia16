@@ -7,7 +7,7 @@
 
 void abort (void);
 int puts (const char *);
-extern int errno;
+extern char **environ;
 
 static unsigned
 cs (void)
@@ -40,12 +40,12 @@ main (int argc, char **argv, char **envp)
   if (q != cs () - 0x2329)
     abort ();
 
-  __asm ("movw $errno@SEGMENT16+0x3ded, %0" : "=r" (r));
+  __asm ("movw $environ@SEGMENT16+0x3ded, %0" : "=r" (r));
 
   if (r != ss () + 0x3ded)
     abort ();
 
-  __asm ("movw $errno@SEGMENT16-0x7973, %0" : "=r" (s));
+  __asm ("movw $environ@SEGMENT16-0x7973, %0" : "=r" (s));
 
   if (s != ss () - 0x7973)
     abort ();

@@ -7,7 +7,7 @@
 
 void abort (void);
 int puts (const char *);
-extern int errno;
+extern char **environ;
 
 /* This should go in the same segment as main ().  */
 __attribute__ ((noinline))
@@ -70,12 +70,12 @@ main (int argc, char **argv, char **envp)
   if (s == cs () - 0x300c)
     abort ();
 
-  __asm ("movw $errno@SEGMENT16+0x3ded, %0" : "=r" (t));
+  __asm ("movw $environ@SEGMENT16+0x3ded, %0" : "=r" (t));
 
   if (t != ss () + 0x3ded)
     abort ();
 
-  __asm ("movw $errno@SEGMENT16-0x7973, %0" : "=r" (u));
+  __asm ("movw $environ@SEGMENT16-0x7973, %0" : "=r" (u));
 
   if (u != ss () - 0x7973)
     abort ();
