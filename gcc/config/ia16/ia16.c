@@ -4908,6 +4908,36 @@ ia16_shift_truncation_mask (enum machine_mode mode)
 #undef	TARGET_MACHINE_DEPENDENT_REORG
 #define	TARGET_MACHINE_DEPENDENT_REORG	ia16_machine_dependent_reorg
 
+#undef	TARGET_MD_ASM_ADJUST
+#define	TARGET_MD_ASM_ADJUST	ia16_md_asm_adjust
+
+static rtx_insn *
+ia16_md_asm_adjust (vec<rtx> &outputs, vec<rtx> &/*inputs*/,
+		    vec<const char *> &constraints, vec<rtx> &clobbers,
+		    HARD_REG_SET &clobbered_regs)
+{
+  bool saw_asm_flag = false;
+
+  start_sequence ();
+  for (unsigned i = 0, n = outputs.length (); i < n; ++i)
+    {
+      const char *con = constraints[i];
+      if (strncmp (con, "=@cc", 4) != 0)
+	continue;
+
+      /* TODO */
+      error ("unsupported: %<=@cc%> flags register constraint");
+      saw_asm_flag = true;
+    }
+  rtx_insn *seq = get_insns ();
+  end_sequence ();
+
+  if (saw_asm_flag)
+    return seq;
+  else
+    return NULL;
+}
+
 /* In ia16-reorg.c .  */
 extern void ia16_machine_dependent_reorg (void);
 
