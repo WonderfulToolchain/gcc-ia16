@@ -1110,6 +1110,9 @@ classify_partition (loop_p loop, struct graph *rdg, partition *partition)
 	  || !dominated_by_p (CDI_DOMINATORS,
 			      loop->latch, gimple_bb (stmt)))
 	return;
+      tree lhs = gimple_assign_lhs (stmt);
+      if (! ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (lhs))))
+	return;
       partition->kind = PKIND_MEMSET;
       partition->main_dr = single_store;
       partition->niter = nb_iter;
@@ -1119,9 +1122,10 @@ classify_partition (loop_p loop, struct graph *rdg, partition *partition)
     {
       gimple *store = DR_STMT (single_store);
       gimple *load = DR_STMT (single_load);
+      tree rhs = gimple_assign_rhs1 (store);
       /* Direct aggregate copy or via an SSA name temporary.  */
       if (load != store
-	  && gimple_assign_lhs (load) != gimple_assign_rhs1 (store))
+	  && gimple_assign_lhs (load) != rhs)
 	return;
       if (!adjacent_dr_p (single_store)
 	  || !adjacent_dr_p (single_load)
@@ -1129,6 +1133,10 @@ classify_partition (loop_p loop, struct graph *rdg, partition *partition)
 			       DR_STEP (single_load), 0)
 	  || !dominated_by_p (CDI_DOMINATORS,
 			      loop->latch, gimple_bb (store)))
+	return;
+      tree lhs = gimple_assign_lhs (store);
+      if (! ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (lhs)))
+	  || ! ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (rhs))))
 	return;
       /* Now check that if there is a dependence this dependence is
          of a suitable form for memmove.  */
