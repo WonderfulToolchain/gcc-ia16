@@ -4329,6 +4329,13 @@ when this attribute is present.
 
 This attribute is only supported for void functions.
 
+By default, @code{interrupt} functions do not assume any particular values
+for @code{ds} or @code{ss}.  You can combine @code{interrupt} with the
+@code{assume_ds_data} and/or @code{assume_ss_data} attributes if you
+know---@emph{with absolute certainty}---that the interrupt handler will
+@emph{only} be invoked while @code{ds} or @code{ss} (respectively) points
+to the program's data segment.
+
 @strong{Warning:} This feature is experimental, and may produce broken code.
 Use with caution.
 

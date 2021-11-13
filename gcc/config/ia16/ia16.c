@@ -553,6 +553,8 @@ ia16_ds_data_function_type_p (const_tree funtype)
     {
       if (! attrs)
 	return 1;
+      if (lookup_attribute ("assume_ds_data", attrs))
+	return 1;
       if (lookup_attribute ("no_assume_ds_data", attrs)
 	  || lookup_attribute ("interrupt", attrs))
 	return 0;
@@ -698,6 +700,8 @@ ia16_ss_data_function_type_p (const_tree funtype)
   if (TARGET_ASSUME_SS_DATA)
     {
       if (! attrs)
+	return 1;
+      if (lookup_attribute ("assume_ss_data", attrs))
 	return 1;
       if (lookup_attribute ("no_assume_ss_data", attrs)
 	  || lookup_attribute ("interrupt", attrs))
@@ -4599,8 +4603,8 @@ ia16_print_operand_address_internal (FILE *file, rtx e, addr_space_t as)
       if (ia16_to_print_seg_override_p (DS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[DS_REG]);
     }
-  else if (TARGET_ALLOCABLE_DS_REG ? df_regs_ever_live_p (DS_REG)
-				   : ! ia16_in_ds_data_function_p ())
+  else if (! ia16_in_ds_data_function_p ()
+	   || (TARGET_ALLOCABLE_DS_REG && df_regs_ever_live_p (DS_REG)))
     {
       if (ia16_to_print_seg_override_p (SS_REG, rb))
 	fprintf (file, "%s%s:", REGISTER_PREFIX, reg_HInames[SS_REG]);
