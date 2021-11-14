@@ -201,7 +201,8 @@ add_ds_resets (void)
 	       *set_insn = make_insn_raw (gen_rtx_SET (ds_reg, data_seg)),
 	       *use_insn = make_insn_raw (gen_rtx_USE (SEGmode, ds_reg));
 
-      while (insn != BB_HEAD (bb) && ! INSN_P (insn))
+      while (insn != BB_HEAD (bb) && ! NOTE_INSN_BASIC_BLOCK_P (insn)
+	     && ! INSN_P (insn))
 	insn = PREV_INSN (insn);
 
       if (INSN_P (insn)
