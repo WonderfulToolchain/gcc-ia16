@@ -4070,6 +4070,11 @@ ia16_option_override (void)
   if (optimize && ! global_options_set.x_flag_omit_frame_pointer)
     global_options.x_flag_omit_frame_pointer = 1;
 
+  /* If -f(no-)delete-null-pointer-checks is not specified, default to
+     retaining all null pointer checks. */
+  if (! global_options_set.x_flag_delete_null_pointer_checks)
+    global_options.x_flag_delete_null_pointer_checks = 0;
+
   init_machine_status = ia16_init_machine_status;
 }
 
