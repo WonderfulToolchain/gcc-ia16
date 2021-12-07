@@ -762,8 +762,9 @@ Objective-C and Objective-C++ Dialects}.
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mshort-jumps @gol
 -mrtd -mstdcall -mregparmcall @gol
--mno-callee-assume-ds-data-segment -mprotected-mode -melks -melks-libc @gol
--mcmodel=medium -mnewlib-nano-stdio -mnewlib-autofloat-stdio @gol
+-mno-callee-assume-ds-data-segment -mprotected-mode @gol
+-mno-newlib-autofloat-stdio @gol
+-melks -melks-libc -mcmodel=medium -mnewlib-nano-stdio @gol
 -mdpmiable -msegelf -mno-callee-assume-ss-data-segment -masm=intel @gol
 -maout-total=@var{total} -maout-chmem=@var{chmem} @gol
 -mfar-function-if-far-return-type}
@@ -16728,6 +16729,19 @@ void foo (unsigned selector)
 
 At the linking stage, @option{-mprotected-mode} will also make GCC link your
 code against library routines that are built to work with protected mode.
+
+@item -mno-newlib-autofloat-stdio
+@opindex mno-newlib-autofloat-stdio
+If using the Newlib C library, do not try to detect whether the program needs
+floating-point support in the formatted I/O routines (@code{stdio}).  In
+particular, @option{-mno-newlib-autofloat-stdio} without
+@option{-mnewlib-nano-stdio} tells GCC to always include floating-point
+support.
+
+Without this option, GCC will try to detect if such support is needed, and
+link against the appropriate version of the @code{stdio} code.
+
+If you use this option, specify it at compile time and during the final link.
 @end table
 
 @subsubsection Experimental IA-16 Options
@@ -16787,14 +16801,6 @@ for the ELKS target is incomplete.
 If using the Newlib C library, link against a limited version of the
 formatted I/O routines (@code{stdio}) which supports only C89 functionality
 and by default excludes floating-point support.
-
-@item -mnewlib-autofloat-stdio
-@opindex mnewlib-autofloat-stdio
-If using the Newlib C library, try to detect whether the program needs
-floating-point support in the formatted I/O routines (@code{stdio}), and
-link against the appropriate version of the @code{stdio} code.
-
-If you use this option, specify it at compile time and during the final link.
 
 @item -mtsr
 @opindex mtsr

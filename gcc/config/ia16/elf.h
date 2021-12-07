@@ -126,8 +126,8 @@
 	    "%{march=any|march=i8086|march=i8088:;" \
 	      "march=*:-lck086}} " \
 	  "%{mnewlib-nano-stdio:" \
-	    "%{mnewlib-autofloat-stdio:-lanstdio} -lnstdio;" \
-	    "mnewlib-autofloat-stdio:-lastdio} " \
+	    "%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
+	    "!mno-newlib-autofloat-stdio:-lastdio} " \
 	  "%{mtsr:" \
 	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
 	    "mdpmiable:" \
