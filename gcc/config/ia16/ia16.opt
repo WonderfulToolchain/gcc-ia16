@@ -210,9 +210,13 @@ mnewlib-nano-stdio
 Target Mask(NEWLIB_NANO_STDIO)
 Link with Newlib's limited formatted I/O routines (experimental).
 
+mno-newlib-autofloat-stdio
+Target RejectNegative Mask(NO_NEWLIB_AUTOFLOAT_STDIO)
+Do not automatically decide between floating-point and non-fp formatted I/O routines.
+
 mnewlib-autofloat-stdio
-Target Mask(NEWLIB_AUTOFLOAT_STDIO)
-Automatically decide between floating-point and non-fp formatted I/O routines (experimental).
+Target RejectNegative InverseMask(NO_NEWLIB_AUTOFLOAT_STDIO, NEWLIB_AUTOFLOAT_STDIO)
+Automatically decide between floating-point and non-fp formatted I/O routines (default).
 
 ; This is currently a no-op option.  It may come in useful if and when ELKS
 ; supports more than one executable format.
