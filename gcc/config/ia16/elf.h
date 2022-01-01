@@ -39,7 +39,9 @@
     "%{maout-stack=*:%emay not use both -maout-chmem= and -maout-stack=}" \
     "%{maout-heap=*:%emay not use both -maout-chmem= and -maout-heap=}}", \
   "%{mhandle-non-i186:"	\
-    "%{melks-libc:%e-mhandle-non-i186 not supported for ELKS}}"
+    "%{melks-libc:%e-mhandle-non-i186 not supported for ELKS}}", \
+  "%{mhandle-non-i286:"	\
+    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
@@ -122,7 +124,9 @@
     "%{!r:"		\
       "%{!nostdlib:"	\
 	"%{!nodefaultlibs:" \
-	  "%{mhandle-non-i186:" \
+	  "%{mhandle-non-i286:" \
+	    "%{march=i80286|march=i286:-lck186};" \
+	    "mhandle-non-i186:" \
 	    "%{march=any|march=i8086|march=i8088:;" \
 	      "march=*:-lck086}} " \
 	  "%{mnewlib-nano-stdio:" \

@@ -757,7 +757,7 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} @gol
--mmsdos -mmsdos-handle-v1 -@gol
+-mmsdos -mmsdos-handle-v1 -mhandle-non-i186 -mhandle-non-i286 -@gol
 -maout-stack=@var{stack-size} -mstack-size=@var{stack-size} @gol
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mshort-jumps @gol
@@ -16576,6 +16576,14 @@ option implies @option{-mmsdos}.
 If generating code for a machine that supports Intel 80186 instructions
 (e.g. @option{-march=v30} or @option{-march=i80286}), insert code to check,
 at startup, whether the code is indeed running on an 80186-capable system. 
+
+This requires support from the C library, and currently only works when
+targeting MS-DOS.
+
+@item -mhandle-non-i286
+If generating code for a machine that supports Intel 80286 instructions,
+(e.g. @option{-march=i80286}), insert code to check, at startup, whether the
+code is indeed running on an 80286-capable system. 
 
 This requires support from the C library, and currently only works when
 targeting MS-DOS.
