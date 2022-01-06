@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20211019L");
+  def_macro ("__ia16__=20220106L");
 
   if (have_addr_spaces_p ())
     {
@@ -266,7 +266,8 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ASM_ATT", ia16_asm_dialect == ASM_ATT);
   def_or_undef_macro ("__IA16_ASM_INTEL", ia16_asm_dialect == ASM_INTEL);
 
-  /* Define macros corresponding to the chosen target operating system.
+  /* Define macros & predicates corresponding to the chosen target operating
+     system.
 
      Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
      either __MSDOS__ or __ELKS__.
@@ -282,6 +283,12 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("_DOS", TARGET_SYS_MSDOS);
   def_or_undef_macro ("__IA16_SYS_MSDOS", TARGET_SYS_MSDOS);
   assert_or_unassert ("system=msdos", TARGET_SYS_MSDOS);
+
+  /* Also define predicates for the target machine. */
+  cpp_assert (parse_in, "cpu=ia16");
+  cpp_assert (parse_in, "cpu=i86");
+  cpp_assert (parse_in, "machine=ia16");
+  cpp_assert (parse_in, "machine=i86");
 
   /* For further Open Watcom compatibility, map the words __interrupt,
      __saveregs, etc. to their corresponding GCC attributes.
