@@ -25,8 +25,8 @@
 #define DRIVER_SELF_SPECS \
   "%{melks-libc:"	\
     "-nostdinc "	\
-    "%{mno-segelf:;:-msegelf} " \
-    "%{fuse-ld=*:;:-fuse-ld=gold}}", \
+    "%{mno-segelf:;:-msegelf}}", \
+  "%{msegelf:%{fuse-ld=*:;:-fuse-ld=gold}}", \
   "%{melks-libc|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
@@ -41,7 +41,9 @@
   "%{mhandle-non-i186:"	\
     "%{melks-libc:%e-mhandle-non-i186 not supported for ELKS}}", \
   "%{mhandle-non-i286:"	\
-    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}"
+    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}", \
+  "%{msegelf:%{mcmodel=medium:" \
+    "%{melks-libc:;:%e-msegelf in medium model not supported for MS-DOS}}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
