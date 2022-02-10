@@ -23,11 +23,14 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 #define DRIVER_SELF_SPECS \
+  "%{mdosx:"		\
+    "%{march=*:;:-march=i80286} " \
+    "%{mno-segelf:;:-msegelf}}", \
   "%{melks-libc:"	\
     "-nostdinc "	\
     "%{mno-segelf:;:-msegelf} " \
     "%{fuse-ld=*:;:-fuse-ld=gold}}", \
-  "%{melks-libc|mdpmiable:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{melks-libc|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
@@ -41,7 +44,10 @@
   "%{mhandle-non-i186:"	\
     "%{melks-libc:%e-mhandle-non-i186 not supported for ELKS}}", \
   "%{mhandle-non-i286:"	\
-    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}"
+    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}", \
+  "%{mcmodel=medium:" \
+    "%{ffreestanding:%emedium model not supported for freestanding code}" \
+    "%{mdosx:%emedium model not supported in DOS extender mode}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
@@ -93,9 +99,9 @@
 	"%{mtsr:"	\
 	    "%{nostdlib|nostartfiles:%Tdtr-m%(cmodel_ld);" \
 	      ":%Tdtr-m%(cmodel_s_ld)};" \
-	  "mdpmiable:"	\
+	  "mdosx:"	\
 	    "%{nostdlib|nostartfiles:%Tdpm-m%(cmodel_ld);" \
-	      ":%Tdpm-m%(cmodel_s_ld)};" \
+	      ":%Tdx-m%(cmodel_s_ld)};" \
 	  "nostdlib|nostartfiles:" \
 	    "%Tdos-m%(cmodel_ld);" \
 	  ":%Tdos-m%(cmodel_s_ld)" \
@@ -134,8 +140,8 @@
 	    "!mno-newlib-autofloat-stdio:-lastdio} " \
 	  "%{mtsr:" \
 	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
-	    "mdpmiable:" \
-	      "%{nostartfiles:%Tdpm-m%(cmodel_l_ld);:%Tdpm-m%(cmodel_sl_ld)};"\
+	    "mdosx:" \
+	      "%{nostartfiles:%Tdx-m%(cmodel_l_ld);:%Tdx-m%(cmodel_sl_ld)};"\
 	    "nostartfiles:" \
 	      "%Tdos-m%(cmodel_l_ld);" \
 	    ":%Tdos-m%(cmodel_sl_ld)" \
@@ -154,11 +160,11 @@
 
 #define POST_LINK_SPEC	\
   "%{!mno-post-link:"	\
-    "%{melks-libc:"	\
-      "elf2elks %{v} "	\
-	       "%{mcmodel=tiny:--tiny} " \
-	       "%{maout-total=*:--total-data %*} " \
-	       "%{maout-chmem=*:--chmem %*} " \
-	       "%{maout-stack=*:--stack %*} " \
-	       "%{maout-heap=*:--heap %*} " \
-	       "%{o*:%*} %{!o*:a.out}}}"
+    "%{mdosx|melks-libc:" \
+      "%{mdosx:elf23p;:elf2elks} %{v} "	\
+				"%{mcmodel=tiny:--tiny} " \
+				"%{maout-total=*:--total-data %*} " \
+				"%{maout-chmem=*:--chmem %*} " \
+				"%{maout-stack=*:--stack %*} " \
+				"%{maout-heap=*:--heap %*} " \
+				"%{o*:%*} %{!o*:a.out}}}"
