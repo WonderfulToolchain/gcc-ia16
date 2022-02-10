@@ -133,7 +133,8 @@ ia16_cpu_cpp_builtins (void)
   /* Define macros saying whether we are generating code for protected mode
      operation, and for DPMI-able operation.  */
   def_or_undef_macro ("__IA16_FEATURE_PROTECTED_MODE", TARGET_PROTECTED_MODE);
-  def_or_undef_macro ("__IA16_FEATURE_DPMIABLE", TARGET_DPMIABLE);
+  def_or_undef_macro ("__IA16_FEATURE_DOSX", TARGET_DOSX);
+  def_or_undef_macro ("__IA16_FEATURE_DPMIABLE", TARGET_DOSX);
 
   /* Define macros for various compiler features:
        * far static variables

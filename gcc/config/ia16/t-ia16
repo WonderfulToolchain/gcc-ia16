@@ -25,7 +25,14 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/size \
 	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/size \
 	  -o -e "$(prefix)"/ia16-elf/lib/rtd/elkslibc \
-	  -o -e "$(prefix)"/ia16-elf/lib/regparmcall/elkslibc; \
+	  -o -e "$(prefix)"/ia16-elf/lib/regparmcall/elkslibc \
+	  -o -e "$(prefix)"/ia16-elf/lib/segelf \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/segelf \
+	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/segelf \
+	  -o -e "$(prefix)"/ia16-elf/lib/pmode/regparmcall \
+	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/pmode/regparmcall \
+	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/` \
+			   `pmode/regparmcall; \
 	then \
 	  exec >&2 2>/dev/null; \
 	  echo; \
@@ -53,6 +60,12 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  find "$(prefix)"/lib/gcc/ia16-elf -name size -ls; \
 	  find "$(prefix)"/ia16-elf/include -name size -ls; \
 	  find "$(prefix)"/ia16-elf/lib -name elkslibc -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name segelf -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name segelf -ls; \
+	  find "$(prefix)"/ia16-elf/include -name segelf -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name pmode -ls; \
+	  find "$(prefix)"/lib/gcc/ia16-elf -name pmode -ls; \
+	  find "$(prefix)"/ia16-elf/include -name pmode -ls; \
 	  echo 'and arrange to rebuild GCC.'; \
 	  echo; \
 	  exit 1; \
@@ -71,39 +84,54 @@ ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.c \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-MULTILIB_OPTIONS=mprotected-mode melks-libc \
+MULTILIB_OPTIONS=mprotected-mode mdosx/melks-libc/ffreestanding \
 	mcmodel=medium mrtd/mregparmcall march=any_186
-MULTILIB_DIRNAMES=pmode elkslibc medium rtd regparmcall any_186
-MULTILIB_MATCHES=mprotected-mode=melks \
+MULTILIB_DIRNAMES=pmode dosx elkslibc freestanding medium rtd regparmcall \
+		  any_186
+MULTILIB_MATCHES=$(strip \
 	march?any_186=march?i80186 march?any_186=march?i80188 \
 	march?any_186=march?v20 march?any_186=march?v30 \
-	march?any_186=march?i80286
+	march?any_186=march?i80286)
+#
+# `-mdosx -mcmodel=medium' and `-ffreestanding -mcmodel=medium' are not
+# supported. and are currently blocked by the specs in elf.h.
+#	-- tkchia 20220208
+#
 ia16_all_multilibs=$(strip \
-  $(filter-out -, \
+  $(filter-out - mdosx/mcmodel=medium%\
+		 mprotected-mode/mdosx/mcmodel=medium%\
+		 ffreestanding/mcmodel=medium%\
+		 mprotected-mode/ffreestanding/mcmodel=medium%,\
     $(subst -/,,\
       $(subst /-,,\
 	$(foreach pm,- mprotected-mode,\
-	  $(foreach el,- melks-libc,\
+	  $(foreach os,- mdosx melks-libc ffreestanding,\
 	    $(foreach mm,- mcmodel=medium,\
 	      $(foreach cc,- mrtd mregparmcall,\
 		$(foreach ar,- march=any_186, \
-		  $(pm)/$(el)/$(mm)/$(cc)/$(ar))))))))))
+		  $(pm)/$(os)/$(mm)/$(cc)/$(ar))))))))))
 #
-# (1) `-mprotected-mode -melks-libc' is the same as just `-melks-libc'.
+# (1) Only build separate protected-mode libraries for freestanding
+#     environments.  Also, non-protected-mode libraries for freestanding
+#     environments are the same as non-protected-mode libraries for the
+#     default hosted environment (real mode MS-DOS).
 # (2) Build 80186+ multilibs only for the `regparmcall' convention.
-# (3) For now, do not build 186+-specific multilibs at all for -melks-libc,
-#     -mprotected-mode, or -mcmodel=medium.
-#	-- tkchia
+# (3) DOS extender multilibs are always targeted at 286+.
+# (4) For now, do not build 186+-specific multilibs at all for -ffreestanding,
+#     -melks-libc, or -mcmodel=medium.
+#	-- tkchia 20220208
 #
 ia16_multilib_map=$(strip \
-  $(filter-out march=any_186,\
+  $(filter-out march=any_186 mprotected-mode ffreestanding,\
     $(subst mrtd/march=any_186,mrtd,\
-      $(subst mprotected-mode/march=any_186,mprotected-mode,\
-	$(subst melks-libc/march=any_186,melks-libc,\
-	  $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
-	    $(subst /mregparmcall/march=any_186,/mregparmcall,\
-	      $(subst mprotected-mode/melks-libc,melks-libc,\
-		$1))))))))
+      $(patsubst mdosx%/march=any_186,mdosx%,\
+	$(subst ffreestanding/march=any_186,ffreestanding,\
+	  $(subst melks-libc/march=any_186,melks-libc,\
+	    $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
+	      $(subst /mregparmcall/march=any_186,/mregparmcall,\
+		$(patsubst mprotected-mode/m%,m%,\
+		  $(patsubst ffreestanding/%,%,\
+		    $1))))))))))
 MULTILIB_REQUIRED=$(strip \
 	$(foreach ml,$(ia16_all_multilibs),\
 	  $(filter $(call ia16_multilib_map,$(ml)),$(ml))))
