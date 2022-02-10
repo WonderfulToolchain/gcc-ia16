@@ -202,9 +202,13 @@ Target Report Mask(TSR)
 Add code to support terminate-and-stay-resident (TSR) programs (experimental).
 
 ; With the help of elf.h, this also enables -mprotected-mode.
-mdpmiable
-Target Report Mask(DPMIABLE)
-Generate MS-DOS executables which use DPMI if present (experimental).
+mdosx
+Target Report Mask(DOSX)
+Generate MS-DOS executables which run under a DOS extender (experimental).
+
+mdpmi
+Target Alias(mdosx)
+Generate MS-DOS executables which run under a DOS extender (experimental).
 
 msegelf
 Target Report Mask(ABI_SEGELF)
