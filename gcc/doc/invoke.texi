@@ -16599,7 +16599,8 @@ segment in a @w{64 KiB} address space.  This is the default for MS-DOS.
 @opindex mseparate-code-segment
 Generate code for the small code model, with one data segment and one text
 segment, in separate @w{64 KiB} spaces.  This is now (February 2020) the
-default for ELKS (@option{-melks}).
+default for ELKS (@option{-melks}), and also (February 2022) the default
+for DOS extender mode (@option{-mdosx}).
 @c
 @c Recent versions of ELKS (e.g. 0.3.0) will only run a.out programs marked
 @c "separate I/D", and will no longer run tiny model a.out programs.  Hence

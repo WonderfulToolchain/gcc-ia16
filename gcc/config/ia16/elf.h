@@ -31,7 +31,7 @@
     "%{mno-segelf:;:-msegelf} " \
     "%{fuse-ld=*:;:-fuse-ld=gold}}", \
   "%{melks-libc|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
-  "%{melks-libc|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
+  "%{melks-libc|mdosx|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
   "%{maout-total=*:"	\
