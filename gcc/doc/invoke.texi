@@ -16861,6 +16861,14 @@ Output assembly instructions using Intel syntax, rather than the default
 AT&T syntax.  This also affects
 which dialect is used for basic @code{asm} (@pxref{Basic Asm}) and
 extended @code{asm} (@pxref{Extended Asm}).
+
+@item -mno-post-link
+@opindex mno-post-link
+After running the linker, skip any post-link steps which may be needed to
+transform the linker output into a usable target executable.  The output
+from @option{-mno-post-link} will likely be an intermediate ELF file.
+
+This switch is mainly for experimentation purposes.
 @end table
 
 @subsubsection Deprecated IA-16 Options

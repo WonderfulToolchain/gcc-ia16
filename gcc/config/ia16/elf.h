@@ -161,10 +161,12 @@
 #define POST_LINK_SPEC	\
   "%{!mno-post-link:"	\
     "%{mdosx|melks-libc:" \
-      "%{mdosx:elf23p;:elf2elks} %{v} "	\
-				"%{mcmodel=tiny:--tiny} " \
-				"%{maout-total=*:--total-data %*} " \
-				"%{maout-chmem=*:--chmem %*} " \
-				"%{maout-stack=*:--stack %*} " \
-				"%{maout-heap=*:--heap %*} " \
-				"%{o*:%*} %{!o*:a.out}}}"
+      "%{mdosx:%:if-exists-else(../lib/../bin/elf2dosx%s elf2dosx);" \
+	     ":%:if-exists-else(../lib/../bin/elf2elks%s elf2elks)} " \
+      "%{v} "		\
+      "%{mcmodel=tiny:--tiny} " \
+      "%{maout-total=*:--total-data %*} " \
+      "%{maout-chmem=*:--chmem %*} " \
+      "%{maout-stack=*:--stack %*} " \
+      "%{maout-heap=*:--heap %*} " \
+      "%{o*:%*} %{!o*:a.out}}}"
