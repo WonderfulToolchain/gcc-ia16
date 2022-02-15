@@ -16625,7 +16625,8 @@ the C library.)
 @opindex mno-segment-relocation-stuff
 Enable (or disable) language features, such as static pointers to far
 variables, that rely on segment relocations to work.  If the small code
-model is used, the default is to allow such language features.
+model or medium code model is used, outside of DOS extender mode
+(@option{-mdosx}), the default is to allow such language features.
 
 @item -mshort-jumps
 @itemx -mno-short-jumps
