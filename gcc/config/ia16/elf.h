@@ -33,7 +33,8 @@
   "%{melks-libc|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{melks-libc|mdosx|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
-    "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}", \
+    "%{!mdosx:"		\
+      "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}}", \
   "%{maout-total=*:"	\
     "%{maout-chmem=*:%emay not use both -maout-total= and -maout-chmem=}" \
     "%{maout-stack=*:%emay not use both -maout-total= and -maout-stack=}" \
@@ -100,7 +101,7 @@
 	    "%{nostdlib|nostartfiles:%Tdtr-m%(cmodel_ld);" \
 	      ":%Tdtr-m%(cmodel_s_ld)};" \
 	  "mdosx:"	\
-	    "%{nostdlib|nostartfiles:%Tdpm-m%(cmodel_ld);" \
+	    "%{nostdlib|nostartfiles:%Tdx-m%(cmodel_ld);" \
 	      ":%Tdx-m%(cmodel_s_ld)};" \
 	  "nostdlib|nostartfiles:" \
 	    "%Tdos-m%(cmodel_ld);" \
