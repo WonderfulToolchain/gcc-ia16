@@ -47,7 +47,6 @@
   "%{mhandle-non-i286:"	\
     "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}", \
   "%{mcmodel=medium:" \
-    "%{ffreestanding:%emedium model not supported for freestanding code}" \
     "%{mdosx:%emedium model not supported in DOS extender mode}}"
 
 /* This is a hack.  When -melks-libc is specified, then, combined with the
