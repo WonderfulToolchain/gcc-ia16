@@ -25,7 +25,10 @@
 #define DRIVER_SELF_SPECS \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
-    "%{mno-segelf:;:-msegelf}}", \
+    "%{mno-segelf:;:-msegelf} " \
+    "%{msegment-relocation-stuff:" \
+      "%nwarning: -msegment-relocation-stuff with -mdosx may result in " \
+		 "bogus output}}", \
   "%{melks-libc:"	\
     "-nostdinc "	\
     "%{mno-segelf:;:-msegelf} " \
