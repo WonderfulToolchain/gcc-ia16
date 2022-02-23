@@ -1916,8 +1916,8 @@ ia16_error_seg_reloc (location_t loc, const char *msg)
 {
   if (msg)
     error_at (loc, "%s", msg);
-  inform (loc, "use %<-m%s%> to allow this",
-	  TARGET_CMODEL_IS_TINY ? "cmodel=small" : "segment-relocation-stuff");
+  if (TARGET_CMODEL_IS_TINY)
+    inform (loc, "use %<-mcmodel=small%> to allow this");
 }
 
 /* Say whether we can reach the function given by FNDECL and FNTYPE via the
