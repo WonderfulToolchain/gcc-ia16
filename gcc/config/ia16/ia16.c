@@ -979,6 +979,11 @@ ia16_initial_elimination_offset (unsigned int from, unsigned int to)
 
 static bool may_need_printf_nofloat = false, may_need_printf_float = false,
 	    may_need_scanf_nofloat = false, may_need_scanf_float = false;
+/*
+ * Tables of names of ...printf (...) & ...scanf (...) functions which are
+ * called.
+ */
+static htab_t printf_htab = NULL, scanf_htab = NULL;
 
 static void
 ia16_handle_unnamed_function_arg (const_tree type)
@@ -1085,10 +1090,57 @@ ia16_regparmcall_function_type_p (const_tree fntype)
   return ia16_get_call_parm_cvt (fntype) == CALL_PARM_CVT_REGPARMCALL;
 }
 
+static int
+string_hash_eq (const void *elem1, const void *elem2)
+{
+  return elem1 == elem2
+	 || strcmp ((const char *) elem1, (const char *)elem2) == 0;
+}
+
+static void
+ia16_remember_may_need_printf (tree fndecl)
+{
+  may_need_printf_nofloat = true;
+  if (DECL_ASSEMBLER_NAME (fndecl))
+    {
+      const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
+      void **slot;
+      if (! printf_htab)
+	{
+	  printf_htab = htab_create_alloc (10, htab_hash_string,
+					   string_hash_eq, NULL,
+					   xcalloc, free);
+	  gcc_assert (printf_htab);
+	}
+      slot = htab_find_slot (printf_htab, name, INSERT);
+      gcc_assert (slot);
+      *slot = (void *) name;
+    }
+}
+
+static void
+ia16_remember_may_need_scanf (tree fndecl)
+{
+  may_need_scanf_nofloat = true;
+  if (DECL_ASSEMBLER_NAME (fndecl))
+    {
+      const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
+      void **slot;
+      if (! scanf_htab)
+	{
+	  scanf_htab = htab_create_alloc (10, htab_hash_string, string_hash_eq,
+					  NULL, xcalloc, free);
+	  gcc_assert (scanf_htab);
+	}
+      slot = htab_find_slot (scanf_htab, name, INSERT);
+      gcc_assert (slot);
+      *slot = (void *) name;
+    }
+}
+
 void
 ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
-			   rtx libname ATTRIBUTE_UNUSED,
-			   const_tree fndecl ATTRIBUTE_UNUSED,
+			   rtx libname ATTRIBUTE_UNUSED, tree fndecl,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
   if (TARGET_NEWLIB_AUTOFLOAT_STDIO && fntype != NULL_TREE)
@@ -1105,10 +1157,10 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 		{
 		  const char *format_type_str
 		    = IDENTIFIER_POINTER (format_type_id);
-		  if (strstr ("printf", format_type_str))
-		    may_need_printf_nofloat = true;
-		  else if (strstr ("scanf", format_type_str))
-		    may_need_scanf_nofloat = true;
+		  if (strstr (format_type_str, "printf"))
+		    ia16_remember_may_need_printf (fndecl);
+		  else if (strstr (format_type_str, "scanf"))
+		    ia16_remember_may_need_scanf (fndecl);
 		}
 	    }
 	}
@@ -4127,23 +4179,72 @@ ia16_asm_file_start (void)
 #undef	TARGET_ASM_FILE_END
 #define	TARGET_ASM_FILE_END		ia16_asm_file_end
 
+static int
+ia16_stdio_htab_trav (void **slot, void *cookie)
+{
+  const char *name = (const char *) *slot,
+	     *archetype = (const char *) cookie,
+	     *u1 = user_label_prefix, *u2 = user_label_prefix, *q = "";
+  size_t len = strlen (name);
+  if (len != 0)
+    {
+      if (name[0] == '*')
+	{
+	  u2 = "";
+	  ++name;
+	  --len;
+	}
+      if (len >= 2 && name[0] == '"' && name[len - 1] == '"')
+	{
+	  q = "\"";
+	  ++name;
+	  len -= 2;
+	}
+    }
+  fprintf (asm_out_file,
+	   "\t.weak\t%s%s__ia16_use_specific_%s.%s%.*s.v1%s\n"
+	   "\t.set\t%s%s__ia16_use_specific_%s.%s%.*s.v1%s,1\n",
+	   q, u1, archetype, u2, (int) len, name, q,
+	   q, u1, archetype, u2, (int) len, name, q);
+  return 1;
+}
+
 static void
 ia16_asm_file_end (void)
 {
   if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
     {
+      const char *u = user_label_prefix;
+      if (printf_htab)
+	{
+	  htab_t ht = printf_htab;
+	  printf_htab = NULL;
+	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf");
+	  htab_delete (ht);
+	}
+      if (scanf_htab)
+	{
+	  htab_t ht = scanf_htab;
+	  scanf_htab = NULL;
+	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf");
+	  htab_delete (ht);
+	}
       if (may_need_printf_nofloat)
-	fputs (	"\t.weak\t__ia16_use_printf_nofloat.v1\n"
-		"\t.set\t__ia16_use_printf_nofloat.v1,1\n", asm_out_file);
+	fprintf (asm_out_file,
+		 "\t.weak\t%s__ia16_use_printf_nofloat.v1\n"
+		 "\t.set\t%s__ia16_use_printf_nofloat.v1,1\n", u, u);
       if (may_need_printf_float)
-	fputs (	"\t.weak\t__ia16_use_printf_float.v1\n"
-		"\t.set\t__ia16_use_printf_float.v1,1\n", asm_out_file);
+	fprintf (asm_out_file,
+		 "\t.weak\t%s__ia16_use_printf_float.v1\n"
+		 "\t.set\t%s__ia16_use_printf_float.v1,1\n", u, u);
       if (may_need_scanf_nofloat)
-	fputs (	"\t.weak\t__ia16_use_scanf_nofloat.v1\n"
-		"\t.set\t__ia16_use_scanf_nofloat.v1,1\n", asm_out_file);
+	fprintf (asm_out_file,
+		 "\t.weak\t%s__ia16_use_scanf_nofloat.v1\n"
+		 "\t.set\t%s__ia16_use_scanf_nofloat.v1,1\n", u, u);
       if (may_need_scanf_float)
-	fputs (	"\t.weak\t__ia16_use_scanf_float.v1\n"
-		"\t.set\t__ia16_use_scanf_float.v1,1\n", asm_out_file);
+	fprintf (asm_out_file,
+		 "\t.weak\t%s__ia16_use_scanf_float.v1\n"
+		 "\t.set\t%s__ia16_use_scanf_float.v1,1\n", u, u);
     }
   if (need_label_in_data_seg)
     fputs ("\t.lcomm\t" LABEL_IN_DATA_SEG ",0\n", asm_out_file);

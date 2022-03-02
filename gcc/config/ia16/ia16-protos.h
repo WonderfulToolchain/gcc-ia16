@@ -53,7 +53,7 @@ extern HOST_WIDE_INT
 		ia16_initial_elimination_offset (unsigned int from,
 						 unsigned int to);
 extern void	ia16_init_cumulative_args (CUMULATIVE_ARGS *, const_tree, rtx,
-					   const_tree tree, int);
+					   tree, int);
 extern enum machine_mode
 		ia16_cc_modes_compatible (enum machine_mode mode1,
 					  enum machine_mode mode2);
