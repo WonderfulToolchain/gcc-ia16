@@ -4186,6 +4186,8 @@ ia16_stdio_htab_trav (void **slot, void *cookie)
 	     *archetype = (const char *) cookie,
 	     *u1 = user_label_prefix, *u2 = user_label_prefix, *q = "";
   size_t len = strlen (name);
+  char our_symbol[2 * strlen (u1) + sizeof ("__ia16_have_")
+		  + strlen (archetype) + 1 + len + sizeof (".v2")];
   if (len != 0)
     {
       if (name[0] == '*')
@@ -4201,11 +4203,12 @@ ia16_stdio_htab_trav (void **slot, void *cookie)
 	  len -= 2;
 	}
     }
+  sprintf (our_symbol, "%s__ia16_have_%s.%s%.*s.v2",
+	   u1, archetype, u2, (int) len, name);
   fprintf (asm_out_file,
-	   "\t.weak\t%s%s__ia16_use_specific_%s.%s%.*s.v1%s\n"
-	   "\t.set\t%s%s__ia16_use_specific_%s.%s%.*s.v1%s,1\n",
-	   q, u1, archetype, u2, (int) len, name, q,
-	   q, u1, archetype, u2, (int) len, name, q);
+	   "\t.section\t%s.autofloat_stdio.%s%s,\"a\",@progbits\n"
+	   "\t.reloc\t.,R_386_NONE,%s%s%s\n",
+	   q, our_symbol, q, q, our_symbol, q);
   return 1;
 }
 
@@ -4219,14 +4222,18 @@ ia16_asm_file_end (void)
 	{
 	  htab_t ht = printf_htab;
 	  printf_htab = NULL;
-	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf");
+	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf_nofloat");
+	  if (may_need_printf_float)
+	    htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf_float");
 	  htab_delete (ht);
 	}
       if (scanf_htab)
 	{
 	  htab_t ht = scanf_htab;
 	  scanf_htab = NULL;
-	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf");
+	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf_nofloat");
+	  if (may_need_scanf_float)
+	    htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf_float");
 	  htab_delete (ht);
 	}
       if (may_need_printf_nofloat)
