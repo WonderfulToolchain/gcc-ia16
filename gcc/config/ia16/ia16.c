@@ -1138,33 +1138,37 @@ ia16_remember_may_need_scanf (tree fndecl)
     }
 }
 
+static void
+ia16_remember_may_need_stdio (const_tree fntype, tree fndecl)
+{
+  tree attrs = TYPE_ATTRIBUTES (fntype);
+  if (attrs != NULL_TREE)
+    {
+      tree attr = lookup_attribute ("format", attrs);
+      if (attr)
+	{
+	  tree args = TREE_VALUE (attr);
+	  tree format_type_id = TREE_VALUE (args);
+	  if (TREE_CODE (format_type_id) == IDENTIFIER_NODE)
+	    {
+	      const char *format_type_str
+			    = IDENTIFIER_POINTER (format_type_id);
+	      if (strstr (format_type_str, "printf"))
+		ia16_remember_may_need_printf (fndecl);
+	      else if (strstr (format_type_str, "scanf"))
+		ia16_remember_may_need_scanf (fndecl);
+	    }
+	}
+    }
+}
+
 void
 ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 			   rtx libname ATTRIBUTE_UNUSED, tree fndecl,
 			   int n_named_args ATTRIBUTE_UNUSED)
 {
   if (TARGET_NEWLIB_AUTOFLOAT_STDIO && fntype != NULL_TREE)
-    {
-      tree attrs = TYPE_ATTRIBUTES (fntype);
-      if (attrs != NULL_TREE)
-	{
-	  tree attr = lookup_attribute ("format", attrs);
-	  if (attr)
-	    {
-	      tree args = TREE_VALUE (attr);
-	      tree format_type_id = TREE_VALUE (args);
-	      if (TREE_CODE (format_type_id) == IDENTIFIER_NODE)
-		{
-		  const char *format_type_str
-		    = IDENTIFIER_POINTER (format_type_id);
-		  if (strstr (format_type_str, "printf"))
-		    ia16_remember_may_need_printf (fndecl);
-		  else if (strstr (format_type_str, "scanf"))
-		    ia16_remember_may_need_scanf (fndecl);
-		}
-	    }
-	}
-    }
+    ia16_remember_may_need_stdio (fntype, fndecl);
 
   if (! ia16_regparmcall_function_type_p (fntype))
     cum->hwords = 3;
@@ -3444,9 +3448,25 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       *total *= H_MOD (mode);
       return (true);
 
+    case SYMBOL_REF:
+      /* While calculating RTX costs, also keep track of references to stdio
+       * functions, in case we need floating-point support for some of these
+       * & they are called indirectly.  See the test case gcc.c-torture/
+       * execute/930513-1.c .
+       */
+      if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
+	{
+	  tree fndecl = SYMBOL_REF_DECL (x);
+	  if (fndecl && TREE_CODE (fndecl) == FUNCTION_DECL)
+	    {
+	      const_tree fntype = TREE_TYPE (fndecl);
+	      if (fntype)
+		ia16_remember_may_need_stdio (fntype, fndecl);
+	    }
+	}
+      /* fall through */
     case CONST:
     case LABEL_REF:
-    case SYMBOL_REF:
     case CONST_INT:
     case CONST_VECTOR:
       *total = ia16_constant_cost (x, mode, outer_code);
