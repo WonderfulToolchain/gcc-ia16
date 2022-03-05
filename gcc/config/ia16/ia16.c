@@ -4222,7 +4222,6 @@ ia16_asm_file_end (void)
 	{
 	  htab_t ht = printf_htab;
 	  printf_htab = NULL;
-	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf_nofloat");
 	  if (may_need_printf_float)
 	    htab_traverse (ht, ia16_stdio_htab_trav, (void *) "printf_float");
 	  htab_delete (ht);
@@ -4231,7 +4230,6 @@ ia16_asm_file_end (void)
 	{
 	  htab_t ht = scanf_htab;
 	  scanf_htab = NULL;
-	  htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf_nofloat");
 	  if (may_need_scanf_float)
 	    htab_traverse (ht, ia16_stdio_htab_trav, (void *) "scanf_float");
 	  htab_delete (ht);

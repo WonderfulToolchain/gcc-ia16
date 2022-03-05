@@ -32,7 +32,8 @@
   "%{melks-libc:"	\
     "-nostdinc "	\
     "%{mno-segelf:;:-msegelf} " \
-    "%{fuse-ld=*:;:-fuse-ld=gold}}", \
+    "%{fuse-ld=*:;:-fuse-ld=gold} " \
+    "%{mnewlib-autofloat-stdio:;:-mno-newlib-autofloat-stdio}}", \
   "%{melks-libc|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
   "%{melks-libc|mdosx|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
