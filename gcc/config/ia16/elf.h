@@ -141,7 +141,7 @@
 	      "march=*:-lck086}} " \
 	  "%{mnewlib-nano-stdio:" \
 	    "%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
-	    "!mno-newlib-autofloat-stdio:-lastdio} " \
+	    ":%{!mno-newlib-autofloat-stdio:-lastdio} -lfstdio} " \
 	  "%{mtsr:" \
 	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
 	    "mdosx:" \
