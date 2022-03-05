@@ -1101,7 +1101,7 @@ static void
 ia16_remember_may_need_printf (tree fndecl)
 {
   may_need_printf_nofloat = true;
-  if (DECL_ASSEMBLER_NAME (fndecl))
+  if (fndecl && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
@@ -1122,7 +1122,7 @@ static void
 ia16_remember_may_need_scanf (tree fndecl)
 {
   may_need_scanf_nofloat = true;
-  if (DECL_ASSEMBLER_NAME (fndecl))
+  if (fndecl && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
@@ -3448,25 +3448,9 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
       *total *= H_MOD (mode);
       return (true);
 
-    case SYMBOL_REF:
-      /* While calculating RTX costs, also keep track of references to stdio
-       * functions, in case we need floating-point support for some of these
-       * & they are called indirectly.  See the test case gcc.c-torture/
-       * execute/930513-1.c .
-       */
-      if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
-	{
-	  tree fndecl = SYMBOL_REF_DECL (x);
-	  if (fndecl && TREE_CODE (fndecl) == FUNCTION_DECL)
-	    {
-	      const_tree fntype = TREE_TYPE (fndecl);
-	      if (fntype)
-		ia16_remember_may_need_stdio (fntype, fndecl);
-	    }
-	}
-      /* fall through */
     case CONST:
     case LABEL_REF:
+    case SYMBOL_REF:
     case CONST_INT:
     case CONST_VECTOR:
       *total = ia16_constant_cost (x, mode, outer_code);
@@ -4566,11 +4550,28 @@ ia16_print_operand (FILE *file, rtx e, int code)
 	       + 256 * INTVAL (XVECEXP (x, 0, 1)));
       break;
 
+      case SYMBOL_REF:
+      /* While formatting operands, also keep track of references to stdio
+       * functions, in case we need floating-point support for some of these
+       * & they are called indirectly.  See the test case gcc.c-torture/
+       * execute/930513-1.c .
+       */
+      if (TARGET_NEWLIB_AUTOFLOAT_STDIO)
+	{
+	  tree fndecl = SYMBOL_REF_DECL (x);
+	  if (fndecl && TREE_CODE (fndecl) == FUNCTION_DECL)
+	    {
+	      const_tree fntype = TREE_TYPE (fndecl);
+	      if (fntype)
+		ia16_remember_may_need_stdio (fntype, fndecl);
+	    }
+	}
+      /* fall through */
+
       /* TODO: handle floating point constants here.  */
 
       case CONST_INT:
       case CONST:
-      case SYMBOL_REF:
       case LABEL_REF:
       if (code != 'Z' && code != 'R')
 	{
