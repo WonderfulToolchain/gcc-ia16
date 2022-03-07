@@ -29,6 +29,7 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  -o -e "$(prefix)"/ia16-elf/lib/segelf \
 	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/segelf \
 	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/segelf \
+	  -o -e "$(prefix)"/ia16-elf/lib/dosx/dx-mssl.ld \
 	  -o -e "$(prefix)"/ia16-elf/lib/pmode/regparmcall \
 	  -o -e "$(prefix)"/lib/gcc/ia16-elf/$(BASEVER_c)/pmode/regparmcall \
 	  -o -e "$(prefix)"/ia16-elf/include/c++/$(BASEVER_c)/ia16-elf/` \
@@ -61,6 +62,8 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	  find "$(prefix)"/ia16-elf/include -name size -ls; \
 	  find "$(prefix)"/ia16-elf/lib -name elkslibc -ls; \
 	  find "$(prefix)"/ia16-elf/lib -name segelf -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name 'dx-ms[sl].ld' -ls; \
+	  find "$(prefix)"/ia16-elf/lib -name 'dx-mssl.ld' -ls; \
 	  find "$(prefix)"/lib/gcc/ia16-elf -name segelf -ls; \
 	  find "$(prefix)"/ia16-elf/include -name segelf -ls; \
 	  find "$(prefix)"/ia16-elf/lib -name pmode -ls; \
