@@ -26,6 +26,7 @@
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
     "%{mno-segelf:;:-msegelf} " \
+    "%{fuse-ld=*:;:-fuse-ld=gold} " \
     "%{msegment-relocation-stuff:" \
       "%nwarning: -msegment-relocation-stuff with -mdosx may result in " \
 		 "bogus output}}", \
@@ -80,37 +81,28 @@
 /* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
    script specification (%T...) to appear in LIB_SPEC if we are linking in
    default libraries, but in LINK_SPEC if we are not (i.e. -nostdlib or
-   -nodefaultlibs).
+   -nodefaultlibs).  An exception is the main linker script for -mdosx, which
+   will always appear in LINK_SPEC.
 
    If default libraries are used, then we want them to appear at the end of
    the ld command line, so LIB_SPEC is the right place to use.
 
    If default libraries are not used, then GCC will not use LIB_SPEC at all,
-   so we need to rely on LINK_SPEC to pass the linker script to ld.
-
-   As for the (undocumented) -r option:  I currently just arrange not to
-   pass any linker script at all if -r appears.  (FIXME: This only really
-   works if something like -nostdlib is also specified.  One is out of luck
-   if they would also like to link in startup files or default libraries
-   during -r.)  -- tkchia  */
+   so we may need to rely on LINK_SPEC to pass the linker script to ld.
+	-- tkchia */
 #define LINK_SPEC	\
   "%{!T*:"		\
-    "%{mmsdos-handle-v1:-ldosv1} " \
-    "%{!r:"		\
-      "%{melks-libc:"	\
-	  "%Telks-%(cmodel_long_ld);" \
-	"nostdlib|nodefaultlibs:" \
+    "%{mdosx:"		\
+	"%Tdx-m%(cmodel_ld);" \
+      "melks-libc:"	\
+	"%Telks-%(cmodel_long_ld);" \
+      "nostdlib|nodefaultlibs:" \
 	"%{mtsr:"	\
 	    "%{nostdlib|nostartfiles:%Tdtr-m%(cmodel_ld);" \
 	      ":%Tdtr-m%(cmodel_s_ld)};" \
-	  "mdosx:"	\
-	    "%{nostdlib|nostartfiles:%Tdx-m%(cmodel_ld);" \
-	      ":%Tdx-m%(cmodel_s_ld)};" \
 	  "nostdlib|nostartfiles:" \
 	    "%Tdos-m%(cmodel_ld);" \
-	  ":%Tdos-m%(cmodel_s_ld)" \
-	"}"		\
-      "}"		\
+	  ":%Tdos-m%(cmodel_s_ld)}" \
     "}"			\
   "} "			\
   "%{melks-libc:"	\
@@ -123,40 +115,42 @@
     "%{maout-heap=*:--defsym=__heaplen_val=%*}}"
 
 #define STARTFILE_SPEC	\
-  "%{melks-libc:-l:crt0.o}"
+  "%{melks-libc:"	\
+      "-l:crt0.o;"	\
+    "mdosx:"		\
+      "-l:dx-%(cmodel_c0_a)}"
 
 #define ENDFILE_SPEC	\
   ""
 
 #define LIB_SPEC	\
-  "%{melks-libc:-lc -lgcc;" \
-    "!T*:"		\
-    "%{!r:"		\
-      "%{!nostdlib:"	\
-	"%{!nodefaultlibs:" \
+  "%{melks-libc:"	\
+      "-lc -lgcc;"	\
+    ":"			\
+      "%{mnewlib-nano-stdio:" \
+	"%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
+	":%{!mno-newlib-autofloat-stdio:-lastdio} -lfstdio} " \
+      "%{mdosx:"	\
+	  "-l:dx-%(cmodel_lc_a);" \
+        ":"		\
+	  "%{mmsdos-handle-v1:-ldosv1} " \
 	  "%{mhandle-non-i286:" \
-	    "%{march=i80286|march=i286:-lck186};" \
+	      "%{march=i80286|march=i286:-lck186};" \
 	    "mhandle-non-i186:" \
-	    "%{march=any|march=i8086|march=i8088:;" \
-	      "march=*:-lck086}} " \
-	  "%{mnewlib-nano-stdio:" \
-	    "%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
-	    ":%{!mno-newlib-autofloat-stdio:-lastdio} -lfstdio} " \
+	      "%{march=any|march=i8086|march=i8088:;" \
+		"march=*:-lck086}} " \
 	  "%{mtsr:" \
 	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
-	    "mdosx:" \
-	      "%{nostartfiles:%Tdx-m%(cmodel_l_ld);:%Tdx-m%(cmodel_sl_ld)};"\
 	    "nostartfiles:" \
 	      "%Tdos-m%(cmodel_l_ld);" \
-	    ":%Tdos-m%(cmodel_sl_ld)" \
-	  "}"		\
-	"}"		\
+	    ":%Tdos-m%(cmodel_sl_ld)}" \
       "}"		\
-    "}"			\
   "}"
 
 #define EXTRA_SPECS	\
   { "cmodel_ld", "%{mcmodel=medium:m.ld;mcmodel=small:s.ld;:t.ld}" }, \
+  { "cmodel_c0_a", "%{mcmodel=medium:m-c0.a;mcmodel=small:s-c0.a;:t-c0.a}" }, \
+  { "cmodel_lc_a", "%{mcmodel=medium:m-lc.a;mcmodel=small:s-lc.a;:t-lc.a}" }, \
   { "cmodel_s_ld", "%{mcmodel=medium:ms.ld;mcmodel=small:ss.ld;:ts.ld}" }, \
   { "cmodel_l_ld", "%{mcmodel=medium:ml.ld;mcmodel=small:sl.ld;:tl.ld}" }, \
   { "cmodel_sl_ld", "%{mcmodel=medium:msl.ld;mcmodel=small:ssl.ld;:tsl.ld}" },\
