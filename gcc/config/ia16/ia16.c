@@ -1090,6 +1090,32 @@ ia16_regparmcall_function_type_p (const_tree fntype)
   return ia16_get_call_parm_cvt (fntype) == CALL_PARM_CVT_REGPARMCALL;
 }
 
+static bool
+ia16_get_format_attr (tree attrs, const char **p_format_type_str,
+		      unsigned HOST_WIDE_INT *p_first_arg_num)
+{
+  tree attr, args, format_type_id, first_arg_num_expr;
+
+  if (! attrs)
+    return false;
+
+  attr = lookup_attribute ("format", attrs);
+  if (! attr)
+    return false;
+
+  args = TREE_VALUE (attr);
+  format_type_id = TREE_VALUE (args);
+  first_arg_num_expr = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (args)));
+
+  if (TREE_CODE (format_type_id) != IDENTIFIER_NODE
+      || ! tree_fits_uhwi_p (first_arg_num_expr))
+    return false;
+
+  *p_format_type_str = IDENTIFIER_POINTER (format_type_id);
+  *p_first_arg_num = TREE_INT_CST_LOW (first_arg_num_expr);
+  return true;
+}
+
 static int
 string_hash_eq (const void *elem1, const void *elem2)
 {
@@ -1098,13 +1124,36 @@ string_hash_eq (const void *elem1, const void *elem2)
 }
 
 static void
-ia16_remember_may_need_printf (tree fndecl)
+ia16_remember_may_need_printf (tree fndecl,
+			       unsigned HOST_WIDE_INT first_arg_num)
 {
   may_need_printf_nofloat = true;
   if (fndecl && DECL_EXTERNAL (fndecl) && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
+      /*
+       * If the callee is vprintf, vfprintf, vdprintf, vsprintf, or vsnprintf,
+       * & the caller is not variadic, then the caller may possibly be passing
+       * a va_list from elsewhere to the callee.
+       *
+       * In this case, be paranoid & guess that the variable argument list
+       * _might_ possibly contain floating-point floating-point arguments.
+       * This allows us to (kind of) do the right thing for something like
+       * <conio.h>'s cprintf (...).
+       *
+       * This assumes that the Newlib C library's <stdio.h> will not call
+       * vprintf etc. internally.  (This is currently true --- e.g. vprintf
+       * calls _vfprintf_r instead of going through vfprintf.)
+       *	-- tkchia 20220309
+       */
+      if (! first_arg_num && ! cfun->stdarg && name[0] == 'v'
+	  && (strcmp (name, "vprintf") == 0
+	      || strcmp (name, "vdprintf") == 0
+	      || strcmp (name, "vfprintf") == 0
+	      || strcmp (name, "vsprintf") == 0
+	      || strcmp (name, "vsnprintf") == 0))
+	may_need_printf_float = true;
       if (! printf_htab)
 	{
 	  printf_htab = htab_create_alloc (10, htab_hash_string,
@@ -1119,13 +1168,19 @@ ia16_remember_may_need_printf (tree fndecl)
 }
 
 static void
-ia16_remember_may_need_scanf (tree fndecl)
+ia16_remember_may_need_scanf (tree fndecl,
+			      unsigned HOST_WIDE_INT first_arg_num)
 {
   may_need_scanf_nofloat = true;
   if (fndecl && DECL_EXTERNAL (fndecl) && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
+      /* See ia16_remember_may_need_printf (...). */
+      if (! first_arg_num && ! cfun->stdarg && name[0] == 'v'
+	  && (strcmp (name, "vscanf") == 0 || strcmp (name, "vfscanf") == 0
+	      || strcmp (name, "vsscanf") == 0))
+	may_need_scanf_float = true;
       if (! scanf_htab)
 	{
 	  scanf_htab = htab_create_alloc (10, htab_hash_string, string_hash_eq,
@@ -1141,24 +1196,15 @@ ia16_remember_may_need_scanf (tree fndecl)
 static void
 ia16_remember_may_need_stdio (const_tree fntype, tree fndecl)
 {
-  tree attrs = TYPE_ATTRIBUTES (fntype);
-  if (attrs != NULL_TREE)
+  const char *format_type_str;
+  unsigned HOST_WIDE_INT first_arg_num;
+  if (ia16_get_format_attr (TYPE_ATTRIBUTES (fntype), &format_type_str,
+			    &first_arg_num))
     {
-      tree attr = lookup_attribute ("format", attrs);
-      if (attr)
-	{
-	  tree args = TREE_VALUE (attr);
-	  tree format_type_id = TREE_VALUE (args);
-	  if (TREE_CODE (format_type_id) == IDENTIFIER_NODE)
-	    {
-	      const char *format_type_str
-			    = IDENTIFIER_POINTER (format_type_id);
-	      if (strstr (format_type_str, "printf"))
-		ia16_remember_may_need_printf (fndecl);
-	      else if (strstr (format_type_str, "scanf"))
-		ia16_remember_may_need_scanf (fndecl);
-	    }
-	}
+      if (strstr (format_type_str, "printf"))
+	ia16_remember_may_need_printf (fndecl, first_arg_num);
+      else if (strstr (format_type_str, "scanf"))
+	ia16_remember_may_need_scanf (fndecl, first_arg_num);
     }
 }
 
