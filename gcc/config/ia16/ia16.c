@@ -1101,7 +1101,7 @@ static void
 ia16_remember_may_need_printf (tree fndecl)
 {
   may_need_printf_nofloat = true;
-  if (fndecl && DECL_ASSEMBLER_NAME (fndecl))
+  if (fndecl && DECL_EXTERNAL (fndecl) && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
@@ -1122,7 +1122,7 @@ static void
 ia16_remember_may_need_scanf (tree fndecl)
 {
   may_need_scanf_nofloat = true;
-  if (fndecl && DECL_ASSEMBLER_NAME (fndecl))
+  if (fndecl && DECL_EXTERNAL (fndecl) && DECL_ASSEMBLER_NAME (fndecl))
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
