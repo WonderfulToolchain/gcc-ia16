@@ -1138,22 +1138,30 @@ ia16_remember_may_need_printf (tree fndecl,
        * a va_list from elsewhere to the callee.
        *
        * In this case, be paranoid & guess that the variable argument list
-       * _might_ possibly contain floating-point floating-point arguments.
-       * This allows us to (kind of) do the right thing for a naive
-       * implementation of <conio.h>'s cprintf (...).
+       * _might_ possibly contain floating-point floating-point arguments
+       * This allows us to do the right thing for a naive implementation of
+       * e.g. <conio.h>'s cprintf (...).
        *
-       * This assumes that the Newlib C library's <stdio.h> will not call
-       * vprintf etc. internally.  (This is currently true --- e.g. vprintf
-       * calls _vfprintf_r instead of going through vfprintf.)
+       * However, if the caller has autofloat_stdio_v2 as an attribute, then
+       * assume it knows what it is doing & can pick the correct version of
+       * (e.g.) vfprintf to use.  (FIXME: this is kind of hacky.)
+       *
+       * All this assumes that the Newlib C library's <stdio.h> will not
+       * call vprintf etc.  internally.  (This is currently true --- e.g.
+       * vprintf calls _vfprintf_r instead of going through vfprintf.)
        *	-- tkchia 20220312
        */
-      if (! first_arg_num && ! cfun->stdarg && name[0] == 'v'
+      if (! first_arg_num && cfun->decl && ! cfun->stdarg && name[0] == 'v'
 	  && (strcmp (name, "vprintf") == 0
 	      || strcmp (name, "vdprintf") == 0
 	      || strcmp (name, "vfprintf") == 0
 	      || strcmp (name, "vsprintf") == 0
 	      || strcmp (name, "vsnprintf") == 0))
-	may_need_printf_float = true;
+	{
+	  tree caller_attrs = DECL_ATTRIBUTES (cfun->decl);
+	  if (! lookup_attribute ("autofloat_stdio_v2", caller_attrs))
+	    may_need_printf_float = true;
+	}
       if (! printf_htab)
 	{
 	  printf_htab = htab_create_alloc (10, htab_hash_string,
@@ -1177,10 +1185,14 @@ ia16_remember_may_need_scanf (tree fndecl,
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl));
       void **slot;
       /* See ia16_remember_may_need_printf (...). */
-      if (! first_arg_num && ! cfun->stdarg && name[0] == 'v'
+      if (! first_arg_num && cfun->decl && ! cfun->stdarg && name[0] == 'v'
 	  && (strcmp (name, "vscanf") == 0 || strcmp (name, "vfscanf") == 0
 	      || strcmp (name, "vsscanf") == 0))
-	may_need_scanf_float = true;
+	{
+	  tree caller_attrs = DECL_ATTRIBUTES (cfun->decl);
+	  if (! lookup_attribute ("autofloat_stdio_v2", caller_attrs))
+	    may_need_scanf_float = true;
+	}
       if (! scanf_htab)
 	{
 	  scanf_htab = htab_create_alloc (10, htab_hash_string, string_hash_eq,
@@ -1713,6 +1725,23 @@ ia16_handle_cconv_attribute (tree *node, tree name, tree args ATTRIBUTE_UNUSED,
   return NULL_TREE;
 }
 
+static tree
+ia16_handle_autofloat_stdio_v2_attribute (tree *node, tree name,
+					  tree args ATTRIBUTE_UNUSED,
+					  int flags ATTRIBUTE_UNUSED,
+					  bool *no_add_attrs)
+{
+  tree decl = *node;
+
+  if (! DECL_P (decl) || TREE_CODE (decl) != FUNCTION_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
 static const struct attribute_spec ia16_attribute_table[] =
 {
   { "stdcall", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
@@ -1740,6 +1769,9 @@ static const struct attribute_spec ia16_attribute_table[] =
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
   { "interrupt",
 	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "autofloat_stdio_v2",
+	       0, 0, true, false, false,
+			   ia16_handle_autofloat_stdio_v2_attribute, false },
   { NULL,      0, 0, false, false, false, NULL,			     false }
 };
 
