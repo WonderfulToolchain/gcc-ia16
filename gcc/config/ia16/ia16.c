@@ -1139,13 +1139,13 @@ ia16_remember_may_need_printf (tree fndecl,
        *
        * In this case, be paranoid & guess that the variable argument list
        * _might_ possibly contain floating-point floating-point arguments.
-       * This allows us to (kind of) do the right thing for something like
-       * <conio.h>'s cprintf (...).
+       * This allows us to (kind of) do the right thing for a naive
+       * implementation of <conio.h>'s cprintf (...).
        *
        * This assumes that the Newlib C library's <stdio.h> will not call
        * vprintf etc. internally.  (This is currently true --- e.g. vprintf
        * calls _vfprintf_r instead of going through vfprintf.)
-       *	-- tkchia 20220309
+       *	-- tkchia 20220312
        */
       if (! first_arg_num && ! cfun->stdarg && name[0] == 'v'
 	  && (strcmp (name, "vprintf") == 0
