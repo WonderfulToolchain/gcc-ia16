@@ -70,7 +70,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20220307L");
+  def_macro ("__ia16__=20220312L");
 
   if (have_addr_spaces_p ())
     {
@@ -161,6 +161,7 @@ ia16_cpu_cpp_builtins (void)
   def_macro ("__IA16_FEATURE_ATTRIBUTE_NEAR_SECTION");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_FAR_SECTION");
   def_macro ("__IA16_FEATURE_ATTRIBUTE_INTERRUPT");
+  def_macro ("__IA16_FEATURE_ATTRIBUTE_AUTOFLOAT_STDIO_V2");
   def_macro ("__IA16_FEATURE_FAR_SECTION_TO_NEAR_CALLS");
   def_or_undef_macro ("__IA16_FEATURE_SEGMENT_RELOCATION_STUFF",
 		      TARGET_SEG_RELOC_STUFF);
