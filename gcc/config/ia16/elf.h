@@ -125,7 +125,7 @@
 
 #define LIB_SPEC	\
   "%{melks-libc:"	\
-      "-lc -lgcc;"	\
+      "-lc -lgcc -lc;"	\
     ":"			\
       "%{mnewlib-nano-stdio:" \
 	"%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
