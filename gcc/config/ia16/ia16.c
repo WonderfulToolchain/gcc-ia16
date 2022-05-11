@@ -3245,6 +3245,40 @@ static struct processor_costs ia16_nec_v20_costs = {
   0, 0, 0, 0, 0, 0,
 };
 
+/* Costs for NEC V30MZ CPUs.  Pipelined EA calculation time is not handled.
+ */
+static struct processor_costs ia16_nec_v30mz_costs = {
+  /* byte_fetch */	1,
+  /* ea_calc */		ia16_default_address_cost,
+  /* move */		C (1),
+  /* imm_load */	{ C (1), C (1) },
+  /* imm_store */	{ C (1), C (1) },
+  /* int_load */	{ C (1), C (1) },
+  /* int_store */	{ C (1), C (1) },
+  /* move_ratio */	C (4),
+  /* add */		{ C (1), C (3), C (2) },
+  /* add_imm */		{ C (1), C (3) },
+  /* inc_dec */		{ C (1), C (3) },
+  /* lea */		C (1),
+  /* cmp */		{ C (1), C (2), C (2) },
+  /* cmp_imm */		{ C (1), C (2) },
+  /* shift_1bit */	{ C (1), C (3) },
+  /* shift_start */	{ C (3), C (5) },
+  /* shift_bit */	C (0),
+  /* s_mult_init */	{ { C (3), C (4) }, { C (3), C (4) } },
+  /* u_mult_init */	{ { C (3), C (4) }, { C (3), C (4) } },
+  /* mult_imm_init */	{ C (4), C (4) },
+  /* mult_bit */	C (0),
+  /* s_divide */	{ { C (17), C (18) }, { C (24), C (25) } },
+  /* u_divide */	{ { C (15), C (16) }, { C (23), C (24) } },
+  /* sign_extend */	{ C (1), C (1) },
+  /* xlat */		C (5),
+  /* call */		{ C (10), C (5), C (6) },
+  0, { 0, 0, 0 }, { 0, 0, 0 },
+  /* branch_cost */	4,
+  0, 0, 0, 0, 0, 0,
+};
+
 #undef C
 
 /* This table must be in sync with enum processor_type in ia16.h.  */
@@ -3258,7 +3292,8 @@ static const struct ptt processor_target_table[PROCESSOR_max] =
   {&ia16_nec_v20_costs, 17},
   {&ia16_i80186_costs,   7},
   {&ia16_i80186_costs,  23},
-  {&ia16_i80286_costs,  15}
+  {&ia16_i80286_costs,  15},
+  {&ia16_nec_v30mz_costs, 7}
 };
 
 const struct processor_costs *ia16_costs = &ia16_i8086_costs;
