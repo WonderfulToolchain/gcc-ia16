@@ -18,6 +18,10 @@ march=v30
 Target RejectNegative Var(target_arch,PROCESSOR_NEC_V30)
 Use features of and optimize code for the NEC V30.
 
+march=v30mz
+Target RejectNegative Var(target_arch,PROCESSOR_NEC_V30MZ)
+Use features of and optimize code for the NEC V30MZ.
+
 march=v20
 Target RejectNegative Var(target_arch,PROCESSOR_NEC_V20)
 Use features of and optimize code for the NEC V20.
@@ -65,6 +69,10 @@ Optimize code for the Intel 8088.
 mtune=v30
 Target RejectNegative Var(target_tune,PROCESSOR_NEC_V30)
 Optimize code for the NEC V30.
+
+mtune=v30mz
+Target RejectNegative Var(target_tune,PROCESSOR_NEC_V30MZ)
+Optimize code for the NEC V30MZ.
 
 mtune=v20
 Target RejectNegative Var(target_tune,PROCESSOR_NEC_V20)

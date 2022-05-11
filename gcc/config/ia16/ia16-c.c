@@ -98,6 +98,7 @@ ia16_cpu_cpp_builtins (void)
       break;
     case PROCESSOR_ANY_186:
     case PROCESSOR_NEC_V30:
+    case PROCESSOR_NEC_V30MZ:
     case PROCESSOR_NEC_V20:
     case PROCESSOR_I80186:
     case PROCESSOR_I80188:
@@ -242,7 +243,7 @@ ia16_cpu_cpp_builtins (void)
      is defined.  This means that for some features, a user may need to test
      for several macros --- e.g. `bound' is supported if the compiler defines
      either __IA16_ARCH_ANY_186, __IA16_ARCH_80186, __IA16_ARCH_NEC_V20,
-     __IA16_ARCH_NEC_V30, or __IA16_ARCH_I80286.
+     __IA16_ARCH_NEC_V30, __IA16_ARCH_NEC_V30MZ or __IA16_ARCH_I80286.
 
      This is obviously clunky from the user's viewpoint, but I am not sure
      what a _really_ good alternative might be.  -- tkchia  */
@@ -251,6 +252,7 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ARCH_I8086", target_arch == PROCESSOR_I8086);
   def_or_undef_macro ("__IA16_ARCH_I8088", target_arch == PROCESSOR_I8088);
   def_or_undef_macro ("__IA16_ARCH_NEC_V30", target_arch == PROCESSOR_NEC_V30);
+  def_or_undef_macro ("__IA16_ARCH_NEC_V30MZ", target_arch == PROCESSOR_NEC_V30MZ);
   def_or_undef_macro ("__IA16_ARCH_NEC_V20", target_arch == PROCESSOR_NEC_V20);
   def_or_undef_macro ("__IA16_ARCH_I80186", target_arch == PROCESSOR_I80186);
   def_or_undef_macro ("__IA16_ARCH_I80188", target_arch == PROCESSOR_I80188);
@@ -262,6 +264,7 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_TUNE_I8086", target_tune == PROCESSOR_I8086);
   def_or_undef_macro ("__IA16_TUNE_I8088", target_tune == PROCESSOR_I8088);
   def_or_undef_macro ("__IA16_TUNE_NEC_V30", target_tune == PROCESSOR_NEC_V30);
+  def_or_undef_macro ("__IA16_TUNE_NEC_V30MZ", target_tune == PROCESSOR_NEC_V30MZ);
   def_or_undef_macro ("__IA16_TUNE_NEC_V20", target_tune == PROCESSOR_NEC_V20);
   def_or_undef_macro ("__IA16_TUNE_I80186", target_tune == PROCESSOR_I80186);
   def_or_undef_macro ("__IA16_TUNE_I80188", target_tune == PROCESSOR_I80188);
