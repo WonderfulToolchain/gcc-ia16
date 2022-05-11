@@ -16538,6 +16538,9 @@ The NEC V20.
 @item v30
 The NEC V30.
 
+@item v30mz
+The NEC V30MZ.
+
 @item any
 Any CPU listed above.  The aim is to generate code which runs reasonably
 well on any CPU listed above.
@@ -16946,6 +16949,7 @@ or medium) is selected.
 @itemx __IA16_ARCH_I8086
 @itemx __IA16_ARCH_I8088
 @itemx __IA16_ARCH_NEC_V30
+@itemx __IA16_ARCH_NEC_V30MZ
 @itemx __IA16_ARCH_NEC_V20
 @itemx __IA16_ARCH_I80186
 @itemx __IA16_ARCH_I80188
@@ -16958,6 +16962,7 @@ option settings.
 @itemx __IA16_TUNE_I8086
 @itemx __IA16_TUNE_I8088
 @itemx __IA16_TUNE_NEC_V30
+@itemx __IA16_TUNE_NEC_V30MZ
 @itemx __IA16_TUNE_NEC_V20
 @itemx __IA16_TUNE_I80186
 @itemx __IA16_TUNE_I80188
