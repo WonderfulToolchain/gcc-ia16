@@ -2784,6 +2784,10 @@ struct processor_costs {
   const int fabs;		/* cost of FABS instruction.  */
   const int fchs;		/* cost of FCHS instruction.  */
   const int fsqrt;		/* cost of FSQRT instruction.  */
+  const int enter[4];		/* cost of a enter instruction (if present),
+				   with nesting level L = 0, 1, 2, 3 (only
+				   enter[0] is really used for now). */
+  const int leave;		/* cost of a leave instruction (if present). */
 };
 
 extern const  struct processor_costs *ia16_costs;
@@ -3034,6 +3038,8 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	3,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (4), C (4), C (4), C (4) },
+  /* leave */		C (1),
 };
 
 /* Costs for Intel i8086 CPUs.  EA calculation time is not included.
@@ -3070,6 +3076,8 @@ static struct processor_costs ia16_i8086_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	16,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ 0, 0, 0, 0 },
+  /* leave */		0,
 };
 
 /* Costs for Intel 8088 CPUs.  EA calculation time is not included.  */
@@ -3104,6 +3112,8 @@ static struct processor_costs ia16_i8088_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	16,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ 0, 0, 0, 0 },
+  /* leave */		0,
 };
 
 /* Costs for Intel 80186 CPUs.  EA calculation time (4 cycles for all modes)
@@ -3139,6 +3149,8 @@ static struct processor_costs ia16_i80186_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	13,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (15), C (25), C (38), C (54) },
+  /* leave */		C (8),
 };
 
 /* Costs for Intel 80286 CPUs.  EA calculation time (? cycles for all modes)
@@ -3174,6 +3186,8 @@ static struct processor_costs ia16_i80286_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	7, /* FIXME: should really be 7 + m */
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (11), C (15), C (20), C (24) },
+  /* leave */		C (5),
 };
 
 /* Costs for NEC V30 CPUs.  EA calculation time (2 cycles for all modes)
@@ -3209,6 +3223,8 @@ static struct processor_costs ia16_nec_v30_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	14,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (12), C (19), C (27), C (35) },
+  /* leave */		C (6),
 };
 
 /* Costs for NEC V20 CPUs.  EA calculation time (2 cycles for all modes)
@@ -3243,6 +3259,8 @@ static struct processor_costs ia16_nec_v20_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	14,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (16), C (23), C (39), C (55) },
+  /* leave */		C (10),
 };
 
 /* Costs for NEC V30MZ CPUs.  Pipelined EA calculation time is not handled.
@@ -3277,6 +3295,8 @@ static struct processor_costs ia16_nec_v30mz_costs = {
   0, { 0, 0, 0 }, { 0, 0, 0 },
   /* branch_cost */	4,
   0, 0, 0, 0, 0, 0,
+  /* enter */		{ C (8), C (14), C (23), C (37) },
+  /* leave */		C (2),
 };
 
 #undef C
@@ -5446,6 +5466,46 @@ ia16_expand_reset_ds_for_return (void)
     ia16_expand_reset_ds_internal ();
 }
 
+static bool
+ia16_use_enter_p (HOST_WIDE_INT frame_size)
+{
+  int enter_cost, non_enter_cost;
+
+  if (! TARGET_ENTER_LEAVE)
+    return false;
+
+  enter_cost = IA16_COST (enter[0]);
+
+  non_enter_cost = IA16_COST (int_store[M_HI]) + IA16_COST (move);
+  if (frame_size)
+    non_enter_cost += IA16_COST (add_imm[I_REG]);
+
+  return (enter_cost < non_enter_cost);
+}
+
+static bool
+ia16_need_restore_sp_p (HOST_WIDE_INT frame_size)
+{
+  return frame_size != 0 || ! crtl->sp_is_unchanging;
+}
+
+static bool
+ia16_use_leave_p (HOST_WIDE_INT frame_size)
+{
+  int leave_cost, non_leave_cost;
+
+  if (! TARGET_ENTER_LEAVE)
+    return false;
+
+  leave_cost = IA16_COST (leave);
+
+  non_leave_cost = IA16_COST (int_load[M_HI]);
+  if (ia16_need_restore_sp_p (frame_size))
+    non_leave_cost += IA16_COST (move);
+
+  return (leave_cost < non_leave_cost);
+}
+
 void
 ia16_expand_prologue (void)
 {
@@ -5469,7 +5529,7 @@ ia16_expand_prologue (void)
     }
   if (ia16_save_reg_p (BP_REG))
     {
-      if (HAVE__enter && size != 0)
+      if (ia16_use_enter_p (size))
 	{
 	  insn = gen__enter (gen_rtx_CONST_INT (HImode, size + 2));
 	  insn = emit_insn (insn);
@@ -5516,17 +5576,11 @@ ia16_expand_epilogue (bool sibcall)
        * is shorter in any case, but ties up a register. So only refer to bp
        * if it wasn't used during the function.
        */
-      if (HAVE__leave)
-	{
-	  /* If sp wasn't modified, "popw %bp" is faster than "leavew". */
-	  if (size == 0 && crtl->sp_is_unchanging)
-	    emit_insn (ia16_pop_reg (BP_REG));
-	  else
-	    emit_insn (gen__leave ());
-	}
+      if (ia16_use_leave_p (size))
+	emit_insn (gen__leave ());
       else
 	{
-	  if (EXIT_IGNORE_STACK)
+	  if (ia16_need_restore_sp_p (size))
 	    {
 	      emit_move_insn (gen_rtx_REG (Pmode, SP_REG),
 			      gen_rtx_REG (Pmode, BP_REG));
