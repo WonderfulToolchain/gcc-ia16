@@ -421,8 +421,7 @@ CUMULATIVE_ARGS;
 
    The peephole optimization rules (ia16-peepholes.md) try to remove any
    remaining unneeded stack adjustments.  -- tkchia 20200722 */
-#define EXIT_IGNORE_STACK	(HAVE__leave \
-				 || get_frame_size () > 0 \
+#define EXIT_IGNORE_STACK	(get_frame_size () > 0 \
 				 || cfun->calls_alloca)
 
 /* Generating Code for Profiling */
