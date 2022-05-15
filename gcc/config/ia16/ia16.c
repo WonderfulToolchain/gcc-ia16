@@ -2784,9 +2784,9 @@ struct processor_costs {
   const int fabs;		/* cost of FABS instruction.  */
   const int fchs;		/* cost of FCHS instruction.  */
   const int fsqrt;		/* cost of FSQRT instruction.  */
-  const int enter[4];		/* cost of a enter instruction (if present),
+  const int enter[4];		/* cost of an enter instruction (if present),
 				   with nesting level L = 0, 1, 2, 3 (only
-				   enter[0] is really used for now). */
+				   L = 0 is really used for now). */
   const int leave;		/* cost of a leave instruction (if present). */
 };
 
@@ -3008,7 +3008,7 @@ ia16_size_address_cost (rtx r1, rtx r2, rtx c, rtx r9)
 /* Size costs for IA-16 instructions.  Used when optimizing for size.
  * EA sizes are not included except for xlat.
  */
- struct processor_costs ia16_size_costs = {
+struct processor_costs ia16_size_costs = {
   /* byte_fetch */	1,
   /* ea_calc */		ia16_size_address_cost,
   /* move */		C (2),
@@ -5466,29 +5466,57 @@ ia16_expand_reset_ds_for_return (void)
     ia16_expand_reset_ds_internal ();
 }
 
+/*
+ * Say whether we should use the `enter' instruction to set up the current
+ * function's stack frame.  FRAME_SIZE should be equal to get_frame_size ().
+ */
 static bool
 ia16_use_enter_p (HOST_WIDE_INT frame_size)
 {
   int enter_cost, non_enter_cost;
 
+  /* We cannot use `enter' if the target instruction set lacks it. */
   if (! TARGET_ENTER_LEAVE)
     return false;
 
   enter_cost = IA16_COST (enter[0]);
 
+  /*
+   * If we do not use `enter', we need
+   *		pushw	%bp
+   *		movw	%sp, %bp
+   * & optionally
+   *		subw	$-FRAME_SIZE, %sp
+   */
   non_enter_cost = IA16_COST (int_store[M_HI]) + IA16_COST (move);
   if (frame_size)
     non_enter_cost += IA16_COST (add_imm[I_REG]);
 
-  return (enter_cost < non_enter_cost);
+  /*
+   * If there is a tie between the (time) costs in using `enter` & the costs
+   * of not using `enter', prefer `enter', as it always uses less space.
+   */
+  return (enter_cost <= non_enter_cost);
 }
 
+/*
+ * Say whether we need to restore %sp before popping %bp in an epilogue. 
+ * The checks here can be more detailed than in EXIT_IGNORE_STACK, since
+ * this function will be called quite late during RTL generation.
+ *
+ * TODO: further optimize this.  See TARGET_FRAME_POINTER_REQUIRED above.
+ */
 static bool
 ia16_need_restore_sp_p (HOST_WIDE_INT frame_size)
 {
   return frame_size != 0 || ! crtl->sp_is_unchanging;
 }
 
+/*
+ * Say whether we should use the `leave' instruction to tear down the
+ * current function's stack frame.  FRAME_SIZE should be equal to
+ * get_frame_size ().
+ */
 static bool
 ia16_use_leave_p (HOST_WIDE_INT frame_size)
 {
@@ -5499,9 +5527,27 @@ ia16_use_leave_p (HOST_WIDE_INT frame_size)
 
   leave_cost = IA16_COST (leave);
 
+  /*
+   * If we do not use `leave', we need to do either
+   *		movw	%bp, %sp
+   *		popw	%bp
+   * or (if %sp need not be restored from %bp)
+   *		popw	%bp
+   *
+   * In the former case, if there is a tie, then prefer using `leave', which
+   * is shorter.
+   *
+   * In the latter case, prefer using `popw %bp' instead in case of a tie in
+   * the instruction costs (which may be time costs or size costs).  `popw
+   * %bp' is just as short as `leave' (1 byte), & can only be faster, not
+   * slower.
+   */
   non_leave_cost = IA16_COST (int_load[M_HI]);
   if (ia16_need_restore_sp_p (frame_size))
-    non_leave_cost += IA16_COST (move);
+    {
+      non_leave_cost += IA16_COST (move);
+      return (leave_cost <= non_leave_cost);
+    }
 
   return (leave_cost < non_leave_cost);
 }
