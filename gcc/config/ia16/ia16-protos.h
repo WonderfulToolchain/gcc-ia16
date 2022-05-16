@@ -21,7 +21,7 @@
 */
 
 extern struct gcc_target targetm;
-extern unsigned char	ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER];
+extern unsigned char	ia16_hard_regno_nregs_table[17][FIRST_PSEUDO_REGISTER];
 extern enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER];
 extern int		ia16_regno_in_class_p (unsigned, unsigned);
 extern int		ia16_save_reg_p (unsigned);

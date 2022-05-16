@@ -19,7 +19,7 @@
    You should have received a copy of the GNU General Public License along
    with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/* Please keep these definition in sync with ia16_hard_regno_nregs[][].  */
+/* Please keep these definition in sync with ia16_hard_regno_nregs_table[][].  */
 
 VECTOR_MODE (INT, QI, 2);
 

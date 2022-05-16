@@ -4,7 +4,7 @@
 # installed obsolete multilibs, which should really be cleaned away.
 #	-- tkchia
 #
-ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
+ia16-c.o: $(srcdir)/config/ia16/ia16-c.cc $(RTL_H) $(TREE_H) $(CONFIG_H) \
   $(TM_H) $(GTFILES_H)
 	@if test \
 	     -e "$(prefix)"/ia16-elf/lib/i80286 \
@@ -75,15 +75,15 @@ ia16-c.o: $(srcdir)/config/ia16/ia16-c.c $(RTL_H) $(TREE_H) $(CONFIG_H) \
 	fi
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-ia16-builtins.o: $(srcdir)/config/ia16/ia16-builtins.c \
+ia16-builtins.o: $(srcdir)/config/ia16/ia16-builtins.cc \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-ia16-reorg.o: $(srcdir)/config/ia16/ia16-reorg.c \
+ia16-reorg.o: $(srcdir)/config/ia16/ia16-reorg.cc \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.c \
+ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.cc \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 

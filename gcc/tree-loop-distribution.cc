@@ -1870,9 +1870,10 @@ loop_distribution::classify_partition (loop_p loop,
   if (single_ld && single_st)
     {
       gimple *store = DR_STMT (single_st), *load = DR_STMT (single_ld);
+      tree rhs = gimple_assign_rhs1 (store);
       /* Direct aggregate copy or via an SSA name temporary.  */
       if (load != store
-	  && gimple_assign_lhs (load) != gimple_assign_rhs1 (store))
+	  && gimple_assign_lhs (load) != rhs)
 	return has_reduction;
     }
 

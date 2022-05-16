@@ -7088,14 +7088,6 @@ grokdeclarator (const struct c_declarator *declarator,
 		if (specs_loc == UNKNOWN_LOCATION)
 		  specs_loc = loc;
 
-#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
-		if (CLEAR_QUAL_ADDR_SPACE (type_quals) == 0
-		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
-			(DECODE_QUAL_ADDR_SPACE (type_quals)))
-		  ;
-		else
-#endif
-		{
 		/* Type qualifiers on a function return type are
 		   normally permitted by the standard but have no
 		   effect, so give a warning at -Wreturn-type.
@@ -7108,6 +7100,13 @@ grokdeclarator (const struct c_declarator *declarator,
 		int quals_used = type_quals;
 		if (flag_isoc11)
 		  quals_used &= TYPE_QUAL_ATOMIC;
+#ifdef TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+		if (CLEAR_QUAL_ADDR_SPACE (type_quals) == 0
+		    && TARGET_ADDR_SPACE_MAY_HAVE_FUNCTIONS_P
+			(DECODE_QUAL_ADDR_SPACE (type_quals)))
+		  ;
+		else
+#endif
 		if (quals_used && VOID_TYPE_P (type) && really_funcdef)
 		  pedwarn (specs_loc, 0,
 			   "function definition has qualified void "
@@ -7116,7 +7115,6 @@ grokdeclarator (const struct c_declarator *declarator,
 		  warning_at (specs_loc, OPT_Wignored_qualifiers,
 			      "type qualifiers ignored on function "
 			      "return type");
-		}
 
 		/* Ensure an error for restrict on invalid types; the
 		   DR#423 resolution is not entirely clear about

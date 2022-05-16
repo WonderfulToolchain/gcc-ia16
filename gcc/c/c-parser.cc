@@ -2150,7 +2150,7 @@ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok,
       timevar_id_t tv;
       tree fnbody = NULL_TREE;
 #ifdef TARGET_WARN_ADDR_SPACE_SYNTAX_P
-      if (!diagnosed_addr_space_syntax && !first)
+      if (!diagnosed_addr_space_syntax)
 	{
 	  addr_space_t as = specs->address_space;
 	  location_t there = c_parser_peek_token (parser)->location;
@@ -2158,14 +2158,15 @@ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok,
 	  if (!ADDR_SPACE_GENERIC_P (as)
 	      && TARGET_WARN_ADDR_SPACE_SYNTAX_P (specs->address_space)
 	      && specs->address_space_is_last_p)
-	    {
+	     {
 	      const char *as_name = c_addr_space_name (as);
 	      if (warning_at (there, OPT_Waddress,
 			      "following declarators will also go in "
 			      "%qs space", as_name))
 		{
-		  inform (there, "suggest to either split declaration,");
-		  inform (there, "or place %qs before %qT", as_name,
+		  inform (there,
+			  "suggest to either split declaration, "
+		  	  "or place %qs before %qT", as_name,
 			  specs->type);
 		}
 	    }
@@ -2364,7 +2365,7 @@ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok,
 		  if (last_non_id_attrs
 		      && last_non_id_attrs->kind == cdk_function)
 		    {
-		      tree parms = last_non_id_attrs->u.arg_info->parms;
+		      tree parms = last_non_id_attrs->u.function.arg_info->parms;
 		      if (DECL_ARGUMENTS (d) == NULL_TREE
 			  && DECL_INITIAL (d) == NULL_TREE)
 			DECL_ARGUMENTS (d) = parms;

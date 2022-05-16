@@ -1358,21 +1358,6 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
       {
 	args[j].tree_value = struct_value_addr_value;
 	j += inc;
-
-	/* If we pass structure address then we need to
-	   create bounds for it.  Since created bounds is
-	   a call statement, we expand it right here to avoid
-	   fixing all other places where it may be expanded.  */
-	if (CALL_WITH_BOUNDS_P (exp))
-	  {
-	    args[j].value = gen_reg_rtx (targetm.chkp_bound_mode ());
-	    args[j].tree_value
-	      = chkp_make_bounds_for_struct_addr (struct_value_addr_value);
-	    expand_expr_real (args[j].tree_value, args[j].value, VOIDmode,
-			      EXPAND_NORMAL, 0, false);
-	    args[j].pointer_arg = j - inc;
-	    j += inc;
-	  }
       }
     argpos = 0;
     FOR_EACH_CALL_EXPR_ARG (arg, iter, exp)
@@ -2423,7 +2408,7 @@ check_sibcall_argument_overlap_1 (rtx x, bool args_grow_downward)
 
   if (code == MEM)
     return (mem_might_overlap_already_clobbered_arg_p
-	    (XEXP (x, 0), GET_MODE_SIZE (GET_MODE (x))), args_grow_downward);
+	    (XEXP (x, 0), GET_MODE_SIZE (GET_MODE (x)), args_grow_downward));
 
   /* Scan all subexpressions.  */
   fmt = GET_RTX_FORMAT (code);
@@ -3256,13 +3241,13 @@ expand_call (tree exp, rtx target, int ignore)
 	  if (callee_args_grow_downward)
 	    {
 	      if (! cfun->args_grow_downward)
-		argblock_offset_from_ap += crtl->args.size
+		argblock_offset_from_ap += crtl->args.size.to_constant ()
 					   - crtl->args.pretend_args_size;
 	    }
 	  else
 	    {
 	      if (cfun->args_grow_downward)
-		argblock_offset_from_ap -= crtl->args.size
+		argblock_offset_from_ap -= crtl->args.size.to_constant ()
 					   - crtl->args.pretend_args_size;
 	    }
 
@@ -3336,9 +3321,8 @@ expand_call (tree exp, rtx target, int ignore)
 		  if (! OUTGOING_REG_PARM_STACK_SPACE ((!fndecl ? fntype : TREE_TYPE (fndecl))))
 		    needed += reg_parm_stack_space;
 
-<<<<<<< HEAD:gcc/calls.cc
 		  poly_int64 limit = needed;
-		  if (args_grow_downward)
+		  if (callee_args_grow_downward)
 		    limit += 1;
 
 		  /* For polynomial sizes, this is the maximum possible
@@ -3347,14 +3331,6 @@ expand_call (tree exp, rtx target, int ignore)
 		  HOST_WIDE_INT const_limit = constant_lower_bound (limit);
 		  highest_outgoing_arg_in_use
 		    = MAX (initial_highest_arg_in_use, const_limit);
-=======
-		  if (callee_args_grow_downward)
-		    highest_outgoing_arg_in_use
-		      = MAX (initial_highest_arg_in_use, needed + 1);
-		  else
-		    highest_outgoing_arg_in_use
-		      = MAX (initial_highest_arg_in_use, needed);
->>>>>>> 8f9d2796274 (Now allow sibcall with differing FUNCTION_ARGS_GROW_DOWNWARD (!)):gcc/calls.c
 
 		  free (stack_usage_map_buf);
 		  stack_usage_map_buf = XNEWVEC (char, highest_outgoing_arg_in_use);
@@ -3418,14 +3394,9 @@ expand_call (tree exp, rtx target, int ignore)
 		    argblock = virtual_outgoing_args_rtx;
 		  else
 		    {
-<<<<<<< HEAD:gcc/calls.cc
 		      rtx needed_rtx = gen_int_mode (needed, Pmode);
 		      argblock = push_block (needed_rtx, 0, 0);
-		      if (args_grow_downward)
-=======
-		      argblock = push_block (GEN_INT (needed), 0, 0);
 		      if (callee_args_grow_downward)
->>>>>>> 8f9d2796274 (Now allow sibcall with differing FUNCTION_ARGS_GROW_DOWNWARD (!)):gcc/calls.c
 			argblock = plus_constant (Pmode, argblock, needed);
 		    }
 
@@ -3675,22 +3646,12 @@ expand_call (tree exp, rtx target, int ignore)
 	    }
 	}
 
-      /* Store all bounds not passed in registers.  */
-      for (i = 0; i < num_actuals; i++)
-	{
-	  if (POINTER_BOUNDS_P (args[i].tree_value)
-	      && !args[i].reg)
-	    store_bounds (&args[i],
-			  args[i].pointer_arg == -1
-			  ? NULL
-			  : &args[args[i].pointer_arg]);
-	}
-
       /* If we pushed args in forward order, perform stack alignment
 	 after pushing the last arg.  */
       if (!push_args_reversed && argblock == 0)
-	anti_adjust_stack (GEN_INT (adjusted_args_size.constant
-				    - unadjusted_args_size));
+	anti_adjust_stack (gen_int_mode (adjusted_args_size.constant
+					 - unadjusted_args_size,
+					 Pmode));
 
       /* If register arguments require space on the stack and stack space
 	 was not preallocated, allocate stack space here for arguments
@@ -4730,8 +4691,9 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
   /* If we pushed args in forward order, perform stack alignment
      after pushing the last arg.  */
   if (argblock == 0 && !push_args_reversed)
-    anti_adjust_stack (GEN_INT (args_size.constant
-				- original_args_size.constant));
+    anti_adjust_stack (gen_int_mode (args_size.constant
+				     - original_args_size.constant,
+				     Pmode));
 
   if (push_args_reversed)
     argnum = nargs - 1;

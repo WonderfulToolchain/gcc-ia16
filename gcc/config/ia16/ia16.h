@@ -117,39 +117,6 @@
 	{ 2, 3, 4, 5, 0, 1,  6, 7, 10,  9, 8, 11, 12, 13, 14, 15, 16, 17 }
 /*	 al ah dl dh cl ch  bl bh  bp  di si  es  ds  sp  cc  ss  cs  ap */
 
-/* How Values Fit in Registers.  */
-/* FIXME: Not documented: CCmode is 32 bits.  */
-/* Must not return 0 or subreg_get_info() may divide by zero.  */
-/* FIXME: Handling of XFmode needs to use GET_MODE_PRECISION(). */
-#define HARD_REGNO_NREGS(REGNO, MODE) \
-  (MAX (ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO], 1))
-
-/* There are more cases than those caught here, but HARD_REGNO_MODE_OK()
-   forbids them. Catch multireg values that straddle the boundary between
-   8-bit and 16-bit registers. */
-#define HARD_REGNO_NREGS_HAS_PADDING(REGNO, MODE) \
-	((REGNO) < FIRST_NOQI_REG && \
-	 (REGNO) + GET_MODE_SIZE(MODE) > FIRST_NOQI_REG)
-
-#define HARD_REGNO_NREGS_WITH_PADDING(REGNO, MODE) \
-	(GET_MODE_SIZE(MODE))
-
-#define REGMODE_NATURAL_SIZE(MODE)	\
-	(GET_MODE_SIZE(MODE) == 1 || GET_MODE_CLASS(MODE) == MODE_CC ? \
-	 1 : UNITS_PER_WORD)
-
-/* Complex modes must not cross the boundary between 8-bit and 16-bit
-   registers because subreg_get_info() will fail in that case.  */
-#define HARD_REGNO_MODE_OK(REGNO, MODE) \
-  (GET_MODE_CLASS(MODE) == MODE_CC ? (REGNO) == CC_REG :		\
-   (REGNO) == CC_REG ? GET_MODE_CLASS(MODE) == MODE_CC :		\
-   GET_MODE_SIZE(MODE) > 16 ? 0 :					\
-   COMPLEX_MODE_P(MODE) &&						\
-     HARD_REGNO_NREGS_HAS_PADDING((REGNO), (MODE)) ? 0 :		\
-   ia16_hard_regno_nregs[GET_MODE_SIZE(MODE)][REGNO] &&			\
-     (! TARGET_PROTECTED_MODE || (MODE) == PHImode			\
-      || ((REGNO) != DS_REG && (REGNO) != ES_REG)))
-
 /* For some reason, allowing registers other than %ds to be renamed to %ds
    during the rnreg pass (with e.g. -funroll-loops) leads to incorrect code
    around %ds <- %ss operations, so disable that.
@@ -159,20 +126,6 @@
 #define HARD_REGNO_RENAME_OK(FROM, TO) \
 	(((FROM) != DS_REG && (FROM) != ES_REG && (TO) != DS_REG) \
 	 || ((FROM) == DS_REG && (TO) == ES_REG))
-
-/* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
- * estimate, and this particular case cannot be overridden by
- * ia16_rtx_costs().  And if you get it wrong, the register allocator will
- * be stupid about libgcc2.c's _popcountsi2().  The cases we have to reject
- * here are:
- * 1) Access of a 16-bit value in MODE1 as an 8-bit value MODE2.
- *    This will fail for registers in class HI_REGS.
- * 2) Access of an 8-bit value in MODE1 as an 16-bit value in MODE2.
- *    This will fail for registers in class UP_QI_REGS.
- * Used in: rtlanal.c, combine.c, regclass.c and local-alloc.c.
- */
-#define MODES_TIEABLE_P(MODE1, MODE2)	\
-	(GET_MODE_SIZE(MODE2) > 1 && GET_MODE_SIZE(MODE1) > 1)
 
 /* Handling Leaf Functions
  *
@@ -324,13 +277,6 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
  	 GET_MODE_SIZE (mode) :						\
 	 (GET_MODE_SIZE (mode) + 1U) / 2U) + 0U)
 
-/* HI_REGS cannot change mode to QImode.  We cannot change mode to a
- * larger mode without increasing the number of hard regs used.
- * TODO: This will change when x87 FPUs are supported.  */
-#define CANNOT_CHANGE_MODE_CLASS(FROM, TO, CLASS)	\
-	(GET_MODE_SIZE(TO) > GET_MODE_SIZE(FROM)	\
-	 || ((TO) == QImode && reg_classes_intersect_p (HI_REGS, (CLASS))))
-
 /* Stack Layout and Calling Conventions
  * Basic Stack Layout
  */
@@ -339,7 +285,6 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define FRAME_GROWS_DOWNWARD 1
 #define FUNCTION_ARGS_GROW_DOWNWARD(funtype) \
 	ia16_function_args_grow_downward (funtype)
-#define STARTING_FRAME_OFFSET 0
 #define FIRST_PARM_OFFSET(fundecl) 0
 
 extern int ia16_function_args_grow_downward (const_tree funtype);
@@ -575,10 +520,8 @@ extern const char * const ia16_register_prefix[],
 	fprintf (stream, "\t.p2align\t%u,,%u\n", power, max_skip)
 
 /* Controlling Debugging Information Format  */
-/* Macros Affecting All Debugging Formats  */
-#undef PREFERRED_DEBUGGING_TYPE
-/* Macros for SDB and DWARF Output  */
-#undef DWARF2_DEBUGGING_INFO
+/* TODO (GCC 12 update): This is enforced - it might be necessary to remove
+ * this enforcement for ia16. */
 
 #define REGISTER_TARGET_PRAGMAS() ia16_register_pragmas ()
 
@@ -608,11 +551,9 @@ extern const char * const ia16_register_prefix[],
 /* #define MOVE_MAX 		(UNITS_PER_WORD / (TARGET_TUNE_8BIT ? 2 : 1)) */
 #define	MOVE_MAX			UNITS_PER_WORD
 #define MAX_MOVE_MAX			UNITS_PER_WORD
-#define TRULY_NOOP_TRUNCATION(outprec, inprec) 1
 #define STORE_FLAG_VALUE		(-1)
 #define Pmode				HImode
 #define FUNCTION_MODE			QImode
-#define NO_IMPLICIT_EXTERN_C
 
 /* Index codes for machine-specific built-in functions.  */
 enum ia16_builtin
@@ -714,9 +655,6 @@ enum asm_dialect
 
 /* The linker will take care of this.  */
 #define CTOR_LISTS_DEFINED_EXTERNALLY 1
-
-/* No need to support Java.  */
-#define TARGET_USE_JCR_SECTION 0
 
 /* Avoid having register_tm_clones and unregister_tm_clones in crtstuff.  */
 #define USE_TM_CLONE_REGISTRY 0

@@ -106,7 +106,7 @@ void ia16_expand_to_rtl_hook (void)
  * Disallow register size changes unless HARD_REGNO_NREGS_HAS_PADDING.
  * CCmode is 4 bytes.
  */
-unsigned char ia16_hard_regno_nregs[17][FIRST_PSEUDO_REGISTER] =
+unsigned char ia16_hard_regno_nregs_table[17][FIRST_PSEUDO_REGISTER] =
 {
 /* size     cl  ch  al  ah  dl  dh  bl  bh  si  di  bp  es  ds  sp  cc  ss  cs  ap */
 /*  0 */  {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
@@ -1280,6 +1280,97 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
       cum->hwords = 4;
       return;
     }
+}
+
+/* How Values Fit in Registers.  */
+/* FIXME: Not documented: CCmode is 32 bits.  */
+/* Must not return 0 or subreg_get_info() may divide by zero.  */
+/* FIXME: Handling of XFmode needs to use GET_MODE_PRECISION(). */
+#undef  TARGET_HARD_REGNO_NREGS
+#define TARGET_HARD_REGNO_NREGS ia16_hard_regno_nregs
+static unsigned int
+ia16_hard_regno_nregs (unsigned int reegno, machine_mode mode)
+{
+  return (MAX (ia16_hard_regno_nregs_table[GET_MODE_SIZE(mode)][regno], 1))
+}
+
+/* There are more cases than those caught here, but HARD_REGNO_MODE_OK()
+   forbids them. Catch multireg values that straddle the boundary between
+   8-bit and 16-bit registers. */
+#define HARD_REGNO_NREGS_HAS_PADDING(REGNO, MODE) \
+	((REGNO) < FIRST_NOQI_REG && \
+	 (REGNO) + GET_MODE_SIZE(MODE) > FIRST_NOQI_REG)
+
+#define HARD_REGNO_NREGS_WITH_PADDING(REGNO, MODE) \
+	(GET_MODE_SIZE(MODE))
+
+#define REGMODE_NATURAL_SIZE(MODE)	\
+	(GET_MODE_SIZE(MODE) == 1 || GET_MODE_CLASS(MODE) == MODE_CC ? \
+	 1 : UNITS_PER_WORD)
+
+/* Complex modes must not cross the boundary between 8-bit and 16-bit
+   registers because subreg_get_info() will fail in that case.  */
+#undef  TARGET_HARD_REGNO_MODE_OK
+#define TARGET_HARD_REGNO_MODE_OK ia16_hard_regno_mode_ok
+static bool
+ia16_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
+{
+  // TODO: Reformat as a non-macro.
+  return
+  (GET_MODE_CLASS(mode) == MODE_CC ? (regno) == CC_REG :
+   (regno) == CC_REG ? GET_MODE_CLASS(mode) == MODE_CC :
+   GET_MODE_SIZE(mode) > 16 ? 0 :
+   COMPLEX_MODE_P(mode) &&
+     HARD_REGNO_NREGS_HAS_PADDING((regno), (mode)) ? 0 :
+   ia16_hard_regno_nregs_table[GET_MODE_SIZE(mode)][regno] &&
+     (! TARGET_PROTECTED_MODE || (mode) == PHImode
+      || ((regno) != DS_REG && (regno) != ES_REG)));
+}
+
+/* HI_REGS cannot change mode to QImode.  We cannot change mode to a
+ * larger mode without increasing the number of hard regs used.
+ * TODO: This will change when x87 FPUs are supported.  */
+#undef  TARGET_CAN_CHANGE_MODE_CLASS
+#define TARGET_CAN_CHANGE_MODE_CLASS ia16_can_change_mode_class
+static bool
+ia16_can_change_mode_class (machine_mode from, machine_mode to,
+			    reg_class_t regclass)
+{
+  if (from == to)
+    return true;
+
+  if (GET_MODE_SIZE(to) > GET_MODE_SIZE(from))
+    return false;
+
+  if ((to) == QImode && reg_classes_intersect_p(HI_REGS, regclass))
+    return false;
+
+  return true;
+}
+
+/* When this returns 0, rtx_cost() in rtlanal.c will pessimize the RTX cost
+ * estimate, and this particular case cannot be overridden by
+ * ia16_rtx_costs().  And if you get it wrong, the register allocator will
+ * be stupid about libgcc2.c's _popcountsi2().  The cases we have to reject
+ * here are:
+ * 1) Access of a 16-bit value in MODE1 as an 8-bit value MODE2.
+ *    This will fail for registers in class HI_REGS.
+ * 2) Access of an 8-bit value in MODE1 as an 16-bit value in MODE2.
+ *    This will fail for registers in class UP_QI_REGS.
+ * Used in: rtlanal.c, combine.c, regclass.c and local-alloc.c.
+ */
+#undef  TARGET_MODES_TIEABLE_P
+#define TARGET_MODES_TIEABLE_P ia16_modes_tieable_p
+static bool
+ia16_modes_tieable_p (machine_mode mode1, machine_mode mode2)
+{
+  if (mode1 == mode2)
+    return true;
+
+  if ((GET_MODE_SIZE(mode1) > 1) && (GET_MODE_SIZE(mode2) > 1))
+    return true;
+
+  return false;
 }
 
 #undef  TARGET_VECTOR_MODE_SUPPORTED_P
