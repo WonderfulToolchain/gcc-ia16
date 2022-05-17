@@ -521,8 +521,10 @@ extern const char * const ia16_register_prefix[],
 	fprintf (stream, "\t.p2align\t%u,,%u\n", power, max_skip)
 
 /* Controlling Debugging Information Format  */
-/* TODO (GCC 12 update): This is enforced - it might be necessary to remove
- * this enforcement for ia16. */
+#undef PREFERRED_DEBUGGING_TYPE
+#define PREFERRED_DEBUGGING_TYPE NO_DEBUG
+/* Macros for SDB and DWARF Output  */
+#undef DWARF2_DEBUGGING_INFO
 
 #define REGISTER_TARGET_PRAGMAS() ia16_register_pragmas ()
 
