@@ -1061,14 +1061,14 @@ ia16_handle_unnamed_function_arg (const_tree type)
 #define TARGET_FUNCTION_ARG ia16_function_arg
 
 static rtx
-ia16_function_arg (cumulative_args_t cum_v, machine_mode mode,
-		   const_tree type, bool named)
+ia16_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum;
+  machine_mode mode = arg.mode;
 
-  if (! named)
+  if (! arg.named)
     {
-      ia16_handle_unnamed_function_arg (type);
+      ia16_handle_unnamed_function_arg (arg.type);
       return NULL;
     }
 
@@ -1286,19 +1286,18 @@ ia16_init_cumulative_args (CUMULATIVE_ARGS *cum, const_tree fntype,
 #define TARGET_FUNCTION_ARG_ADVANCE ia16_function_arg_advance
 
 static void
-ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
-                           const_tree type ATTRIBUTE_UNUSED,
-			   bool named ATTRIBUTE_UNUSED)
+ia16_function_arg_advance (cumulative_args_t cum_v,
+			   const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  if (cum->hwords >= 3 || ! named)
+  if (cum->hwords >= 3 || ! arg.named)
     {
       cum->hwords = 4;
       return;
     }
 
-  switch (mode)
+  switch (arg.mode)
     {
     case QImode:
     case HImode:
@@ -1464,7 +1463,7 @@ ia16_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 #undef	TARGET_GET_RAW_RESULT_MODE
 #define	TARGET_GET_RAW_RESULT_MODE ia16_get_raw_result_mode
 
-static machine_mode
+static fixed_size_mode
 ia16_get_raw_result_mode (int regno)
 {
   switch (regno)
@@ -1479,7 +1478,7 @@ ia16_get_raw_result_mode (int regno)
 #undef	TARGET_GET_RAW_ARG_MODE
 #define	TARGET_GET_RAW_ARG_MODE ia16_get_raw_arg_mode
 
-static machine_mode
+static fixed_size_mode
 ia16_get_raw_arg_mode (int regno)
 {
   switch (regno)
@@ -1492,7 +1491,7 @@ ia16_get_raw_arg_mode (int regno)
     case DH_REG:
     case CH_REG:
     case DS_REG:
-      return VOIDmode;
+      return as_a <fixed_size_mode> (VOIDmode);
     default:
       gcc_unreachable ();
     }
@@ -1542,8 +1541,9 @@ ia16_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 #undef	TARGET_RETURN_POPS_ARGS
 #define	TARGET_RETURN_POPS_ARGS ia16_return_pops_args
 
-static int
-ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype, int size)
+static poly_int64
+ia16_return_pops_args (tree fundecl ATTRIBUTE_UNUSED, tree funtype,
+		       poly_int64 size)
 {
   /* Note that the `-mrtd' or `-mregparmcall' calling convention will also be
      applied to libgcc library functions (e.g. __udivdi3).  This usually
@@ -5307,8 +5307,9 @@ ia16_shift_truncation_mask (enum machine_mode mode)
 
 static rtx_insn *
 ia16_md_asm_adjust (vec<rtx> &outputs, vec<rtx> &/*inputs*/,
+		    vec<machine_mode> &/*input_modes*/,
 		    vec<const char *> &constraints, vec<rtx> &clobbers,
-		    HARD_REG_SET &clobbered_regs)
+		    HARD_REG_SET &clobbered_regs, location_t /*loc*/)
 {
   bool saw_asm_flag = false;
 
@@ -5536,8 +5537,12 @@ ia16_move_multiple_mem_p (enum machine_mode mode, rtx m1, rtx m2)
 bool
 ia16_move_multiple_reg_p (enum machine_mode mode, rtx r1, rtx r2)
 {
-  enum machine_mode mode2x = GET_MODE_2XWIDER_MODE (mode);
+  opt_mode<machine_mode> optmode2x = GET_MODE_2XWIDER_MODE (mode);
   unsigned int reg1no = REGNO (r1);
+
+  if (!optmode2x.exists ())
+    return (false);
+  enum machine_mode mode2x = optmode2x.require ();
 
   if (!ia16_hard_regno_mode_ok (reg1no, mode2x))
     return (false);

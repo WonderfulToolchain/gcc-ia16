@@ -26,6 +26,7 @@
 #include "backend.h"
 #include "rtl.h"
 #include "tree.h"
+#include "memmodel.h"
 #include "df.h"
 #include "tm_p.h"
 #include "expmed.h"

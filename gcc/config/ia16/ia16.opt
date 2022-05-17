@@ -138,21 +138,21 @@ Target RejectNegative InverseMask(SEG_RELOC_STUFF)
 Disable language features which use segment relocations.
 
 mcdecl
-Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_CDECL) Init(CALL_PARM_CVT_CDECL) Undocumented
+Target RejectNegative Var(target_call_parm_cvt,CALL_PARM_CVT_CDECL) Init(CALL_PARM_CVT_CDECL) Undocumented
 
 mrtd
-Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_STDCALL)
+Target RejectNegative Var(target_call_parm_cvt,CALL_PARM_CVT_STDCALL)
 Alternate calling convention (callee pops arguments).
 
 mstdcall
 Target RejectNegative Alias(mrtd) Undocumented
 
 mregparmcall
-Target RejectNegative Report Var(target_call_parm_cvt,CALL_PARM_CVT_REGPARMCALL)
+Target RejectNegative Var(target_call_parm_cvt,CALL_PARM_CVT_REGPARMCALL)
 Alternate calling convention (some arguments in registers; callee pops rest).
 
 mno-callee-assume-ds-data-segment
-Target RejectNegative Report Mask(NO_ASSUME_DS_DATA)
+Target RejectNegative Mask(NO_ASSUME_DS_DATA)
 Alternate calling convention (callee cannot assume %ds points to program's data segment on entry).
 
 mcallee-assume-ds-data-segment
@@ -167,7 +167,7 @@ mcallee-assume-ds-data-space
 Target Alias(mcallee-assume-ds-data-segment) Undocumented
 
 mno-callee-assume-ss-data-segment
-Target RejectNegative Report Mask(NO_ASSUME_SS_DATA)
+Target RejectNegative Mask(NO_ASSUME_SS_DATA)
 Alternate (experimental) calling convention (callee cannot assume %ss points to program's data segment on entry).
 
 mcallee-assume-ss-data-segment
@@ -178,23 +178,23 @@ Target RejectNegative
 Ignored.
 
 mprotected-mode
-Target Report Mask(PROTECTED_MODE)
+Target Mask(PROTECTED_MODE)
 Try to produce code suitable for running in protected mode.
 
 ; With the help of elf.h, this also enables -mprotected-mode.
 melks-libc
-Target Report RejectNegative Mask(SYS_ELKS)
+Target RejectNegative Mask(SYS_ELKS)
 Generate executables for ELKS OS, and link with elks-libc.
 
 melks
 Target Alias(melks-libc) Undocumented
 
 mmsdos
-Target Report RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
+Target RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
 Generate executables for MS-DOS (default).
 
 mmsdos-handle-v1
-Target Report RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
+Target RejectNegative InverseMask(SYS_ELKS, SYS_MSDOS)
 Generate MS-DOS executables which fail gracefully on DOS v1.x.
 
 mhandle-non-i186
@@ -206,12 +206,12 @@ Target RejectNegative
 Generate executables which check if they are running on an 80286-capable CPU.
 
 mtsr
-Target Report Mask(TSR)
+Target Mask(TSR)
 Add code to support terminate-and-stay-resident (TSR) programs (experimental).
 
 ; With the help of elf.h, this also enables -mprotected-mode.
 mdosx
-Target Report Mask(DOSX)
+Target Mask(DOSX)
 Generate MS-DOS executables which run under a DOS extender (experimental).
 
 mdpmi
@@ -219,7 +219,7 @@ Target Alias(mdosx)
 Generate MS-DOS executables which run under a DOS extender (experimental).
 
 msegelf
-Target Report Mask(ABI_SEGELF)
+Target Mask(ABI_SEGELF)
 Use H. Peter Anvin's proposed 16-bit segmented code ABI (experimental).
 
 mnewlib-nano-stdio
