@@ -20,6 +20,8 @@
    with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define IN_TARGET_CODE 1
+
 /* I have no or little idea how many and which of these headers files I need
  * to include.  So don't look here if you don't have a clue either.
  *
@@ -31,6 +33,7 @@
 #include "backend.h"
 #include "rtl.h"
 #include "tree.h"
+#include "memmodel.h"
 #include "gimple.h"
 #include "cfgloop.h"
 #include "df.h"
@@ -538,6 +541,27 @@ bool
 ia16_exit_ignore_stack (void)
 {
   return (get_frame_size () > 0) || cfun->calls_alloca;
+}
+
+poly_int64
+ia16_regmode_natural_size (machine_mode mode)
+{
+  if (GET_MODE_SIZE(mode) == 1 || GET_MODE_CLASS(mode) == MODE_CC)
+    return 1;
+
+  return UNITS_PER_WORD;
+}
+
+bool
+ia16_regno_nregs_has_padding (unsigned int regno, machine_mode mode)
+{
+  return (regno < FIRST_NOQI_REG && regno + GET_MODE_SIZE(mode) > FIRST_NOQI_REG);
+}
+
+unsigned int
+ia16_regno_nregs_with_padding (unsigned int regno, machine_mode mode)
+{
+  return GET_MODE_SIZE(mode);
 }
 
 /* Return an RTX for the program's data segment value (.data), or NULL_RTX
@@ -1311,24 +1335,10 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 #undef  TARGET_HARD_REGNO_NREGS
 #define TARGET_HARD_REGNO_NREGS ia16_hard_regno_nregs
 static unsigned int
-ia16_hard_regno_nregs (unsigned int reegno, machine_mode mode)
+ia16_hard_regno_nregs (unsigned int regno, machine_mode mode)
 {
-  return (MAX (ia16_hard_regno_nregs_table[GET_MODE_SIZE(mode)][regno], 1))
+  return (MAX (ia16_hard_regno_nregs_table[GET_MODE_SIZE(mode)][regno], 1));
 }
-
-/* There are more cases than those caught here, but HARD_REGNO_MODE_OK()
-   forbids them. Catch multireg values that straddle the boundary between
-   8-bit and 16-bit registers. */
-#define HARD_REGNO_NREGS_HAS_PADDING(REGNO, MODE) \
-	((REGNO) < FIRST_NOQI_REG && \
-	 (REGNO) + GET_MODE_SIZE(MODE) > FIRST_NOQI_REG)
-
-#define HARD_REGNO_NREGS_WITH_PADDING(REGNO, MODE) \
-	(GET_MODE_SIZE(MODE))
-
-#define REGMODE_NATURAL_SIZE(MODE)	\
-	(GET_MODE_SIZE(MODE) == 1 || GET_MODE_CLASS(MODE) == MODE_CC ? \
-	 1 : UNITS_PER_WORD)
 
 /* Complex modes must not cross the boundary between 8-bit and 16-bit
    registers because subreg_get_info() will fail in that case.  */
@@ -1421,7 +1431,7 @@ ia16_function_value (const_tree ret_type,
 static rtx
 ia16_libcall_value (machine_mode mode, const_rtx fun ATTRIBUTE_UNUSED)
 {
-  if (! HARD_REGNO_MODE_OK (A_REG, mode))
+  if (! ia16_hard_regno_mode_ok (A_REG, mode))
     return NULL;
 
   return gen_rtx_REG (mode, A_REG);
@@ -1857,35 +1867,37 @@ ia16_handle_autofloat_stdio_v2_attribute (tree *node, tree name,
 
 static const struct attribute_spec ia16_attribute_table[] =
 {
-  { "stdcall", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "cdecl",   0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+  { "stdcall", 0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
+  { "cdecl",   0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "regparmcall",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "pascal",  0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
+  { "pascal",  0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "assume_ds_data",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "no_assume_ds_data",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "assume_ss_data",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "no_assume_ss_data",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "save_ds", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
+  { "save_ds", 0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "no_save_ds",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
-  { "save_es", 0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
+  { "save_es", 0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "save_all",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "near_section",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "far_section",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "interrupt",
-	       0, 0, false, true, true, ia16_handle_cconv_attribute, true },
+	       0, 0, false, true, true, true, ia16_handle_cconv_attribute, NULL },
   { "autofloat_stdio_v2",
 	       0, 0, true, false, false,
-			   ia16_handle_autofloat_stdio_v2_attribute, false },
-  { NULL,      0, 0, false, false, false, NULL,			     false }
+			   false, ia16_handle_autofloat_stdio_v2_attribute, NULL },
+
+  /* End element. */
+  { NULL,      0, 0, false, false, false, false, NULL,			    NULL }
 };
 
 #undef	TARGET_COMP_TYPE_ATTRIBUTES
@@ -1977,7 +1989,7 @@ ia16_function_attribute_inlinable_p (const_tree fndecl)
 #undef  TARGET_ADDR_SPACE_ADDRESS_MODE
 #define TARGET_ADDR_SPACE_ADDRESS_MODE ia16_as_address_mode
 
-static enum machine_mode
+static scalar_int_mode
 ia16_as_address_mode (addr_space_t addrspace)
 {
   switch (addrspace)
@@ -1998,7 +2010,7 @@ ia16_as_address_mode (addr_space_t addrspace)
 #undef  TARGET_ADDR_SPACE_POINTER_MODE
 #define TARGET_ADDR_SPACE_POINTER_MODE ia16_as_pointer_mode
 
-static machine_mode
+static scalar_int_mode
 ia16_as_pointer_mode (addr_space_t addrspace)
 {
   switch (addrspace)
@@ -2017,7 +2029,7 @@ ia16_as_pointer_mode (addr_space_t addrspace)
 #define TARGET_ADDR_SPACE_VALID_POINTER_MODE ia16_as_valid_pointer_mode
 
 static bool
-ia16_as_valid_pointer_mode (machine_mode m, addr_space_t addrspace)
+ia16_as_valid_pointer_mode (scalar_int_mode m, addr_space_t addrspace)
 {
   switch (addrspace)
     {
@@ -5527,7 +5539,7 @@ ia16_move_multiple_reg_p (enum machine_mode mode, rtx r1, rtx r2)
   enum machine_mode mode2x = GET_MODE_2XWIDER_MODE (mode);
   unsigned int reg1no = REGNO (r1);
 
-  if (!HARD_REGNO_MODE_OK (reg1no, mode2x))
+  if (!ia16_hard_regno_mode_ok (reg1no, mode2x))
     return (false);
   return (REGNO (r2) - reg1no
 	  == subreg_regno_offset (reg1no, mode2x, GET_MODE_SIZE (mode), mode));
@@ -5584,7 +5596,7 @@ ia16_expand_reset_ds_for_return (void)
  * function's stack frame.  FRAME_SIZE should be equal to get_frame_size ().
  */
 static bool
-ia16_use_enter_p (HOST_WIDE_INT frame_size)
+ia16_use_enter_p (poly_int64 frame_size)
 {
   int enter_cost, non_enter_cost;
 
@@ -5620,7 +5632,7 @@ ia16_use_enter_p (HOST_WIDE_INT frame_size)
  * TODO: further optimize this.  See TARGET_FRAME_POINTER_REQUIRED above.
  */
 static bool
-ia16_need_restore_sp_p (HOST_WIDE_INT frame_size)
+ia16_need_restore_sp_p (poly_int64 frame_size)
 {
   return frame_size != 0 || ! crtl->sp_is_unchanging;
 }
@@ -5631,7 +5643,7 @@ ia16_need_restore_sp_p (HOST_WIDE_INT frame_size)
  * get_frame_size ().
  */
 static bool
-ia16_use_leave_p (HOST_WIDE_INT frame_size)
+ia16_use_leave_p (poly_int64 frame_size)
 {
   int leave_cost, non_leave_cost;
 
@@ -5670,7 +5682,7 @@ ia16_expand_prologue (void)
 {
   rtx insn;
   unsigned int i;
-  HOST_WIDE_INT size = get_frame_size ();
+  poly_int64 size = get_frame_size ();
 
   /* Save used registers which are not call clobbered. */
   if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
@@ -5724,7 +5736,7 @@ void
 ia16_expand_epilogue (bool sibcall)
 {
   unsigned int i;
-  HOST_WIDE_INT size = get_frame_size ();
+  poly_int64 size = get_frame_size ();
 
   if (ia16_save_reg_p (BP_REG))
     {

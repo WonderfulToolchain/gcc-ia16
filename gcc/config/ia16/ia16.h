@@ -238,6 +238,15 @@ enum reg_class {	/*	 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 */
 #define MODE_SEGMENT_REG_CLASS(outer_mode, inner_mode, unspec_op) \
 	((unspec_op) == UNSPEC_SEG_OVERRIDE ? SEGMENT_REGS : NO_REGS)
 
+/* There are more cases than those caught here, but HARD_REGNO_MODE_OK()
+   forbids them. Catch multireg values that straddle the boundary between
+   8-bit and 16-bit registers. */
+#define HARD_REGNO_NREGS_HAS_PADDING ia16_regno_nregs_has_padding
+
+#define HARD_REGNO_NREGS_WITH_PADDING ia16_regno_nregs_with_padding
+
+#define REGMODE_NATURAL_SIZE	ia16_regmode_natural_size
+
 /* FIXME: Documentation:
  * It is unclear if these definitions should be guarded by REG_OK_STRICT or not.  */
 #define REGNO_MODE_OK_FOR_BASE_P(num, mode) \
