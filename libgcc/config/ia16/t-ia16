@@ -16,7 +16,7 @@ iter-items := $(siintfuncs)
 iter-labels := $(diintfuncs)
 iter-sizes := $(patsubst %,2,$(siintfuncs))
 
-include $(srcdir)/empty.mk $(patsubst %,$(srcdir)/siditi-object.mk,$(iter-items))
+-include $(patsubst %,$(srcdir)/siditi-object.mk,$(iter-items))
 
 libgcc-objects += $(patsubst %,%$(objext),$(siintfuncs32))
 ifeq ($(enable_shared),yes)
@@ -33,7 +33,7 @@ iter-items := $(siintfuncs32) $(hiintfuncs16)
 iter-labels := $(diintfuncs32) $(siintfuncs16)
 iter-sizes := $(patsubst %,2,$(siintfuncs16)) $(patsubst %,2,$(hiintfuncs16))
 
-include $(srcdir)/empty.mk $(patsubst %,$(srcdir)/siditi-object.mk,$(iter-items))
+-include $(patsubst %,$(srcdir)/siditi-object.mk,$(iter-items))
 
 libgcc-objects += $(patsubst %,%$(objext),$(hiintfuncs16))
 ifeq ($(enable_shared),yes)
