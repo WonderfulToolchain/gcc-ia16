@@ -581,14 +581,16 @@ rtx_addr_can_trap_p_1 (const_rtx x, poly_int64 offset, poly_int64 size,
 	      low_bound  = sp_offset - red_zone_size - stack_boundary;
 	      high_bound = ap_offset
 			   + FIRST_PARM_OFFSET (current_function_decl)
-			   + (cfun->args_grow_downward ? 0 : crtl->args.size)
 			   + stack_boundary;
+	      if (!cfun->args_grow_downward)
+		high_bound += crtl->args.size;
 #else
 	      high_bound = sp_offset + red_zone_size + stack_boundary;
 	      low_bound  = ap_offset
 			   + FIRST_PARM_OFFSET (current_function_decl)
-			   - (cfun->args_grow_downward ? crtl->args.size : 0)
 			   - stack_boundary;
+	      if (cfun->args_grow_downward)
+		high_bound -= crtl->args.size;
 #endif
 	    }
 	  else if (x == stack_pointer_rtx)
@@ -601,14 +603,16 @@ rtx_addr_can_trap_p_1 (const_rtx x, poly_int64 offset, poly_int64 size,
 	      low_bound  = - red_zone_size - stack_boundary;
 	      high_bound = ap_offset
 			   + FIRST_PARM_OFFSET (current_function_decl)
-			   + (cfun->args_grow_downward ? 0 : crtl->args.size)
 			   + stack_boundary;
+	      if (!cfun->args_grow_downward)
+		high_bound += crtl->args.size;
 #else
 	      high_bound = red_zone_size + stack_boundary;
 	      low_bound  = ap_offset
 			   + FIRST_PARM_OFFSET (current_function_decl)
-			   - (cfun->args_grow_downward ? crtl->args.size : 0)
 			   - stack_boundary;
+	      if (cfun->args_grow_downward)
+		high_bound -= crtl->args.size;
 #endif
 	    }
 	  else
@@ -4229,7 +4233,7 @@ subreg_get_info (unsigned int xregno, machine_mode xmode,
     info->offset = (num_blocks - block_number - 1) * nregs_ymode;
   else
     info->offset = block_number * nregs_ymode;
-  info->nregs = hard_regno_nregs[xregno + info->offset][ymode];
+  info->nregs = hard_regno_nregs (xregno + info->offset, ymode);
 }
 
 /* This function returns the regno offset of a subreg expression.

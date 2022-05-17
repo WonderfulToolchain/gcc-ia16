@@ -2968,7 +2968,7 @@ get_full_set_src_cost (rtx x, machine_mode mode, struct full_rtx_costs *c)
 extern HOST_WIDE_INT trunc_int_for_mode	(HOST_WIDE_INT, machine_mode);
 extern poly_int64 trunc_int_for_mode (poly_int64, machine_mode);
 extern rtx plus_constant (machine_mode, rtx, poly_int64, bool = false);
-extern rtx pointer_plus_constant (machine_mode, rtx, HOST_WIDE_INT,
+extern rtx pointer_plus_constant (machine_mode, rtx, poly_int64,
 				  addr_space_t, bool = false);
 extern HOST_WIDE_INT get_stack_check_protect (void);
 

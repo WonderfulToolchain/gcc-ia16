@@ -322,7 +322,7 @@ extern int ia16_function_args_grow_downward (const_tree funtype);
 
 /* Passing Function Arguments on the Stack */
 #define PUSH_ARGS		1
-#define PUSH_ROUNDING(BYTES)	(((BYTES) + 1) & ~1)
+#define PUSH_ROUNDING		ia16_push_rounding
 
 /* Passing Arguments in Registers */
 typedef struct ia16_args
@@ -358,16 +358,8 @@ CUMULATIVE_ARGS;
 /* Function Entry and Exit */
 /* Thunks support is missing.  */
 
-/* Stack adjustment at function exit isn't needed if we know we need to tear
-   down the stack frame with `leave' or `movw %bp, %sp'.
-
-   This macro may be invoked quite early, before the stack frame is really
-   fixed, so it cannot really cover all the possible cases.
-
-   The peephole optimization rules (ia16-peepholes.md) try to remove any
-   remaining unneeded stack adjustments.  -- tkchia 20200722 */
-#define EXIT_IGNORE_STACK	(get_frame_size () > 0 \
-				 || cfun->calls_alloca)
+/* See ia16.c. */
+#define EXIT_IGNORE_STACK	ia16_exit_ignore_stack ()
 
 /* Generating Code for Profiling */
 /* It isn't there yet.  */

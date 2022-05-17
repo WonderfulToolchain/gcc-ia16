@@ -518,6 +518,28 @@ ia16_cache_function_info (bool need_data_seg_rtx_p)
     }
 }
 
+/* Implement PUSH_ROUNDING. On this target, we have the pushw instruction that
+   decrements by exactly 2 no matter what the position was. There is no pushb. */
+poly_int64
+ia16_push_rounding (poly_int64 bytes)
+{
+  return ROUND_UP (bytes, 2);
+}
+
+/* Stack adjustment at function exit isn't needed if we know we need to tear
+   down the stack frame with `leave' or `movw %bp, %sp'.
+
+   This macro may be invoked quite early, before the stack frame is really
+   fixed, so it cannot really cover all the possible cases.
+
+   The peephole optimization rules (ia16-peepholes.md) try to remove any
+   remaining unneeded stack adjustments.  -- tkchia 20200722 */
+bool
+ia16_exit_ignore_stack (void)
+{
+  return (get_frame_size () > 0) || cfun->calls_alloca;
+}
+
 /* Return an RTX for the program's data segment value (.data), or NULL_RTX
    if none should be needed (%ss == .data).  */
 rtx

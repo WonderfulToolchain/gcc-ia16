@@ -23,6 +23,8 @@
 extern struct gcc_target targetm;
 extern unsigned char	ia16_hard_regno_nregs_table[17][FIRST_PSEUDO_REGISTER];
 extern enum reg_class const ia16_regno_class[FIRST_PSEUDO_REGISTER];
+extern poly_int64	ia16_push_rounding (poly_int64);
+extern bool		ia16_exit_ignore_stack (void);
 extern int		ia16_regno_in_class_p (unsigned, unsigned);
 extern int		ia16_save_reg_p (unsigned);
 extern tree		ia16_get_function_type_for_addr (rtx);

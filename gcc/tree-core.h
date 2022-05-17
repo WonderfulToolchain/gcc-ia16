@@ -97,10 +97,10 @@ struct die_struct;
 #define ECF_COLD		  (1 << 15)
 
 /* Nonzero if function arguments are pushed from last to first.  */
-#define ECF_PUSH_ARGS_REVERSED	  (1 << 13)
+#define ECF_PUSH_ARGS_REVERSED	  (1 << 16)
 
 /* Nonzero if successive arguments occupy decreasing stack addresses.  */
-#define ECF_ARGS_GROW_DOWNWARD	  (1 << 14)
+#define ECF_ARGS_GROW_DOWNWARD	  (1 << 17)
 
 /* Call argument flags.  */
 

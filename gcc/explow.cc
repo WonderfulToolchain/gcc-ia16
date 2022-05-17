@@ -212,7 +212,7 @@ plus_constant (machine_mode mode, rtx x, poly_int64 c, bool inplace)
    address space AS, and AS may be "weird" (TARGET_ADDR_SPACE_WEIRD_P).  */
 
 rtx
-pointer_plus_constant (machine_mode mode, rtx x, HOST_WIDE_INT c,
+pointer_plus_constant (machine_mode mode, rtx x, poly_int64 c,
 		       addr_space_t as, bool inplace)
 {
 #ifdef TARGET_ADDR_SPACE_WEIRD_P
