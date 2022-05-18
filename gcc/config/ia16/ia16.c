@@ -1282,6 +1282,65 @@ ia16_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     }
 }
 
+#undef	TARGET_BUILD_BUILTIN_VA_LIST
+#define	TARGET_BUILD_BUILTIN_VA_LIST ia16_build_builtin_va_list
+
+static tree
+ia16_build_builtin_va_list (void)
+{
+  tree void_seg_ss_type_node, void_seg_ss_ptr_type_node, f_pv, f_pssv, unio,
+       type_decl;
+
+  if (TARGET_CMODEL_IS_FAR_DATA)
+    return ptr_type_node;
+
+  void_seg_ss_type_node = build_qualified_type (void_type_node,
+			    ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_SEG_SS));
+  void_seg_ss_ptr_type_node = build_pointer_type (void_seg_ss_type_node);
+
+  /*
+   * Basically:
+   *	typedef union __attribute__ ((transparent_union))
+   *	{
+   *	  void *__pv;
+   *	  void __seg_ss *__pssv;
+   *	} __builtin_va_list;
+   */
+  f_pv = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+		     get_identifier ("__pv"), ptr_type_node);
+  f_pssv = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+		       get_identifier ("__pssv"), void_seg_ss_ptr_type_node);
+  unio = lang_hooks.types.make_type (UNION_TYPE);
+  type_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
+			  get_identifier ("__va_list_tag"), unio);
+  DECL_FIELD_CONTEXT (f_pv) = DECL_FIELD_CONTEXT (f_pssv) = unio;
+  TYPE_STUB_DECL (unio) = TYPE_NAME (unio) = type_decl;
+  TYPE_FIELDS (unio) = f_pv;
+  DECL_CHAIN (f_pv) = f_pssv;
+  TYPE_TRANSPARENT_AGGR (unio) = 1;
+
+  layout_type (unio);
+
+  return unio;
+}
+
+#undef	TARGET_GIMPLIFY_VA_ARG_EXPR
+#define	TARGET_GIMPLIFY_VA_ARG_EXPR ia16_gimplify_va_arg_expr
+
+tree
+ia16_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
+			   gimple_seq *post_p)
+{
+  tree f_pv, pv;
+
+  if (TARGET_CMODEL_IS_FAR_DATA)
+    return std_gimplify_va_arg_expr (valist, type, pre_p, post_p);
+
+  f_pv = TYPE_FIELDS (va_list_type_node);
+  pv = build3 (COMPONENT_REF, TREE_TYPE (f_pv), valist, f_pv, NULL_TREE);
+  return std_gimplify_va_arg_expr (pv, type, pre_p, post_p);
+}
+
 #undef  TARGET_VECTOR_MODE_SUPPORTED_P
 #define TARGET_VECTOR_MODE_SUPPORTED_P ia16_vector_mode_supported_p
 static bool
@@ -5215,7 +5274,6 @@ extern void ia16_machine_dependent_reorg (void);
 
 /* In ia16-builtins.c .  */
 extern GTY (()) tree ia16_builtin_decls[IA16_BUILTIN_MAX];
-extern GTY (()) tree ia16_void_far_ptr_type_node;
 extern void ia16_init_builtins (void);
 
 #undef	TARGET_BUILTIN_DECL
