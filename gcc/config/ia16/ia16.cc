@@ -963,6 +963,11 @@ ia16_can_eliminate (const int from, const int to)
   if (STACK_POINTER_REGNUM == from)
     return false;
 
+  /* alias.cc:init_alias_analysis () hardcodes a %bp -> %sp elimination.
+     Do not allow it for now.  -- asie (gcc 12 update) */
+  if (FRAME_POINTER_REGNUM == from && STACK_POINTER_REGNUM == to)
+    return false;
+
   gcc_unreachable ();
 }
 
@@ -5773,7 +5778,7 @@ ia16_expand_epilogue (bool sibcall)
   if (ia16_save_reg_p (CC_REG) && ! ia16_in_interrupt_function_p ())
     emit_insn (ia16_pop_reg (CC_REG));
   if (!sibcall)
-    emit_jump_insn (gen_simple_return ());
+    emit_jump_insn (gen_ia16_return ());
 }
 
 #define LCALL_TEMPLATE(dest) \
