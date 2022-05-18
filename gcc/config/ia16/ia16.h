@@ -36,6 +36,9 @@
 #define TARGET_CMODEL_IS_FAR_TEXT (target_cmodel == CMODEL_MEDIUM || \
 				   target_cmodel == CMODEL_LARGE || \
 				   target_cmodel == CMODEL_HUGE)
+#define TARGET_CMODEL_IS_FAR_DATA (target_cmodel == CMODEL_COMPACT || \
+				   target_cmodel == CMODEL_LARGE || \
+				   target_cmodel == CMODEL_HUGE)
 #define SEGmode			(TARGET_PROTECTED_MODE ? PHImode : HImode)
 
 /* Run-time Target Specification */
