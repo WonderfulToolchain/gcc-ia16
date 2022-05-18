@@ -4127,8 +4127,9 @@ std_canonical_va_list_type (tree type)
     type = TREE_TYPE (type);
   wtype = va_list_type_node;
   htype = type;
-  /* Treat structure va_list types.  */
-  if (TREE_CODE (wtype) == RECORD_TYPE && POINTER_TYPE_P (htype))
+  /* Treat structure and union va_list types.  */
+  if ((TREE_CODE (wtype) == RECORD_TYPE
+       || TREE_CODE (wtype) == UNION_TYPE) && POINTER_TYPE_P (htype))
     htype = TREE_TYPE (htype);
   else if (TREE_CODE (wtype) == ARRAY_TYPE)
     {
