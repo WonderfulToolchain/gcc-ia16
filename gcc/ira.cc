@@ -1664,7 +1664,9 @@ ira_init_once (void)
   ira_init_costs_once ();
   lra_init_once ();
 
-  ira_use_lra_p = targetm.lra_p ();
+/* FIXME: ia16 relies on the pre-GCC 12 behavior of init_emit
+   haviung been called by the time targetm.lra_p () is called. */
+//  ira_use_lra_p = targetm.lra_p ();
 }
 
 /* Free ira_max_register_move_cost, ira_may_move_in_cost and
@@ -5529,7 +5531,11 @@ ira (FILE *f)
   edge_iterator ei;
   edge e;
   bool output_jump_reload_p = false;
-  
+
+/* FIXME: ia16 relies on the pre-GCC 12 behavior of init_emit
+   haviung been called by the time targetm.lra_p () is called. */
+  ira_use_lra_p = targetm.lra_p ();
+
   if (ira_use_lra_p)
     {
       /* First put potential jump output reloads on the output edges
