@@ -4204,6 +4204,10 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
     case ASM_OPERANDS:
     case CONCAT:
     case STRICT_LOW_PART:
+    case VEC_SELECT:
+      return false;
+
+    case PARALLEL:
       return false;
 
     /* See comment above get_last_value (const_rtx) in combine.c.  */
