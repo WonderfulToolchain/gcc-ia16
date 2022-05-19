@@ -1,4 +1,5 @@
 /* PR tree-optimization/98199 */
+/* { dg-skip-if "int < 32 bits" { "ia16-*-*" } } */
 
 struct A { long a; short d; int c, f, e, g; };
 struct B { int a, i; short j; struct A k; signed : 20; int e, g; } __attribute__((packed));
