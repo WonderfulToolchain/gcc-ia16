@@ -2491,6 +2491,7 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
 	    seg_reg_no = DS_REG;
 	}
 
+      op = force_reg (HImode, op);
       emit_move_insn (gen_rtx_SUBREG (HImode, op2, 0), op);
       emit_move_insn (gen_rtx_SUBREG (SEGmode, op2, 2),
 		      gen_rtx_REG (SEGmode, seg_reg_no));
