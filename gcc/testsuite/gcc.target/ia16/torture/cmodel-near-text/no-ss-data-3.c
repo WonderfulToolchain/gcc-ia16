@@ -1,4 +1,5 @@
 /* { dg-options "-std=gnu11 -fno-inline --save-temps" } */
+/* { dg-additional-sources "support/no-ss-data-main.S" } */
 /* { dg-do run } */
 
 /* Test that the `no_assume_ss_data' works properly & does not crash the
@@ -34,22 +35,28 @@ popcounthi2_no_ss_data (UWtype x)
   return ret;
 }
 
-int
-main (void)
+__attribute__ ((no_assume_ss_data)) int
+do_stuff (void)
 {
   if (popcounthi2_no_ss_data (0x0000) != 0)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0x0080) != 1)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0x0200) != 1)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0x00ff) != 8)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0xffff) != 16)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0x7fff) != 15)
-    abort ();
+    return 1;
   if (popcounthi2_no_ss_data (0xdfff) != 15)
-    abort ();
+    return 1;
+  return 0;
+}
+
+int
+check_stuff (void)
+{
   return 0;
 }
