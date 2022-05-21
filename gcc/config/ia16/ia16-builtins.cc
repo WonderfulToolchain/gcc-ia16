@@ -98,8 +98,8 @@ overload_gcc_builtin (enum ia16_builtin resolver_code,
 {
   tree resolver_decl = builtin_decl_explicit (impl_code), impl_decl;
   tree fntype = TREE_TYPE (resolver_decl);
-  DECL_BUILT_IN_CLASS (resolver_decl) = BUILT_IN_MD;
-  DECL_FUNCTION_CODE (resolver_decl) = (enum built_in_function) resolver_code;
+  set_decl_built_in_function(resolver_decl, BUILT_IN_MD,
+    (enum built_in_function) resolver_code);
   ia16_builtin_decls[resolver_code] = resolver_decl;
   impl_decl = add_builtin_function (impl_name, fntype, impl_code,
 				    BUILT_IN_NORMAL, NULL, NULL_TREE);
