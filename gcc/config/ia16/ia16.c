@@ -1327,19 +1327,8 @@ ia16_build_builtin_va_list (void)
 #undef	TARGET_GIMPLIFY_VA_ARG_EXPR
 #define	TARGET_GIMPLIFY_VA_ARG_EXPR ia16_gimplify_va_arg_expr
 
-tree
-ia16_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
-			   gimple_seq *post_p)
-{
-  tree f_pv, pv;
-
-  if (TARGET_CMODEL_IS_FAR_DATA)
-    return std_gimplify_va_arg_expr (valist, type, pre_p, post_p);
-
-  f_pv = TYPE_FIELDS (va_list_type_node);
-  pv = build3 (COMPONENT_REF, TREE_TYPE (f_pv), valist, f_pv, NULL_TREE);
-  return std_gimplify_va_arg_expr (pv, type, pre_p, post_p);
-}
+/* In ia16-builtins.c .  */
+extern tree ia16_gimplify_va_arg_expr (tree, tree, gimple_seq *, gimple_seq *);
 
 #undef  TARGET_VECTOR_MODE_SUPPORTED_P
 #define TARGET_VECTOR_MODE_SUPPORTED_P ia16_vector_mode_supported_p
@@ -5275,6 +5264,7 @@ extern void ia16_machine_dependent_reorg (void);
 
 /* In ia16-builtins.c .  */
 extern GTY (()) tree ia16_builtin_decls[IA16_BUILTIN_MAX];
+extern GTY (()) tree ia16_void_far_ptr_type_node;
 extern void ia16_init_builtins (void);
 
 #undef	TARGET_BUILTIN_DECL

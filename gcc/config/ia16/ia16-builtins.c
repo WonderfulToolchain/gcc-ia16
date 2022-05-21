@@ -52,9 +52,56 @@
 #include "attribs.h"
 #include "varasm.h"
 #include "recog.h"
+#include "targhooks.h"
+
+#include "target-def.h"
 
 tree ia16_builtin_decls[IA16_BUILTIN_MAX];
-tree ia16_void_far_ptr_type_node;
+tree ia16_void_far_ptr_type_node = NULL_TREE;
+
+tree
+ia16_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
+                           gimple_seq *post_p)
+{
+  tree f_pv, f_pssv, pv, pssv;
+
+  if (TARGET_CMODEL_IS_FAR_DATA)
+    ;
+  else if (ia16_in_ss_data_function_p ())
+    {
+      f_pv = TYPE_FIELDS (va_list_type_node);
+      pv = build3 (COMPONENT_REF, TREE_TYPE (f_pv), valist, f_pv, NULL_TREE);
+      valist = pv;
+    }
+  else
+    {
+      f_pv = TYPE_FIELDS (va_list_type_node);
+      f_pssv = DECL_CHAIN (f_pv);
+      pssv = build3 (COMPONENT_REF, TREE_TYPE (f_pssv), valist, f_pssv,
+		     NULL_TREE);
+      valist = pssv;
+      type
+	= build_qualified_type (type,
+				TYPE_QUALS_NO_ADDR_SPACE (type)
+				| ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_SEG_SS));
+    }
+  return std_gimplify_va_arg_expr (valist, type, pre_p, post_p);
+}
+
+static void
+overload_gcc_builtin (enum ia16_builtin resolver_code,
+		      enum built_in_function impl_code,
+		      const char *resolver_name, const char *impl_name)
+{
+  tree resolver_decl = builtin_decl_explicit (impl_code), impl_decl;
+  tree fntype = TREE_TYPE (resolver_decl);
+  DECL_BUILT_IN_CLASS (resolver_decl) = BUILT_IN_MD;
+  DECL_FUNCTION_CODE (resolver_decl) = (enum built_in_function) resolver_code;
+  ia16_builtin_decls[resolver_code] = resolver_decl;
+  impl_decl = add_builtin_function (impl_name, fntype, impl_code,
+				    BUILT_IN_NORMAL, NULL, NULL_TREE);
+  set_builtin_decl (impl_code, impl_decl, false);
+}
 
 void
 ia16_init_builtins (void)
@@ -65,9 +112,11 @@ ia16_init_builtins (void)
        intSEG_ftype_intHI, unsigned_intHI_ftype_const_void_far_ptr,
        intSEG_ftype_void, void_far_ptr_ftype_const_void_ptr, func;
 
-  /* With -mprotected-mode, we need a type node for PHImode for use with
-     __builtin_ia16_selector (), but there is no such existing node.  So
-     fashion one.  */
+  /*
+   * With -mprotected-mode, we need a type node for PHImode for use with
+   * __builtin_ia16_selector (), but there is no such existing node.  So
+   * fashion one.
+   */
   if (TARGET_PROTECTED_MODE)
     {
       intSEG_type_node = build_distinct_type_copy (unsigned_intHI_type_node);
@@ -126,6 +175,41 @@ ia16_init_builtins (void)
 			       BUILT_IN_MD, NULL, NULL_TREE);
   TREE_READONLY (func) = 1;
   ia16_builtin_decls[IA16_BUILTIN_SS] = func;
+
+  /*
+   * Minor black magic: if the current memory model uses a near data
+   * segment, then tweak the prototypes of __builtin_va_start (AP, ...),
+   * __builtin_va_end (AP), & __builtin_va_copy (AP, ), so that they can
+   * accept an AP that is outside the generic data segment.
+   */
+  if (! TARGET_CMODEL_IS_FAR_DATA)
+    {
+      tree va_list_ref_type_node = build_reference_type (va_list_type_node);
+      tree va_list_far_type_node
+	     = build_qualified_type (va_list_type_node,
+				     ENCODE_QUAL_ADDR_SPACE (ADDR_SPACE_FAR));
+      tree va_list_far_ref_type_node
+	     = build_reference_type (va_list_far_type_node);
+
+      tree va_start_far_type_node
+	= build_varargs_function_type_list (void_type_node,
+					    va_list_far_ref_type_node,
+					    NULL_TREE);
+      tree va_end_far_type_node
+	= build_function_type_list (void_type_node, va_list_far_ref_type_node,
+				    NULL_TREE);
+      tree va_copy_far_type_node
+	= build_function_type_list (void_type_node, va_list_far_ref_type_node,
+				    va_list_type_node, NULL_TREE);
+
+      tree va_start_func = builtin_decl_explicit (BUILT_IN_VA_START);
+      tree va_end_func = builtin_decl_explicit (BUILT_IN_VA_END);
+      tree va_copy_func = builtin_decl_explicit (BUILT_IN_VA_COPY);
+
+      TREE_TYPE (va_start_func) = va_start_far_type_node;
+      TREE_TYPE (va_end_func) = va_end_far_type_node;
+      TREE_TYPE (va_copy_func) = va_copy_far_type_node;
+    }
 }
 
 tree
