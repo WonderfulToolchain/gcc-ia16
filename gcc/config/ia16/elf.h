@@ -22,7 +22,23 @@
 
 /* Controlling the Compilation Driver, gcc.  */
 
+extern const char *rt_specs_file_spec_function (int, const char **);
+
+#define EXTRA_SPEC_FUNCTIONS \
+  { "rt-specs-file", rt_specs_file_spec_function },
+
 #define DRIVER_SELF_SPECS \
+  "%{mr=*:;:-mr=msdos}", \
+  "%:rt-specs-file(rt-specs rt-specs%s %{mr=*:%*})", \
+  "%{mdosx:%{mr=msdos:;:%e-mdosx only supported for MS-DOS target}}", \
+  "%{mmsdos-handle-v1:" \
+    "%{mr=msdos:;:%e-mmsdos-handle-v1 only supported for MS-DOS target}}", \
+  "%{mhandle-non-i186:" \
+    "%{mr=msdos:;:%e-mhandle-non-i186 only supported for MS-DOS target}}", \
+  "%{mhandle-non-i286:" \
+    "%{mr=msdos:;:%e-mhandle-non-i286 only supported for MS-DOS target}}", \
+  "%{mcmodel=medium:" \
+    "%{mdosx:%emedium model not supported in DOS extender mode}}", \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
     "%{mno-segelf:;:-msegelf} " \
@@ -30,13 +46,13 @@
     "%{msegment-relocation-stuff:" \
       "%nwarning: -msegment-relocation-stuff with -mdosx may result in " \
 		 "bogus output}}", \
-  "%{melks-libc:"	\
+  "%{mr=elks:"		\
     "-nostdinc "	\
     "%{mno-segelf:;:-msegelf} " \
     "%{fuse-ld=*:;:-fuse-ld=gold} " \
     "%{mnewlib-autofloat-stdio:;:-mno-newlib-autofloat-stdio}}", \
-  "%{melks-libc|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
-  "%{melks-libc|mdosx|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
+  "%{mr=elks|mdosx:%{!mno-protected-mode:-mprotected-mode}}", \
+  "%{mr=elks|mdosx|mseparate-code-segment:%{mcmodel=*:;:-mcmodel=small}}", \
   "%{mcmodel=small|mcmodel=medium:" \
     "%{!mdosx:"		\
       "%{!mno-segment-relocation-stuff:-msegment-relocation-stuff}}}", \
@@ -46,17 +62,11 @@
     "%{maout-heap=*:%emay not use both -maout-total= and -maout-heap=}}", \
   "%{maout-chmem=*:"	\
     "%{maout-stack=*:%emay not use both -maout-chmem= and -maout-stack=}" \
-    "%{maout-heap=*:%emay not use both -maout-chmem= and -maout-heap=}}", \
-  "%{mhandle-non-i186:"	\
-    "%{melks-libc:%e-mhandle-non-i186 not supported for ELKS}}", \
-  "%{mhandle-non-i286:"	\
-    "%{melks-libc:%e-mhandle-non-i286 not supported for ELKS}}", \
-  "%{mcmodel=medium:" \
-    "%{mdosx:%emedium model not supported in DOS extender mode}}"
+    "%{maout-heap=*:%emay not use both -maout-chmem= and -maout-heap=}}"
 
-/* This is a hack.  When -melks-libc is specified, then, combined with the
+/* This is a hack.  When -mr=elks is specified, then, combined with the
    -nostdinc above, this hack will (try to) make GCC use the include files
-   under the -melks-libc multilib directory, rather than the Newlib include
+   under the -mr=elks multilib directory, rather than the Newlib include
    files in the usual locations.
 
    We also need to extend the hack to
@@ -64,15 +74,15 @@
        since elks-libc's headers use libgcc's.
      * fall back on the include directories for the default calling
        convention (.../ia16-elf/lib/elkslibc/include/), in case the user
-       says e.g. `-melks-libc -mregparmcall' and no include files are
+       says e.g. `-mr=elks -mregparmcall' and no include files are
        installed specifically for this calling convention.
 
    Again, this is a hack.  -- tkchia  */
 #define CPP_SPEC	\
-  "%{melks-libc:-isystem include-fixed/../include%s " \
-	       "-isystem include-fixed%s " \
-	       "-isystem include%s " \
-	       "-isystem elkslibc/include%s}" \
+  "%{mr=elks:-isystem include-fixed/../include%s " \
+	    "-isystem include-fixed%s " \
+	    "-isystem include%s " \
+	    "-isystem elkslibc/include%s}" \
   "%{mcmodel=medium:%{,c++|,c++-header:%emedium model not supported for C++}}"
 
 #define ASM_SPEC	\
@@ -94,7 +104,7 @@
   "%{!T*:"		\
     "%{mdosx:"		\
 	"%Tdx-m%(cmodel_ld);" \
-      "melks-libc:"	\
+      "mr=elks:"	\
 	"%Telks-%(cmodel_long_ld);" \
       "nostdlib|nodefaultlibs:" \
 	"%{mtsr:"	\
@@ -105,17 +115,17 @@
 	  ":%Tdos-m%(cmodel_s_ld)}" \
     "}"			\
   "} "			\
-  "%{melks-libc:"	\
+  "%{mr=elks:"	\
     "-m i386elks "	\
     "%{maout-total=*:--defsym=_total=%*} " \
     "%{maout-chmem=*:--defsym=_chmem=%*} " \
     "%{maout-stack=*:--defsym=_stack=%*} " \
     "%{maout-heap=*:--defsym=_heap=%*}} " \
-  "%{!melks-libc:"	\
+  "%{!mr=elks:"	\
     "%{maout-heap=*:--defsym=__heaplen_val=%*}}"
 
 #define STARTFILE_SPEC	\
-  "%{melks-libc:"	\
+  "%{mr=elks:"	\
       "-l:crt0.o;"	\
     "mdosx:"		\
       "-l:dx-%(cmodel_c0_a)}"
@@ -124,9 +134,7 @@
   ""
 
 #define LIB_SPEC	\
-  "%{melks-libc:"	\
-      "-lc -lgcc -lc;"	\
-    ":"			\
+  "%{mr=msdos:"	\
       "%{mnewlib-nano-stdio:" \
 	"%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
 	":%{!mno-newlib-autofloat-stdio:-lastdio} -lfstdio} " \
@@ -144,7 +152,9 @@
 	    "nostartfiles:" \
 	      "%Tdos-m%(cmodel_l_ld);" \
 	    ":%Tdos-m%(cmodel_sl_ld)}" \
-      "}"		\
+      "};"		\
+      ":"		\
+      "-lc -lgcc -lc"	\
   "}"
 
 #define EXTRA_SPECS	\
@@ -158,7 +168,7 @@
 
 #define POST_LINK_SPEC	\
   "%{!mno-post-link:"	\
-    "%{mdosx|melks-libc:" \
+    "%{mdosx|mr=elks:" \
       "%{mdosx:%:if-exists-else(../lib/../bin/elf2dosx%s elf2dosx);" \
 	     ":%:if-exists-else(../lib/../bin/elf2elks%s elf2elks)} " \
       "%{v} "		\

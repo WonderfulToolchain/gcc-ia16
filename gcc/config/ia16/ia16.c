@@ -82,7 +82,8 @@ struct GTY (()) machine_function
 
 static void ia16_cache_function_info (bool);
 
-void ia16_expand_to_rtl_hook (void)
+void
+ia16_expand_to_rtl_hook (void)
 {
   /* Get cfun->machine->data_seg_rtx as early as possible!  */
   ia16_cache_function_info (true);
@@ -4082,6 +4083,28 @@ ia16_rtx_costs (rtx x, machine_mode mode, int outer_code_i,
 #undef	TARGET_ASM_SELECT_SECTION
 #define	TARGET_ASM_SELECT_SECTION ia16_asm_select_section
 
+/* Say whether a character is a normal symbol character. */
+static bool
+norm_sym_char_p (char c)
+{
+  switch (c)
+    {
+    case '0': case '1': case '2': case '3': case '4': case '5': case '6':
+    case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+    case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+    case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+    case 'v': case 'w': case 'x': case 'y': case 'z':
+    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
+    case 'H': case 'I': case 'J': case 'K': case 'L': case 'M': case 'N':
+    case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
+    case 'V': case 'W': case 'X': case 'Y': case 'Z':
+    case '_': case '.': case '$':
+      return true;
+    }
+  return false;
+}
+
 /* Convenience function --- fabricate a section name for a given __far
    variable or function declaration, or return NULL if something is wrong or
    if the function already has an explicit section name.
@@ -4164,23 +4187,8 @@ ia16_fabricate_section_name_for_decl (tree decl, int reloc, bool unique)
   p = name1 + prefix_len;
   while ((c = *p) != 0)
     {
-      switch (c)
-	{
-	case '0': case '1': case '2': case '3': case '4': case '5': case '6':
-	case '7': case '8': case '9':
-	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
-	case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
-	case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
-	case 'v': case 'w': case 'x': case 'y': case 'z':
-	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
-	case 'H': case 'I': case 'J': case 'K': case 'L': case 'M': case 'N':
-	case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
-	case 'V': case 'W': case 'X': case 'Y': case 'Z':
-	case '_': case '.': case '$':
-	  break;
-	default:
-	  *p = '_';
-	}
+      if (! norm_sym_char_p (c))
+	*p = '_';
       ++p;
     }
 
@@ -4302,6 +4310,8 @@ ia16_option_override (void)
   if (optimize_size)
     ia16_costs = &ia16_size_costs;
 
+  init_machine_status = ia16_init_machine_status;
+
   /* If -f(no-)omit-frame-pointer is not specified, try to omit the frame
      pointer if optimization is on (even when optimizing for size).  This is
      similar to the override in gcc/config/i386/i386.c .  -- tkchia */
@@ -4312,8 +4322,6 @@ ia16_option_override (void)
      retaining all null pointer checks. */
   if (! global_options_set.x_flag_delete_null_pointer_checks)
     global_options.x_flag_delete_null_pointer_checks = 0;
-
-  init_machine_status = ia16_init_machine_status;
 }
 
 /* The Overall Framework of an Assembler File */
