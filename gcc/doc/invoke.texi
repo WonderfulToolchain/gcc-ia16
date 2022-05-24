@@ -757,14 +757,15 @@ Objective-C and Objective-C++ Dialects}.
 
 @emph{IA-16 Options}
 @gccoptlist{-mtune=@var{cpu-type}  -march=@var{cpu-type} @gol
--mmsdos -mmsdos-handle-v1 -mhandle-non-i186 -mhandle-non-i286 -@gol
+-mmsdos -mr=msdos -mmsdos-handle-v1 -mhandle-non-i186 -mhandle-non-i286 -@gol
 -maout-stack=@var{stack-size} -mstack-size=@var{stack-size} @gol
 -maout-heap=@var{heap-size} -mcmodel=tiny -mcmodel=small @gol
 -mseparate-code-segment -mno-segment-relocation-stuff -mshort-jumps @gol
 -mrtd -mstdcall -mregparmcall @gol
 -mno-callee-assume-ds-data-segment -mprotected-mode @gol
--mno-newlib-autofloat-stdio @gol
--mdosx -mdpmi -melks -melks-libc -mcmodel=medium -mnewlib-nano-stdio @gol
+-mno-newlib-autofloat-stdio -mdosx -mdpmi @gol
+-melks -mr=elks -melks-libc -mr=@var{rt} -mcmodel=medium @gol
+-mnewlib-nano-stdio @gol
 -msegelf -mno-callee-assume-ss-data-segment -masm=intel @gol
 -maout-total=@var{total} -maout-chmem=@var{chmem} @gol
 -mfar-function-if-far-return-type}
@@ -16566,7 +16567,9 @@ specifying @option{-march=@var{cpu-type}} implies
 @c tkchia/gcc-ia16/issues/23#issuecomment-395982101), and so did I.  -- tkchia
 @c
 @item -mmsdos
+@itemx -mr=msdos
 @opindex mmsdos
+@opindex mr=msdos
 Produce executables for MS-DOS.  This is the default.
 
 @item -mmsdos-handle-v1
@@ -16776,8 +16779,10 @@ library.  It implies @option{-mmsdos}, @option{-march=i80286}, and
 @option{-mprotected-mode}, and currently also enables @option{-msegelf}.
 
 @item -melks
+@itemx -mr=elks
 @itemx -melks-libc
 @opindex melks
+@opindex mr=elks
 @opindex melks-libc
 Produce executables for the Embeddable Linux Kernel Subset (ELKS) operating
 system.  In addition, link against ELKS's own C runtime library---which must
@@ -16790,6 +16795,11 @@ and currently also enables @option{-msegelf} and @option{-fuse-ld=gold}.
 @c ELKS-ified Newlib, while -melks-libc would link with elks-libc.  Since,
 @c to my knowledge, nobody has been actually using Newlib to build ELKS
 @c programs, I have decided to unify the two options.  -- tkchia
+
+@item -mr=@var{rt}
+@opindex mr
+Produce executables for the specified target runtime environment @var{rt},
+if the necessary runtime libraries and support files are installed.
 
 @item -maout-stack=@var{stack-size}
 @itemx -mstack-size=@var{stack-size}

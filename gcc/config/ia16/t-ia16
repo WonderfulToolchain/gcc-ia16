@@ -1,5 +1,9 @@
 # 16.1 Target Makefile Fragments
 
+driver-ia16.o: $(srcdir)/config/ia16/driver-ia16.c $(CONFIG_H) $(SYSTEM_H) \
+  $(TM_H) $(GTFILES_H)
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+
 # Build ia16-c.o.  Also take the opportunity to check for any previously
 # installed obsolete multilibs, which should really be cleaned away.
 #	-- tkchia
@@ -87,7 +91,7 @@ ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.c \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-MULTILIB_OPTIONS=mprotected-mode mdosx/melks-libc/ffreestanding \
+MULTILIB_OPTIONS=mprotected-mode mdosx/mr=elks/ffreestanding \
 	mcmodel=medium mrtd/mregparmcall march=any_186
 MULTILIB_DIRNAMES=pmode dosx elkslibc freestanding medium rtd regparmcall \
 		  any_186
@@ -108,7 +112,7 @@ ia16_all_multilibs=$(strip \
     $(subst -/,,\
       $(subst /-,,\
 	$(foreach pm,- mprotected-mode,\
-	  $(foreach os,- mdosx melks-libc ffreestanding,\
+	  $(foreach os,- mdosx mr=elks ffreestanding,\
 	    $(foreach mm,- mcmodel=medium,\
 	      $(foreach cc,- mrtd mregparmcall,\
 		$(foreach ar,- march=any_186, \
@@ -121,7 +125,7 @@ ia16_all_multilibs=$(strip \
 # (2) Build 80186+ multilibs only for the `regparmcall' convention.
 # (3) DOS extender multilibs are always targeted at 286+.
 # (4) For now, do not build 186+-specific multilibs at all for -ffreestanding,
-#     -melks-libc, or -mcmodel=medium.
+#     -mr=elks, or -mcmodel=medium.
 #	-- tkchia 20220208
 #
 ia16_multilib_map=$(strip \
@@ -129,7 +133,7 @@ ia16_multilib_map=$(strip \
     $(subst mrtd/march=any_186,mrtd,\
       $(patsubst mdosx%/march=any_186,mdosx%,\
 	$(subst ffreestanding/march=any_186,ffreestanding,\
-	  $(subst melks-libc/march=any_186,melks-libc,\
+	  $(subst mr=elks/march=any_186,mr=elks,\
 	    $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
 	      $(subst /mregparmcall/march=any_186,/mregparmcall,\
 		$(patsubst mprotected-mode/m%,m%,\

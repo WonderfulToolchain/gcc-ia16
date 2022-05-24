@@ -42,15 +42,6 @@ def_or_undef_macro (const char *name, bool def_p)
     cpp_undef (parse_in, name);
 }
 
-static void
-assert_or_unassert (const char *predicate, bool assert_p)
-{
-  if (assert_p)
-    cpp_assert (parse_in, predicate);
-  else
-    cpp_unassert (parse_in, predicate);
-}
-
 /* Whether to support the __far & __seg_ss address space qualifiers.
 
    As of writing, these qualifiers are really only recognized when
@@ -70,7 +61,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20220518L");
+  def_macro ("__ia16__=20220524L");
 
   if (have_addr_spaces_p ())
     {
@@ -284,15 +275,19 @@ ia16_cpu_cpp_builtins (void)
      while Open Watcom defines (!) __DOS__, _DOS, & MSDOS.  The last macro
      may pollute the user namespace, so it is probably not a good idea (yet)
      to define it here.  -- tkchia */
-  def_or_undef_macro ("__ELKS__", TARGET_SYS_ELKS);
-  def_or_undef_macro ("__IA16_SYS_ELKS", TARGET_SYS_ELKS);
-  assert_or_unassert ("system=elks", TARGET_SYS_ELKS);
-  def_or_undef_macro ("__MSDOS__", TARGET_SYS_MSDOS);
-  def_or_undef_macro ("__msdos86", TARGET_SYS_MSDOS);
-  def_or_undef_macro ("__DOS__", TARGET_SYS_MSDOS);
-  def_or_undef_macro ("_DOS", TARGET_SYS_MSDOS);
-  def_or_undef_macro ("__IA16_SYS_MSDOS", TARGET_SYS_MSDOS);
-  assert_or_unassert ("system=msdos", TARGET_SYS_MSDOS);
+  def_p = (strcmp (global_options.x_target_runtime, "elks") == 0);
+  def_or_undef_macro ("__ELKS__", def_p);
+  def_or_undef_macro ("__IA16_SYS_ELKS", def_p);
+
+  def_p = (strcmp (global_options.x_target_runtime, "msdos") == 0);
+  def_or_undef_macro ("__MSDOS__", def_p);
+  def_or_undef_macro ("__msdos86", def_p);
+  def_or_undef_macro ("__DOS__", def_p);
+  def_or_undef_macro ("_DOS", def_p);
+  def_or_undef_macro ("__IA16_SYS_MSDOS", def_p);
+
+  defn = concat ("system=", global_options.x_target_runtime, NULL);
+  cpp_assert (parse_in, defn);
 
   /* Also define predicates for the target machine. */
   cpp_assert (parse_in, "cpu=ia16");
