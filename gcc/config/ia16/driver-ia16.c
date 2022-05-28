@@ -80,3 +80,45 @@ rt_specs_file_spec_function (int argc, const char **argv)
   return concat ("%:include(", rel_dir, dir_separator_str,
 			       "r-", rt, ".spec%s)", NULL);
 }
+
+const char *
+cpp_sys_defs_spec_function (int argc, const char **argv)
+{
+  const char *is, *q;
+  char *os, *p;
+  unsigned char c;
+  int i;
+  size_t n;
+
+  if (argc < 1)
+    return "";
+
+  is = argv[0];
+  for (i = 1; i < argc; ++i)
+    {
+      if (strcmp (argv[i], is) != 0)
+	{
+	  fatal_error (input_location, "bad usage of spec function %qs",
+		       __func__);
+	  return "";
+	}
+    }
+
+  os = (char *) xmalloc (sizeof ("-Asystem=") + sizeof ("-D__IA16_SYS_")
+			 + 2 * strlen (is));
+
+  p = stpcpy (os, "-Asystem=");
+  q = is;
+  while ((c = *q++) != 0)
+    if (ISALNUM (c) || (char) c == '_')
+      *p++ = c;
+
+  p = stpcpy (p, " -D__IA16_SYS_");
+  q = is;
+  while ((c = *q++) != 0)
+    if (ISALNUM (c) || (char) c == '_')
+      *p++ = TOUPPER (c);
+
+  *p = 0;
+  return os;
+}

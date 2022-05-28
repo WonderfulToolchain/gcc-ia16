@@ -61,7 +61,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20220524L");
+  def_macro ("__ia16__=20220528L");
 
   if (have_addr_spaces_p ())
     {
@@ -234,7 +234,7 @@ ia16_cpu_cpp_builtins (void)
      is defined.  This means that for some features, a user may need to test
      for several macros --- e.g. `bound' is supported if the compiler defines
      either __IA16_ARCH_ANY_186, __IA16_ARCH_80186, __IA16_ARCH_NEC_V20,
-     __IA16_ARCH_NEC_V30, __IA16_ARCH_NEC_V30MZ or __IA16_ARCH_I80286.
+     __IA16_ARCH_NEC_V30, __IA16_ARCH_NEC_V30MZ, or __IA16_ARCH_I80286.
 
      This is obviously clunky from the user's viewpoint, but I am not sure
      what a _really_ good alternative might be.  -- tkchia  */
@@ -265,31 +265,7 @@ ia16_cpu_cpp_builtins (void)
   def_or_undef_macro ("__IA16_ASM_ATT", ia16_asm_dialect == ASM_ATT);
   def_or_undef_macro ("__IA16_ASM_INTEL", ia16_asm_dialect == ASM_INTEL);
 
-  /* Define macros & predicates corresponding to the chosen target operating
-     system.
-
-     Borland C apparently defines __MSDOS__, and Bruce's C compiler defines
-     either __MSDOS__ or __ELKS__.
-
-     For the MS-DOS target, the Amsterdam Compiler Kit defines __msdos86,
-     while Open Watcom defines (!) __DOS__, _DOS, & MSDOS.  The last macro
-     may pollute the user namespace, so it is probably not a good idea (yet)
-     to define it here.  -- tkchia */
-  def_p = (strcmp (global_options.x_target_runtime, "elks") == 0);
-  def_or_undef_macro ("__ELKS__", def_p);
-  def_or_undef_macro ("__IA16_SYS_ELKS", def_p);
-
-  def_p = (strcmp (global_options.x_target_runtime, "msdos") == 0);
-  def_or_undef_macro ("__MSDOS__", def_p);
-  def_or_undef_macro ("__msdos86", def_p);
-  def_or_undef_macro ("__DOS__", def_p);
-  def_or_undef_macro ("_DOS", def_p);
-  def_or_undef_macro ("__IA16_SYS_MSDOS", def_p);
-
-  defn = concat ("system=", global_options.x_target_runtime, NULL);
-  cpp_assert (parse_in, defn);
-
-  /* Also define predicates for the target machine. */
+  /* Define predicates for the target machine. */
   cpp_assert (parse_in, "cpu=ia16");
   cpp_assert (parse_in, "cpu=i86");
   cpp_assert (parse_in, "machine=ia16");
