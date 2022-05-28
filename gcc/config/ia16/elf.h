@@ -23,29 +23,18 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 extern const char *rt_specs_file_spec_function (int, const char **);
+extern const char *cpp_sys_defs_spec_function (int, const char **);
 
 #define EXTRA_SPEC_FUNCTIONS \
-  { "rt-specs-file", rt_specs_file_spec_function },
+  { "rt-specs-file", rt_specs_file_spec_function }, \
+  { "cpp-sys-defs", cpp_sys_defs_spec_function },
 
 #define DRIVER_SELF_SPECS \
   "%{mr=*:;:-mr=msdos}", \
   "%:rt-specs-file(rt-specs rt-specs%s %{mr=*:%*})", \
-  "%{mdosx:%{mr=msdos:;:%e-mdosx only supported for MS-DOS target}}", \
-  "%{mmsdos-handle-v1:" \
-    "%{mr=msdos:;:%e-mmsdos-handle-v1 only supported for MS-DOS target}}", \
-  "%{mhandle-non-i186:" \
-    "%{mr=msdos:;:%e-mhandle-non-i186 only supported for MS-DOS target}}", \
-  "%{mhandle-non-i286:" \
-    "%{mr=msdos:;:%e-mhandle-non-i286 only supported for MS-DOS target}}", \
-  "%{mcmodel=medium:" \
-    "%{mdosx:%emedium model not supported in DOS extender mode}}", \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
-    "%{mno-segelf:;:-msegelf} " \
-    "%{fuse-ld=*:;:-fuse-ld=gold} " \
-    "%{msegment-relocation-stuff:" \
-      "%nwarning: -msegment-relocation-stuff with -mdosx may result in " \
-		 "bogus output}}", \
+    "%{mno-segelf:;:-msegelf}}", \
   "%{mr=elks:"		\
     "-nostdinc "	\
     "%{mno-segelf:;:-msegelf} " \
@@ -64,55 +53,49 @@ extern const char *rt_specs_file_spec_function (int, const char **);
     "%{maout-stack=*:%emay not use both -maout-chmem= and -maout-stack=}" \
     "%{maout-heap=*:%emay not use both -maout-chmem= and -maout-heap=}}"
 
-/* This is a hack.  When -mr=elks is specified, then, combined with the
-   -nostdinc above, this hack will (try to) make GCC use the include files
-   under the -mr=elks multilib directory, rather than the Newlib include
-   files in the usual locations.
+/* 1) Define "reasonable" macros & predicates corresponding to the chosen
+      target operating system.  Do this here rather than in ia16-c.c, so
+      that any r-*.spec file provided by the runtime library can override
+      our settings here, if they need or want to.
 
-   We also need to extend the hack to
-     * rope in the libgcc include directories --- via `include-fixed' ---
-       since elks-libc's headers use libgcc's.
-     * fall back on the include directories for the default calling
-       convention (.../ia16-elf/lib/elkslibc/include/), in case the user
-       says e.g. `-mr=elks -mregparmcall' and no include files are
-       installed specifically for this calling convention.
+   2) The -isystem stuff is a hack.  When -mr=elks is specified, then, combined
+      with the -nostdinc above, this hack will (try to) make GCC use the
+      include files under the -mr=elks multilib directory, rather than the
+      Newlib include files in the usual locations.
 
-   Again, this is a hack.  -- tkchia  */
+      We also need to extend the hack to
+	* rope in the libgcc include directories --- via `include-fixed' ---
+	  since elks-libc's headers use libgcc's;
+	* fall back on the include directories for the default calling
+	  convention (.../ia16-elf/lib/elkslibc/include/), in case the user
+	  says e.g.  `-mr=elks -mregparmcall' and no include files are
+	  installed specifically for this calling convention.
+
+      Again, this is a hack.  -- tkchia  */
 #define CPP_SPEC	\
-  "%{mr=elks:-isystem include-fixed/../include%s " \
+  "%{mcmodel=medium:%{,c++|,c++-header:%emedium model not supported for C++}}"\
+  "%:cpp-sys-defs(%{mr=*:%*}) " \
+  "%{mr=elks:-D__ELKS__ " \
+	    "-isystem include-fixed/../include%s " \
 	    "-isystem include-fixed%s " \
 	    "-isystem include%s " \
-	    "-isystem elkslibc/include%s}" \
-  "%{mcmodel=medium:%{,c++|,c++-header:%emedium model not supported for C++}}"
+	    "-isystem elkslibc/include%s;" \
+    "mr=msdos:-D__MSDOS__}"
 
 #define ASM_SPEC	\
   "%{msegelf:--32-segelf}"
 
-/* For -nostdlib, -nodefaultlibs, and -nostartfiles:  arrange for the linker
-   script specification (%T...) to appear in LIB_SPEC if we are linking in
-   default libraries, but in LINK_SPEC if we are not (i.e. -nostdlib or
-   -nodefaultlibs).  An exception is the main linker script for -mdosx, which
-   will always appear in LINK_SPEC.
-
-   If default libraries are used, then we want them to appear at the end of
-   the ld command line, so LIB_SPEC is the right place to use.
-
-   If default libraries are not used, then GCC will not use LIB_SPEC at all,
-   so we may need to rely on LINK_SPEC to pass the linker script to ld.
-	-- tkchia */
+/* For platforms other than ELKS, our stub built-in specs now only support
+   the building of libgcc, but can no longer link complete programs.  Assume
+   that the C library (e.g. Newlib) will provide runtime specs (r-*.spec)
+   that say how to link programs.
+	-- tkchia 20220528 */
 #define LINK_SPEC	\
   "%{!T*:"		\
-    "%{mdosx:"		\
-	"%Tdx-m%(cmodel_ld);" \
-      "mr=elks:"	\
+    "%{mr=elks:"		\
 	"%Telks-%(cmodel_long_ld);" \
-      "nostdlib|nodefaultlibs:" \
-	"%{mtsr:"	\
-	    "%{nostdlib|nostartfiles:%Tdtr-m%(cmodel_ld);" \
-	      ":%Tdtr-m%(cmodel_s_ld)};" \
-	  "nostdlib|nostartfiles:" \
-	    "%Tdos-m%(cmodel_ld);" \
-	  ":%Tdos-m%(cmodel_s_ld)}" \
+      ":"		\
+	"%eneed runtime-specs from C library to link programs" \
     "}"			\
   "} "			\
   "%{mr=elks:"	\
@@ -120,50 +103,32 @@ extern const char *rt_specs_file_spec_function (int, const char **);
     "%{maout-total=*:--defsym=_total=%*} " \
     "%{maout-chmem=*:--defsym=_chmem=%*} " \
     "%{maout-stack=*:--defsym=_stack=%*} " \
-    "%{maout-heap=*:--defsym=_heap=%*}} " \
-  "%{!mr=elks:"	\
-    "%{maout-heap=*:--defsym=__heaplen_val=%*}}"
+    "%{maout-heap=*:--defsym=_heap=%*}}"
 
 #define STARTFILE_SPEC	\
-  "%{mr=elks:"	\
-      "-l:crt0.o;"	\
-    "mdosx:"		\
-      "-l:dx-%(cmodel_c0_a)}"
+  "%{mr=elks:-l:crt0.o}"
 
 #define ENDFILE_SPEC	\
   ""
 
-#define LIB_SPEC	\
-  "%{mr=msdos:"	\
-      "%{mnewlib-nano-stdio:" \
-	"%{!mno-newlib-autofloat-stdio:-lanstdio} -lnstdio;" \
-	":%{!mno-newlib-autofloat-stdio:-lastdio} -lfstdio} " \
-      "%{mdosx:"	\
-	  "-l:dx-%(cmodel_lc_a);" \
-        ":"		\
-	  "%{mmsdos-handle-v1:-ldosv1} " \
-	  "%{mhandle-non-i286:" \
-	      "%{march=i80286|march=i286:-lck186};" \
-	    "mhandle-non-i186:" \
-	      "%{march=any|march=i8086|march=i8088:;" \
-		"march=*:-lck086}} " \
-	  "%{mtsr:" \
-	      "%{nostartfiles:%Tdtr-m%(cmodel_l_ld);:%Tdtr-m%(cmodel_sl_ld)};"\
-	    "nostartfiles:" \
-	      "%Tdos-m%(cmodel_l_ld);" \
-	    ":%Tdos-m%(cmodel_sl_ld)}" \
-      "};"		\
-      ":"		\
-      "-lc -lgcc -lc"	\
-  "}"
+/* If present, the r-*.spec runtime-specific specs file should (re)define
+   %(ia16_impl_rt_switches) to cover only the runtime-specific switches that
+   are recognized & handled by the r-*.spec file.  For example, it is highly
+   unlikely that a non-DOS target platform will be able to handle a -mdosx
+   switch.
 
+   TODO: make the gcc-ia16 driver flag an error if it sees any runtime-
+   -specific switches that the specs file does not know about.
+
+   The specs file can also optionally define %(ia16_warn_rt_switches), to
+   cover any runtime-specific switches it recognizes & effectively ignores. */
 #define EXTRA_SPECS	\
-  { "cmodel_ld", "%{mcmodel=medium:m.ld;mcmodel=small:s.ld;:t.ld}" }, \
-  { "cmodel_c0_a", "%{mcmodel=medium:m-c0.a;mcmodel=small:s-c0.a;:t-c0.a}" }, \
-  { "cmodel_lc_a", "%{mcmodel=medium:m-lc.a;mcmodel=small:s-lc.a;:t-lc.a}" }, \
-  { "cmodel_s_ld", "%{mcmodel=medium:ms.ld;mcmodel=small:ss.ld;:ts.ld}" }, \
-  { "cmodel_l_ld", "%{mcmodel=medium:ml.ld;mcmodel=small:sl.ld;:tl.ld}" }, \
-  { "cmodel_sl_ld", "%{mcmodel=medium:msl.ld;mcmodel=small:ssl.ld;:tsl.ld}" },\
+  { "ia16_impl_rt_switches", "%(rt_switches)" }, \
+  { "ia16_warn_rt_switches", "" }, \
+  { "rt_switches", "%{mmsdos-handle-v1} %{mnewlib-nano-stdio} " \
+		   "%{mnewlib-autofloat-stdio} %{mno-newlib-autofloat-stdio} "\
+		   "%{mhandle-non-i186} {mhandle-non-i286} %{maout-total=*} " \
+		   "%{maout-chmem=*} %{maout-stack=*} %{maout-heap=*}" }, \
   { "cmodel_long_ld", "%{mcmodel=*:%*.ld;:tiny.ld}" }
 
 #define POST_LINK_SPEC	\
