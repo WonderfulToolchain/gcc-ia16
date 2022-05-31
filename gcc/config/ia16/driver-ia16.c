@@ -18,6 +18,8 @@
    with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <dirent.h>
+#include <strings.h>
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
@@ -26,12 +28,19 @@
 
 static const char dir_separator_str[] = { DIR_SEPARATOR, 0 };
 
+/*
+ * TODO:
+ * 1) Document the whole r-*.spec & r-*.d mechanism properly in gcc-ia16's
+ *    info file.
+ * 2) Maybe loosen the restrictions on file names.  -- tkchia
+ */
 const char *
-rt_specs_file_spec_function (int argc, const char **argv)
+rt_specs_files_spec_function (int argc, const char **argv)
 {
   int i;
   const char *rel_dir, *full_dir, *rt, *p;
-  char *full_spec, c;
+  char *full_spec, *subdir, *full_subdir, *res, c;
+  DIR *dp;
 
   if (argc < 3)
     {
@@ -77,8 +86,72 @@ rt_specs_file_spec_function (int argc, const char **argv)
       return "";
     }
 
-  return concat ("%:include(", rel_dir, dir_separator_str,
-			       "r-", rt, ".spec%s)", NULL);
+  if (verbose_flag)
+    fnotice (stderr, "%s: accepting specs file r-%s.spec\n", __func__, rt);
+
+  res = concat ("%:include(", rel_dir, dir_separator_str,
+			      "r-", rt, ".spec%s)", NULL);
+
+  subdir = ACONCAT ((dir_separator_str, "r-", rt, ".d", NULL));
+  full_subdir = ACONCAT ((full_dir, subdir, NULL));
+  dp = opendir (full_subdir);
+  if (dp)
+    {
+      struct dirent *ep;
+
+      if (verbose_flag)
+	fnotice (stderr, "%s: searching %s for extra specs files\n", __func__,
+			 full_subdir);
+
+      while ((ep = readdir (dp)) != NULL)
+	{
+	  const char *name = ep->d_name, *ext;
+
+	  p = name;
+	  while ((c = *p++) != '.')
+	    if (! ISALNUM (c) && c != '_')
+	      break;
+	  ext = p;
+
+	  if (c != '.'
+	      || (strcasecmp (ext, "spec") != 0
+		  && strcasecmp (ext, "specs") != 0
+		  && strcasecmp (ext, "spe") != 0))
+	    {
+	      if (verbose_flag)
+		fnotice (stderr, "%s: skipping %s, filename not accepted\n",
+				 __func__, name);
+	    }
+	  else
+	    {
+	      full_spec = ACONCAT ((full_subdir, dir_separator_str,
+				    name, NULL));
+	      if (access (full_spec, R_OK) != 0)
+		{
+		  if (verbose_flag)
+		    fnotice (stderr, "%s: skipping %s, inaccessible\n",
+				     __func__, name);
+		}
+	      else
+		{
+		  if (verbose_flag)
+		    fnotice (stderr, "%s: accepting extra specs file %s\n",
+				     __func__, name);
+		  /*
+		   * FIXME?  This will take time that is quadratic in the
+		   * number of specs files in the subdirectory.
+		   */
+		  res = reconcat (res, " %include(", rel_dir, subdir,
+						     dir_separator_str,
+						     name, "%s)", NULL);
+		}
+	    }
+	}
+
+      closedir (dp);
+    }
+
+  return res;
 }
 
 const char *
@@ -88,7 +161,6 @@ cpp_sys_defs_spec_function (int argc, const char **argv)
   char *os, *p;
   unsigned char c;
   int i;
-  size_t n;
 
   if (argc < 1)
     return "";

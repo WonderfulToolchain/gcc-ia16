@@ -22,16 +22,16 @@
 
 /* Controlling the Compilation Driver, gcc.  */
 
-extern const char *rt_specs_file_spec_function (int, const char **);
+extern const char *rt_specs_files_spec_function (int, const char **);
 extern const char *cpp_sys_defs_spec_function (int, const char **);
 
 #define EXTRA_SPEC_FUNCTIONS \
-  { "rt-specs-file", rt_specs_file_spec_function }, \
+  { "rt-specs-files", rt_specs_files_spec_function }, \
   { "cpp-sys-defs", cpp_sys_defs_spec_function },
 
 #define DRIVER_SELF_SPECS \
   "%{mr=*:;:-mr=msdos}", \
-  "%:rt-specs-file(rt-specs rt-specs%s %{mr=*:%*})", \
+  "%:rt-specs-files(rt-specs rt-specs%s %{mr=*:%*})", \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
     "%{mno-segelf:;:-msegelf}}", \
