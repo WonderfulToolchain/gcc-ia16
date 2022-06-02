@@ -23,15 +23,19 @@
 /* Controlling the Compilation Driver, gcc.  */
 
 extern const char *rt_specs_files_spec_function (int, const char **);
+extern const char *check_rt_switches_spec_function (int, const char **);
 extern const char *cpp_sys_defs_spec_function (int, const char **);
 
 #define EXTRA_SPEC_FUNCTIONS \
   { "rt-specs-files", rt_specs_files_spec_function }, \
+  { "check-rt-switches", check_rt_switches_spec_function }, \
   { "cpp-sys-defs", cpp_sys_defs_spec_function },
 
 #define DRIVER_SELF_SPECS \
   "%{mr=*:;:-mr=msdos}", \
   "%:rt-specs-files(rt-specs rt-specs%s %{mr=*:%*})", \
+  "%:check-rt-switches(%(ia16_impl_rt_switches) -v %(ia16_warn_rt_switches) " \
+					       "-v %(rt_switches))", \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
     "%{mno-segelf:;:-msegelf}}", \
@@ -117,8 +121,8 @@ extern const char *cpp_sys_defs_spec_function (int, const char **);
    unlikely that a non-DOS target platform will be able to handle a -mdosx
    switch.
 
-   TODO: make the gcc-ia16 driver flag an error if it sees any runtime-
-   -specific switches that the specs file does not know about.
+   The gcc-ia16 driver flags an error if it sees any runtime-specific
+   switches that the specs file does not know about.
 
    The specs file can also optionally define %(ia16_warn_rt_switches), to
    cover any runtime-specific switches it recognizes & effectively ignores. */
@@ -127,15 +131,15 @@ extern const char *cpp_sys_defs_spec_function (int, const char **);
   { "ia16_warn_rt_switches", "" }, \
   { "rt_switches", "%{mmsdos-handle-v1} %{mnewlib-nano-stdio} " \
 		   "%{mnewlib-autofloat-stdio} %{mno-newlib-autofloat-stdio} "\
-		   "%{mhandle-non-i186} {mhandle-non-i286} %{maout-total=*} " \
-		   "%{maout-chmem=*} %{maout-stack=*} %{maout-heap=*}" }, \
+		   "%{mhandle-non-i186} %{mhandle-non-i286} %{maout} " \
+		   "%{maout-total=*} %{maout-chmem=*} %{maout-stack=*} " \
+		   "%{maout-heap=*}" }, \
   { "cmodel_long_ld", "%{mcmodel=*:%*.ld;:tiny.ld}" }
 
 #define POST_LINK_SPEC	\
   "%{!mno-post-link:"	\
-    "%{mdosx|mr=elks:" \
-      "%{mdosx:%:if-exists-else(../lib/../bin/elf2dosx%s elf2dosx);" \
-	     ":%:if-exists-else(../lib/../bin/elf2elks%s elf2elks)} " \
+    "%{mr=elks:" \
+      "%:if-exists-else(../lib/../bin/elf2elks%s elf2elks) " \
       "%{v} "		\
       "%{mcmodel=tiny:--tiny} " \
       "%{maout-total=*:--total-data %*} " \

@@ -25,8 +25,16 @@
 #include "coretypes.h"
 #include "diagnostic.h"
 #include "tm.h"
+#include "hashtab.h"
 
 static const char dir_separator_str[] = { DIR_SEPARATOR, 0 };
+
+static int
+string_hash_eq (const void *elem1, const void *elem2)
+{
+  return elem1 == elem2
+	 || strcmp ((const char *) elem1, (const char *)elem2) == 0;
+}
 
 /*
  * TODO:
@@ -152,6 +160,83 @@ rt_specs_files_spec_function (int argc, const char **argv)
     }
 
   return res;
+}
+
+const char *
+check_rt_switches_spec_function (int argc, const char **argv)
+{
+  int part = 0, i, j;
+  htab_t impl_sw_htab = htab_create_alloc (10, htab_hash_string,
+					   string_hash_eq, NULL,
+					   xcalloc, free),
+	 warn_sw_htab = htab_create_alloc (10, htab_hash_string,
+					   string_hash_eq, NULL,
+					   xcalloc, free);
+  void **slot;
+
+  /*
+   * gcc.c splits e.g. `-maout' into two words, `-' & `maout'.  Ugh.  Join
+   * everything back together before further processing.
+   */
+  i = j = 0;
+  while (j < argc)
+    {
+      const char *arg = argv[j];
+      if (arg[0] == '-' && arg[1] == 0 && j != argc - 1)
+	{
+	  argv[i] = ACONCAT (("-", argv[j + 1], NULL));
+	  j += 2;
+	}
+      else
+	{
+	  argv[i] = argv[j];
+	  ++j;
+	}
+      ++i;
+    }
+  argc = i;
+
+  for (i = 0; i < argc; ++i)
+    {
+      const char *arg = argv[i];
+      if (strcmp (arg, "-v") == 0)
+	{
+	  ++part;
+	  if (part > 2)
+	    break;
+	}
+      else
+	{
+	  switch (part)
+	    {
+	    case 0:
+	      slot = htab_find_slot (impl_sw_htab, arg, INSERT);
+	      *slot = (void *) arg;
+	      break;
+
+	    case 1:
+	      slot = htab_find_slot (warn_sw_htab, arg, INSERT);
+	      *slot = (void *) arg;
+	      break;
+
+	    default:
+	      if (htab_find_slot (impl_sw_htab, arg, NO_INSERT))
+		;  /* option implemented, do nothing */
+	      else if (htab_find_slot (warn_sw_htab, arg, NO_INSERT))
+		warning (0, "%qs not supported for this target; ignored", arg);
+	      else
+		error ("this target does not support %qs", arg);
+	    }
+	}
+    }
+
+  htab_delete (impl_sw_htab);
+  htab_delete (warn_sw_htab);
+
+  if (part != 2)
+    fatal_error (input_location, "bad usage of spec function %qs", __func__);
+
+  return "";
 }
 
 const char *

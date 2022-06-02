@@ -61,7 +61,7 @@ ia16_cpu_cpp_builtins (void)
   char *defn;
   int rv;
 
-  def_macro ("__ia16__=20220531L");
+  def_macro ("__ia16__=20220602L");
 
   if (have_addr_spaces_p ())
     {
