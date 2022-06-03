@@ -29,6 +29,12 @@
 
 static const char dir_separator_str[] = { DIR_SEPARATOR, 0 };
 
+static bool
+string_is_just (const char *s, char c)
+{
+  return s[0] == c && s[1] == 0;
+}
+
 static int
 string_hash_eq (const void *elem1, const void *elem2)
 {
@@ -165,7 +171,8 @@ rt_specs_files_spec_function (int argc, const char **argv)
 const char *
 check_rt_switches_spec_function (int argc, const char **argv)
 {
-  int part = 0, i, j;
+  const char **fix_argv = XALLOCAVEC (const char *, argc);
+  int fix_argc, part = 0, i, j;
   htab_t impl_sw_htab = htab_create_alloc (10, htab_hash_string,
 					   string_hash_eq, NULL,
 					   xcalloc, free),
@@ -182,24 +189,24 @@ check_rt_switches_spec_function (int argc, const char **argv)
   while (j < argc)
     {
       const char *arg = argv[j];
-      if (arg[0] == '-' && arg[1] == 0 && j != argc - 1)
+      if (string_is_just (arg, '-') && j != argc - 1)
 	{
-	  argv[i] = ACONCAT (("-", argv[j + 1], NULL));
+	  fix_argv[i] = ACONCAT (("-", argv[j + 1], NULL));
 	  j += 2;
 	}
       else
 	{
-	  argv[i] = argv[j];
+	  fix_argv[i] = argv[j];
 	  ++j;
 	}
       ++i;
     }
-  argc = i;
+  fix_argc = i;
 
-  for (i = 0; i < argc; ++i)
+  for (i = 0; i < fix_argc; ++i)
     {
-      const char *arg = argv[i];
-      if (strcmp (arg, "-v") == 0)
+      const char *arg = fix_argv[i];
+      if (string_is_just (arg, '^'))
 	{
 	  ++part;
 	  if (part > 2)
