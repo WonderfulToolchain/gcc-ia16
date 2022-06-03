@@ -34,8 +34,8 @@ extern const char *cpp_sys_defs_spec_function (int, const char **);
 #define DRIVER_SELF_SPECS \
   "%{mr=*:;:-mr=msdos}", \
   "%:rt-specs-files(rt-specs rt-specs%s %{mr=*:%*})", \
-  "%:check-rt-switches(%(ia16_impl_rt_switches) -v %(ia16_warn_rt_switches) " \
-					       "-v %(rt_switches))", \
+  "%:check-rt-switches(%(ia16_impl_rt_switches) ^ %(ia16_warn_rt_switches) " \
+					       "^ %(rt_switches))", \
   "%{mdosx:"		\
     "%{march=*:;:-march=i80286} " \
     "%{mno-segelf:;:-msegelf}}", \
