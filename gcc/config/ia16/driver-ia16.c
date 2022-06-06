@@ -155,9 +155,9 @@ rt_specs_files_spec_function (int argc, const char **argv)
 		   * FIXME?  This will take time that is quadratic in the
 		   * number of specs files in the subdirectory.
 		   */
-		  res = reconcat (res, " %include(", rel_dir, subdir,
-						     dir_separator_str,
-						     name, "%s)", NULL);
+		  res = reconcat (res, res, " %:include(", rel_dir, subdir,
+							   dir_separator_str,
+							   name, "%s)", NULL);
 		}
 	    }
 	}
