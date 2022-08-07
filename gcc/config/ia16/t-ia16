@@ -93,7 +93,7 @@ ia16-no-ss-data.o: $(srcdir)/config/ia16/ia16-no-ss-data.c \
   $(RTL_H) $(TREE_H) $(CONFIG_H) $(TM_H) $(GTFILES_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 
-MULTILIB_OPTIONS=mprotected-mode mdosx/mr=elks/ffreestanding \
+MULTILIB_OPTIONS=mprotected-mode mdosx/mr=elks ffreestanding \
 	mcmodel=medium mrtd/mregparmcall march=any_186
 MULTILIB_DIRNAMES=pmode dosx elkslibc freestanding medium rtd regparmcall \
 		  any_186
@@ -102,33 +102,38 @@ MULTILIB_MATCHES=$(strip \
 	march?any_186=march?v20 march?any_186=march?v30 \
 	march?any_186=march?i80286)
 #
-# `-mdosx -mcmodel=medium' and `-ffreestanding -mcmodel=medium' are not
-# supported. and are currently blocked by the specs in elf.h.
-#	-- tkchia 20220208
+# `-mdosx -mcmodel=medium' is not supported and is currently blocked by the
+# specs in newlib-ia16.
+#	-- tkchia 20220807
 #
 ia16_all_multilibs=$(strip \
   $(filter-out - mdosx/mcmodel=medium%\
 		 mprotected-mode/mdosx/mcmodel=medium%\
+		 mdosx/ffreestanding/mcmodel=medium%\
+		 mprotected-mode/mdosx/ffreestanding/mcmodel=medium%\
 		 ffreestanding/mcmodel=medium%\
 		 mprotected-mode/ffreestanding/mcmodel=medium%,\
     $(subst -/,,\
       $(subst /-,,\
 	$(foreach pm,- mprotected-mode,\
-	  $(foreach os,- mdosx mr=elks ffreestanding,\
-	    $(foreach mm,- mcmodel=medium,\
-	      $(foreach cc,- mrtd mregparmcall,\
-		$(foreach ar,- march=any_186, \
-		  $(pm)/$(os)/$(mm)/$(cc)/$(ar))))))))))
+	  $(foreach os,- mdosx mr=elks,\
+	    $(foreach fh,- ffreestanding,\
+	      $(foreach mm,- mcmodel=medium,\
+		$(foreach cc,- mrtd mregparmcall,\
+		  $(foreach ar,- march=any_186, \
+		    $(pm)/$(os)/$(fh)/$(mm)/$(cc)/$(ar)))))))))))
 #
 # (1) Only build separate protected-mode libraries for freestanding
-#     environments.  Also, non-protected-mode libraries for freestanding
+#     environments.  Non-protected-mode libraries for freestanding
 #     environments are the same as non-protected-mode libraries for the
-#     default hosted environment (real mode MS-DOS).
+#     default hosted environment (real mode MS-DOS).  Treat `-mdosx
+#     -ffreestanding' and `-mr=elks -ffreestanding' the same as `-mdosx` and
+#     `-mr=elks' respectively.
 # (2) Build 80186+ multilibs only for the `regparmcall' convention.
 # (3) DOS extender multilibs are always targeted at 286+.
 # (4) For now, do not build 186+-specific multilibs at all for -ffreestanding,
 #     -mr=elks, or -mcmodel=medium.
-#	-- tkchia 20220208
+#	-- tkchia 20220807
 #
 ia16_multilib_map=$(strip \
   $(filter-out march=any_186 mprotected-mode ffreestanding,\
@@ -138,9 +143,11 @@ ia16_multilib_map=$(strip \
 	  $(subst mr=elks/march=any_186,mr=elks,\
 	    $(subst mcmodel=medium/march=any_186,mcmodel=medium,\
 	      $(subst /mregparmcall/march=any_186,/mregparmcall,\
-		$(patsubst mprotected-mode/m%,m%,\
-		  $(patsubst ffreestanding/%,%,\
-		    $1))))))))))
+		$(patsubst mdosx/ffreestanding%,mdosx%,\
+		  $(patsubst mr=elks/ffreestanding%,mr=elks%,\
+		    $(patsubst mprotected-mode/m%,m%,\
+		      $(patsubst ffreestanding/%,%,\
+			$1))))))))))))
 MULTILIB_REQUIRED=$(strip \
 	$(foreach ml,$(ia16_all_multilibs),\
 	  $(filter $(call ia16_multilib_map,$(ml)),$(ml))))
