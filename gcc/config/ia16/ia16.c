@@ -255,9 +255,22 @@ ia16_save_reg_p (unsigned int r)
       tree decl, ret_type;
       rtx ret_rtx;
 
-      if (ia16_regno_in_class_p (r, UP_QI_REGS)
-	  || ! df_regs_ever_live_p (r))
+      if (ia16_regno_in_class_p (r, UP_QI_REGS))
 	return 0;
+
+      if (ia16_regno_in_class_p (r, QI_REGS))
+	{
+	  if (! df_regs_ever_live_p (r) && ! df_regs_ever_live_p (r + 1)
+	      && ((! call_used_regs[r] && ! call_used_regs[r + 1])
+		  || crtl->is_leaf))
+	    return 0;  /* TODO: refine this */
+	}
+      else
+	{
+	  if (! df_regs_ever_live_p (r)
+	      && (! call_used_regs[r] || crtl->is_leaf))
+	    return 0;  /* TODO: refine this */
+	}
 
       decl = cfun->decl;
       if (! decl)
