@@ -143,6 +143,9 @@ else
 fi
 AC_SUBST([have_getipinfo])
 
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
+
 # Output: create a Makefile.
 AC_CONFIG_FILES([Makefile])
 

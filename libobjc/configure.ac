@@ -214,6 +214,9 @@ GCC_CHECK_TLS
 
 gt_BITFIELD_TYPE_MATTERS
 
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
+
 # ------
 # Output
 # ------

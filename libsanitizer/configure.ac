@@ -400,4 +400,7 @@ fi
 
 AC_SUBST([TSAN_TARGET_DEPENDENT_OBJECTS])
 
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
+
 AC_OUTPUT
