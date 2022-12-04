@@ -1,13 +1,17 @@
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
+
 int __attribute__ ((noinline))
 foo (void)
 {
   return 123;
 }
 
-int __attribute__ ((noinline))
+int_least32_t __attribute__ ((noinline))
 bar (void)
 {
-  int c = 1;
+  int_least32_t c = 1;
   c |= 4294967295 ^ (foo () | 4073709551608);
   return c;
 }

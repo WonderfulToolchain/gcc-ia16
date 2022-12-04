@@ -1,10 +1,12 @@
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
 /* { dg-options "-O" } */
+
+#include <stdint.h>
 
 #pragma pack(1)
 struct S0
 {
-  int f0:24;
+  int_least32_t f0:24;
 };
 
 struct S1

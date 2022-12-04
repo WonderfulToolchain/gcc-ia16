@@ -1,7 +1,11 @@
 /* { dg-do compile } */
 /* { dg-options "-O2" } */
 
+#ifdef __SIZE_TYPE__
+typedef __SIZE_TYPE__ size_t;
+#else
 typedef long unsigned int size_t;
+#endif
 extern __inline __attribute__ ((__always_inline__))
 __attribute__ ((__gnu_inline__)) int
 snprintf (char *__restrict __s, size_t __n, const char *__restrict __fmt, ...)

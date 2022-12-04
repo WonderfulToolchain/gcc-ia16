@@ -1,4 +1,8 @@
+#ifdef __ia16__
+#define NMAX 30
+#else
 #define NMAX 3000
+#endif
 
 static double a[NMAX][NMAX], b[NMAX][NMAX], c[NMAX][NMAX];
 

@@ -2,7 +2,7 @@
 /* { dg-do run } */
 /* { dg-options "-O2" } */
 
-typedef unsigned int V __attribute__((vector_size (32)));
+typedef unsigned int V __attribute__((vector_size (8*sizeof (int))));
 
 __attribute__((noinline, noclone)) void
 foo (V *a, V *b, V *c, V *d, V *e)

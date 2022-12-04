@@ -2,7 +2,7 @@
 /* { dg-do run } */
 /* { dg-additional-options "-fno-common" { target hppa*-*-hpux* } } */
 
-typedef int V __attribute__((vector_size (16)));
+typedef int V __attribute__((vector_size (4*sizeof (int))));
 V a, b, c;
 
 int

@@ -1,9 +1,11 @@
 /* PR tree-optimization/66299 */
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
 /* { dg-options "-fdump-tree-optimized -O" } */
 
+#include <stdint.h>
+
 void
-test1 (int x, unsigned u)
+test1 (int_least32_t x, unsigned u)
 {
   if ((1U << x) != 64
       || (2 << x) != u

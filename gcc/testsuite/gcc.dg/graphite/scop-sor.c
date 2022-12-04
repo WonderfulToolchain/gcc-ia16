@@ -1,4 +1,8 @@
+#ifdef __ia16__
+#define SIZE 50
+#else
 #define SIZE 10000
+#endif
 
 static double P[SIZE][SIZE];
 

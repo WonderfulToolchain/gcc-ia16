@@ -1,6 +1,8 @@
 /* Test support of scalar_storage_order pragma */
 
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
+
+#include <stdint.h>
 
 #pragma scalar_storage_order /* { dg-warning "missing .big-endian.little-endian.default." } */
 
@@ -8,31 +10,31 @@
 
 struct S1
 {
-  int i;
+  int32_t i;
 };
 
 struct __attribute__((scalar_storage_order("little-endian"))) S2
 {
-  int i;
+  int32_t i;
 };
 
 #pragma scalar_storage_order little-endian
 
 struct S3
 {
-  int i;
+  int32_t i;
 };
 
 struct __attribute__((scalar_storage_order("big-endian"))) S4
 {
-  int i;
+  int32_t i;
 };
 
 #pragma scalar_storage_order default
 
 struct S5
 {
-  int i;
+  int32_t i;
 };
 
 #pragma scalar_storage_order other /* { dg-warning "expected .big-endian.little-endian.default." } */

@@ -1,11 +1,13 @@
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
+
+#include <stdint.h>
  
 int a = 0;
 int b = 0;
 int c = 0;
-int e = 0;
+int32_t e = 0;
 int f = 0;
-int *g = &e;
+int32_t *g = &e;
  
 int fn1() { return b ? a : b; }
  

@@ -1,10 +1,11 @@
 /* { dg-options "-Wno-psabi" } */
+
 void abort (void);
 
 struct S2848
 {
-  unsigned int a;
-  _Complex int b;
+  __UINT_LEAST32_TYPE__ a;
+  _Complex __INT_LEAST32_TYPE__ b;
   struct
   {
   } __attribute__ ((aligned)) c;

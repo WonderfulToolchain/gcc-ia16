@@ -1,5 +1,5 @@
 /* PR c/68657 */
-/* { dg-options "-Werror=sign-conversion -Werror=float-conversion -Werror=frame-larger-than=65536" } */
+/* { dg-options "-Werror=sign-conversion -Werror=float-conversion -Werror=frame-larger-than=8192" } */
 
 void
 f1 (void)
@@ -19,8 +19,8 @@ int f3 (char *);
 int
 f4 (void)
 {
-  char buf[131072];
+  char buf[16384];
   return f3 (buf);
-}		/* { dg-error "the frame size of 1\[0-9]* bytes is larger than 65536 bytes" } */
+}		/* { dg-error "the frame size of 1\[0-9]* bytes is larger than" } */
 
 /* { dg-prune-output "treated as errors" } */

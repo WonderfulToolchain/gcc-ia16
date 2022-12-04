@@ -2,12 +2,20 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -g" } */
 
+#if defined(STACK_SIZE) && (STACK_SIZE < 65536)
+# define BYTEMEM_SIZE 10000
+#endif
+
+#ifndef BYTEMEM_SIZE
+# define BYTEMEM_SIZE 65400
+#endif
+
 void *bar (void *);
 
 void
 foo (int c)
 {
-  unsigned char bf[65400];
+  unsigned char bf[BYTEMEM_SIZE];
   unsigned char *p2 = bar (bf);
   unsigned char *p3 = bar (bf);
   for (; *p2; p2++, c++)

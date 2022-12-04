@@ -1,4 +1,7 @@
 /* { dg-do compile } */
+/* { dg-require-effective-target stdint_types } */
+
+#include <stdint.h>
 
 typedef unsigned char uint8x4_t
 __attribute__ ((__vector_size__ (4)));
@@ -6,7 +9,7 @@ __attribute__ ((__vector_size__ (4)));
 typedef unsigned short uint16x8_t
 __attribute__ ((__vector_size__ (16)));
 
-typedef unsigned int uint32x4_t
+typedef uint32_t uint32x4_t
 __attribute__ ((__vector_size__ (16)));
 
 void

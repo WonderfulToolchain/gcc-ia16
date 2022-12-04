@@ -1,7 +1,9 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 /* { dg-options "-O2 -fdump-rtl-expand-details" } */
 
-int foo(unsigned int cc )
+#include <stdint.h>
+
+int foo(uint_least32_t cc )
 {
 
   while ( cc >> 16 )

@@ -1,12 +1,16 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 /* { dg-options "-O1 -Wall" } */
 /* PR/70013, SRA of constant-pool loads removes initialization of part of d.  */
+
+#include <stdint.h>
+#include <inttypes.h>
+
 #pragma pack (1)
 struct S0 {
-  unsigned f0 : 17;
+  uint_least32_t f0 : 17;
 };
 
-int c;
+int_least32_t c;
 
 int
 main (int argc, char **argv)
@@ -15,6 +19,6 @@ main (int argc, char **argv)
   struct S0 e = d[1];
 
   c = d[0].f0;
-  __builtin_printf ("%x\n", e.f0);
+  __builtin_printf (PRIxLEAST32 "\n", e.f0);
   return 0;
 }

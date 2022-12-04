@@ -1,11 +1,13 @@
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
+
+#include <stdint.h>
 
 int main()
 {
-  int a = -1;
-  static int b = -2147483647 - 1;
-  static int c = 0;
-  int t = a - (b + c*-2);
+  int32_t a = -1;
+  static int32_t b = -2147483647 - 1;
+  static int32_t c = 0;
+  int32_t t = a - (b + c*-2);
   if (t != 2147483647)
     __builtin_abort();
   return 0;

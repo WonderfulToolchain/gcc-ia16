@@ -1,9 +1,11 @@
-/* { dg-do run } */
+/* { dg-do run { target { stdint_types } } } */
+
+#include <stdint.h>
 
 extern void abort (void);
 
 struct {
-  unsigned f2;
+  uint32_t f2;
   unsigned f3 : 15;
   unsigned f5 : 3;
   short f6;

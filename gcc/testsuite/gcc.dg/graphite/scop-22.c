@@ -1,4 +1,8 @@
+#ifdef __ia16__
+double u[1782];
+#else
 double u[1782225];
+#endif
 
 void foo(int N, int *res)
 {

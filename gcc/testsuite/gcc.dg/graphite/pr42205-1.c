@@ -1,6 +1,9 @@
 /* { dg-options "-O1 -ffast-math -floop-interchange" } */
+/* { dg-require-effective-target stdint_types } */
 
-int adler32(int adler, char *buf, int n)
+#include <stdint.h>
+
+int_least32_t adler32(int adler, char *buf, int n)
 {
   int sum = 0;
   do {
@@ -13,5 +16,5 @@ int adler32(int adler, char *buf, int n)
      adler += buf[3];
      sum += adler;
   } while (--n);
-  return adler | (sum << 16);
+  return adler | ((int_least32_t)sum << 16);
 }

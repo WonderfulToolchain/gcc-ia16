@@ -1,5 +1,6 @@
 /* { dg-do run } */
 /* { dg-options "-fno-strict-aliasing" } */
+/* { dg-skip-if "Does not fit in 64kB" { "ia16-*-*" } } */
 
 #include <stdint.h>
 #include <stdio.h>

@@ -1,19 +1,23 @@
-/* { dg-do compile } */
+/* { dg-do compile { target { stdint_types } } } */
 
-int a[10][14], b, c, d, e, f, g, h, i;
+#include <stdint.h>
+
+intptr_t a[10][14];
+int b, c, d, e, f, g, h, i;
 void bar (void);
 int
 foo (int x)
 {
   unsigned j;
-  int k = 0, l;
+  int k = 0;
+  intptr_t l;
   int m;
   if (h)
     m = 12;
   else
     m = 13;
   if (a[x][m])
-    l = (long) foo;
+    l = (intptr_t) foo;
   a[x][i] = l;
   while (c)
     {
