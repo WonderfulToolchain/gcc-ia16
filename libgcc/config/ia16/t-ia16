@@ -87,3 +87,12 @@ $(patsubst $(srcdir)/config/ia16/%.S,%$(objext),$(LIB2ADD)) : \
 	     $(srcdir)/config/ia16/ia16-divmodsi.h \
 	     $(srcdir)/config/ia16/ia16-far-call-thunks-imm.h \
 	     $(srcdir)/config/ia16/ia16-far-call-pop-thunks-imm.h
+
+# Wonderful: Disable libgcc functionality which fails to compile when DS != SS
+ifeq (-mno-callee-assume-ss-data-segment,$(filter -mno-callee-assume-ss-data-segment,$(MULTIFLAGS)))
+LIB2ADDEH =
+LIB2FUNCS_EXCLUDE += _umoddi3
+FPBIT =
+DPBIT =
+TPBIT =
+endif
