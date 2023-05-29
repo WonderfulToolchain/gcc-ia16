@@ -481,7 +481,7 @@ CUMULATIVE_ARGS;
 #define BSS_SECTION_ASM_OP	"\t.bss"
 #define CRT_CALL_STATIC_FUNCTION(section_op, function) \
 	__IA16___CRT_CALL_STATIC_FUNCTION (section_op, function) /* ia16-c.c */
-#define JUMP_TABLES_IN_TEXT_SECTION 0
+#define JUMP_TABLES_IN_TEXT_SECTION 1
 
 /* Position Independent Code.  */
 /* skipped.  */
@@ -630,6 +630,7 @@ enum ia16_builtin
 
 #define ADDR_SPACE_FAR			1
 #define ADDR_SPACE_SEG_SS		2
+#define ADDR_SPACE_SEG_CS		3
 /* We hack gcc/tree-ssa-loop-ivopts.c and gcc/calls.c to recognize a new
    macro TARGET_ADDR_SPACE_WEIRD_P (as), which should return true if the
    given address space breaks certain assumptions made by compiler passes.  */

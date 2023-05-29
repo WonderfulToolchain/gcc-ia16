@@ -1933,6 +1933,7 @@ ia16_as_address_mode (addr_space_t addrspace)
     {
     case ADDR_SPACE_GENERIC:
     case ADDR_SPACE_SEG_SS:
+    case ADDR_SPACE_SEG_CS:
       return HImode;
     /* A far address is actually a HImode value which is "coloured" with a
        segment term -- (plus:HI ...  (unspec:HI ...  UNSPEC_SEG_OVERRIDE)).
@@ -1954,6 +1955,7 @@ ia16_as_pointer_mode (addr_space_t addrspace)
     {
     case ADDR_SPACE_GENERIC:
     case ADDR_SPACE_SEG_SS:
+    case ADDR_SPACE_SEG_CS:
       return HImode;
     case ADDR_SPACE_FAR:
       return SImode;
@@ -1972,6 +1974,7 @@ ia16_as_valid_pointer_mode (machine_mode m, addr_space_t addrspace)
     {
     case ADDR_SPACE_GENERIC:
     case ADDR_SPACE_SEG_SS:
+    case ADDR_SPACE_SEG_CS:
       return m == HImode;
     case ADDR_SPACE_FAR:
       return m == SImode;
@@ -2074,6 +2077,7 @@ ia16_as_zero_address_valid (addr_space_t addrspace)
     case ADDR_SPACE_GENERIC:
       return false;
     case ADDR_SPACE_SEG_SS:
+    case ADDR_SPACE_SEG_CS:
     case ADDR_SPACE_FAR:
       return true;
     default:
@@ -2381,6 +2385,7 @@ ia16_as_legitimize_address (rtx x, rtx oldx,
 
   if (as == ADDR_SPACE_GENERIC
       || as == ADDR_SPACE_SEG_SS
+      || as == ADDR_SPACE_SEG_CS
       || ia16_as_legitimate_address_p (mode, x, false, as))
     return x;
 
@@ -2440,7 +2445,7 @@ static bool
 ia16_as_subset_p (addr_space_t subset, addr_space_t superset)
 {
   return superset == ADDR_SPACE_FAR
-	 && (subset == ADDR_SPACE_GENERIC || subset == ADDR_SPACE_SEG_SS);
+	 && (subset == ADDR_SPACE_GENERIC || subset == ADDR_SPACE_SEG_SS || subset == ADDR_SPACE_SEG_CS);
 }
 
 rtx
@@ -2471,7 +2476,7 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
   to_as = TYPE_ADDR_SPACE (to_type);
 
   if (from_as == ADDR_SPACE_FAR
-      && (to_as == ADDR_SPACE_GENERIC || to_as == ADDR_SPACE_SEG_SS))
+      && (to_as == ADDR_SPACE_GENERIC || to_as == ADDR_SPACE_SEG_SS || to_as == ADDR_SPACE_SEG_CS))
     {
       /* We only handle pointers for now --- not addresses.  */
       gcc_assert (GET_MODE (op) == SImode || GET_MODE (op) == VOIDmode);
@@ -2479,19 +2484,34 @@ ia16_as_convert (rtx op, tree from_type, tree to_type)
       return ia16_far_pointer_offset (op);
     }
   else if (to_as == ADDR_SPACE_FAR
-	   && (from_as == ADDR_SPACE_GENERIC || from_as == ADDR_SPACE_SEG_SS))
+	   && (from_as == ADDR_SPACE_GENERIC || from_as == ADDR_SPACE_SEG_SS || from_as == ADDR_SPACE_SEG_CS))
     {
-      unsigned seg_reg_no = SS_REG;
+      unsigned seg_reg_no;
 
       rtx op2 = gen_reg_rtx (SImode);
       gcc_assert (GET_MODE (op) == HImode || GET_MODE (op) == VOIDmode);
 
-      if (from_as == ADDR_SPACE_GENERIC)
+      switch (from_as)
 	{
+        default:
+          gcc_unreachable ();
+
+	case ADDR_SPACE_GENERIC:
 	  if (FUNC_OR_METHOD_TYPE_P (from_type))
 	    seg_reg_no = CS_REG;
 	  else if (! ia16_in_ss_data_function_p ())
 	    seg_reg_no = DS_REG;
+          else
+	    seg_reg_no = SS_REG;
+          break;
+
+	case ADDR_SPACE_SEG_CS:
+	  seg_reg_no = CS_REG;
+	  break;
+
+	case ADDR_SPACE_SEG_SS:
+	  seg_reg_no = SS_REG;
+	  break;
 	}
 
       op = force_reg (HImode, op);
@@ -4358,6 +4378,12 @@ ia16_asm_select_section (tree expr, int reloc, unsigned HOST_WIDE_INT align)
     case ADDR_SPACE_GENERIC:
       return default_elf_select_section (expr, reloc, align);
 
+    case ADDR_SPACE_SEG_CS:
+      error_at (DECL_P (expr) ? DECL_SOURCE_LOCATION (expr)
+			      : UNKNOWN_LOCATION, "cannot allocate "
+		"static storage object in %<__seg_cs%> address space");
+      return default_elf_select_section (expr, reloc, align);
+
     case ADDR_SPACE_SEG_SS:
       /* Do not allow explicit declarations of variables etc. in __seg_ss
 	 space.
@@ -4400,6 +4426,12 @@ ia16_asm_unique_section (tree decl, int reloc)
 
       /* fall through */
     case ADDR_SPACE_GENERIC:
+      default_unique_section (decl, reloc);
+      break;
+
+    case ADDR_SPACE_SEG_CS:
+      error_at (DECL_SOURCE_LOCATION (decl), "cannot allocate static storage "
+		"object in %<__seg_cs%> address space");
       default_unique_section (decl, reloc);
       break;
 
@@ -5323,9 +5355,11 @@ ia16_parse_address (rtx e, rtx *p_r1, rtx *p_r2, rtx *p_c, rtx *p_r9,
 	}
       if (p_r9)
 	{
-	  /* Remember to insert a %ss: override for a __seg_ss address.  */
+	  /* Remember to insert a segment override for a __seg_* address.  */
 	  if (as == ADDR_SPACE_SEG_SS && ! r9)
 	    *p_r9 = gen_rtx_REG (SEGmode, SS_REG);
+	  else if (as == ADDR_SPACE_SEG_CS && ! r9)
+	    *p_r9 = gen_rtx_REG (SEGmode, CS_REG);
 	  else
 	    *p_r9 = r9;
 	}

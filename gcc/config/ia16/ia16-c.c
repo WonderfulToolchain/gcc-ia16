@@ -67,6 +67,7 @@ ia16_cpu_cpp_builtins (void)
     {
       def_macro ("__FAR");
       def_macro ("__SEG_SS");
+      def_macro ("__SEG_CS");
     }
 
   /* These are for compatibility with programs that check for Open Watcom
@@ -359,5 +360,6 @@ ia16_register_pragmas (void)
     {
       c_register_addr_space ("__far", ADDR_SPACE_FAR);
       c_register_addr_space ("__seg_ss", ADDR_SPACE_SEG_SS);
+      c_register_addr_space ("__seg_cs", ADDR_SPACE_SEG_CS);
     }
 }
