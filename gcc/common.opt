@@ -469,6 +469,10 @@ Driver
 L
 Driver Joined Separate
 
+MJ
+Driver Joined Separate MissingArgError(missing filename after %qs)
+-MJ <file>	Write compile_commands.json fragment to the given file.
+
 N
 Driver
 

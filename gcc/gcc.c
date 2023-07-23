@@ -237,6 +237,10 @@ static const char *use_ld;
 
 FILE *report_times_to_file = NULL;
 
+/* Filename for compile_commands.json output. */
+
+static const char *cc_json_file = NULL;
+
 /* Nonzero means place this string before uses of /, so that include
    and library files can be found in an alternate location.  */
 
@@ -3207,7 +3211,7 @@ execute (void)
     return ret_code;
   }
 }
-
+
 /* Find all the switches given to us
    and make a vector describing them.
    The elements of the vector are strings, one per switch given.
@@ -3983,6 +3987,11 @@ driver_handle_option (struct gcc_options *opts,
     case OPT__sysroot_:
       target_system_root = arg;
       target_system_root_changed = 1;
+      do_save = false;
+      break;
+
+    case OPT_MJ:
+      cc_json_file = arg;
       do_save = false;
       break;
 
@@ -6572,7 +6581,81 @@ give_switch (int switchnum, int omit_first_word)
   do_spec_1 (" ", 0, NULL);
   switches[switchnum].validated = true;
 }
-
+
+/* Prints an escaped JSON string. */
+static void
+print_json_fragment_string (FILE *stream, const char *s)
+{
+  while (*s)
+    {
+      if (*s == '\\' || *s == '\"')
+	fputc ('\\', stream);
+      fputc (*(s++), stream);
+    }
+}
+
+/* Prints the compile_commands.json fragment. */
+static void
+maybe_print_cc_json_file (int argc, const char **argv, const char *filename)
+{
+  FILE *stream;
+  const char *pwd;
+  int i_arg, i_infile;
+
+  if (!filename)
+    return;
+
+  stream = fopen (filename, "w");
+
+  if (!stream)
+    fatal_error (input_location,
+		 "opening compile_commands.json fragment file %s: %m",
+		 filename);
+  else
+    {
+      pwd = getcwd (NULL, 0);
+
+      for (i_infile = 0; i_infile < n_infiles; i_infile++)
+	{
+	  fprintf (stream, "{\"arguments\": [");
+	  for (i_arg = 0; i_arg < argc; i_arg++)
+	    {
+	      if (i_arg > 0)
+		fprintf (stream, ", ");
+	      fprintf (stream, "\"");
+	      print_json_fragment_string (stream, argv[i_arg]);
+	      fprintf (stream, "\"");
+	    }
+	  fprintf (stream, "]");
+
+	  if (pwd)
+	    {
+	      fprintf (stream, ", \"directory\": \"");
+	      print_json_fragment_string (stream, pwd);
+	      fprintf (stream, "\"");
+	    }
+
+ 	  if (output_file)
+	    {
+	      fprintf (stream, ", \"output\": \"");
+	      print_json_fragment_string (stream, output_file);
+	      fprintf (stream, "\"");
+	    }
+
+	  fprintf (stream, ", \"file\": \"");
+	  print_json_fragment_string (stream, infiles[i_infile].name);
+	  fprintf (stream, "\"");
+
+	  fprintf (stream, "},\n");
+	}
+
+      if (stream && (ferror (stream) || fclose (stream)))
+	fatal_error (input_location,
+		     "closing compile_commands.json fragment file %s: %m",
+		     filename);
+    }
+}
+
 /* Print GCC configuration (e.g. version, thread model, target,
    configuration_arguments) to a given FILE.  */
 
@@ -7184,6 +7267,9 @@ driver::main (int argc, char **argv)
   early_exit = prepare_infiles ();
   if (early_exit)
     return get_exit_code ();
+
+  maybe_print_cc_json_file (argc, const_cast <const char **> (argv),
+			    cc_json_file);
 
   do_spec_on_infiles ();
   maybe_run_linker (argv[0]);
@@ -9890,6 +9976,7 @@ driver::finalize ()
   verbose_only_flag = 0;
   print_subprocess_help = 0;
   use_ld = NULL;
+  cc_json_file = NULL;
   report_times_to_file = NULL;
   target_system_root = DEFAULT_TARGET_SYSTEM_ROOT;
   target_system_root_changed = 0;
